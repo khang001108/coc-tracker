@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from supabase_client import get_supabase
-from services.coc_api import get_clan
+from services.coc_api import get_clan, COC_BASE
 
 router = APIRouter()
 
@@ -47,7 +47,7 @@ async def test_clan_connection(body: dict):
         tag_enc = quote(clan_tag.replace("#", "%23"), safe="")
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(
-                f"https://api.clashofclans.com/v1/clans/{tag_enc}",
+                f"{COC_BASE}/clans/{tag_enc}",
                 headers={"Authorization": f"Bearer {api_key}"}
             )
         if r.status_code == 200:

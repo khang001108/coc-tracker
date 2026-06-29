@@ -2,11 +2,17 @@
 Clash of Clans API wrapper.
 Reads API key + clan tag from Supabase settings table.
 """
+import os
 import httpx
 from supabase_client import get_supabase
 from urllib.parse import quote
 
-COC_BASE = "https://api.clashofclans.com/v1"
+# Mặc định dùng proxy miễn phí của RoyaleAPI (https://docs.royaleapi.com/proxy)
+# vì Render free/standard không cấp 1 IP tĩnh duy nhất, mà CoC API lại yêu cầu
+# whitelist đúng 1 IP. Whitelist IP 45.79.218.79 trong CoC dev portal là đủ.
+# Nếu sau này có IP tĩnh thật (Render Dedicated IP, QuotaGuard...), set biến môi
+# trường COC_BASE_URL=https://api.clashofclans.com/v1 để gọi trực tiếp.
+COC_BASE = os.environ.get("COC_BASE_URL", "https://cocproxy.royaleapi.dev/v1")
 
 async def get_coc_config() -> dict:
     """Load api_key and clan_tag from DB settings."""
