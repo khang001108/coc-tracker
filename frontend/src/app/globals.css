@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { height: 100%; -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-gray-950 text-gray-100 antialiased;
+    overflow-x: hidden;
+  }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-coc-border rounded-full; }
+}
+
+@layer components {
+  /* ── Cards ── */
+  .card {
+    @apply bg-gray-900 rounded-2xl border border-gray-800 p-5;
+  }
+  .card-coc {
+    @apply rounded-2xl border p-5;
+    background: linear-gradient(135deg, #1e1208 0%, #2a1a0a 100%);
+    border-color: #5C3A1E;
+  }
+
+  /* ── Buttons ── */
+  .btn-gold {
+    @apply font-bold px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50;
+    background: linear-gradient(135deg, #F4A130, #D4821A);
+    color: #1A0F05;
+    box-shadow: 0 2px 8px rgba(244,161,48,0.3);
+  }
+  .btn-gold:hover { background: linear-gradient(135deg, #F8B84A, #E89220); }
+  .btn-secondary {
+    @apply bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold px-4 py-2 rounded-xl transition-all;
+  }
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl transition-all;
+  }
+
+  /* ── Input ── */
+  .input {
+    @apply w-full border border-gray-700 rounded-xl px-4 py-2.5 text-sm
+           bg-gray-800 text-gray-100 placeholder-gray-500
+           focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-600;
+  }
+  .label { @apply block text-sm font-medium text-gray-400 mb-1; }
+
+  /* ── Stat card ── */
+  .stat-card {
+    @apply card flex flex-col gap-1;
+  }
+  .stat-value { @apply text-2xl font-bold text-white; }
+  .stat-label { @apply text-xs text-gray-400 font-medium uppercase tracking-wide; }
+
+  /* ── Badge ── */
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+  .badge-gold   { @apply badge bg-yellow-500/20 text-yellow-400 border border-yellow-500/30; }
+  .badge-green  { @apply badge bg-green-500/20 text-green-400 border border-green-500/30; }
+  .badge-red    { @apply badge bg-red-500/20 text-red-400 border border-red-500/30; }
+  .badge-blue   { @apply badge bg-blue-500/20 text-blue-400 border border-blue-500/30; }
+  .badge-purple { @apply badge bg-purple-500/20 text-purple-400 border border-purple-500/30; }
+
+  /* ── Role colors ── */
+  .role-leader    { @apply text-yellow-400 font-bold; }
+  .role-coLeader  { @apply text-orange-400 font-semibold; }
+  .role-elder     { @apply text-blue-400; }
+  .role-member    { @apply text-gray-400; }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    @apply h-2 bg-gray-800 rounded-full overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: linear-gradient(90deg, #F4A130, #F8B84A);
+  }
+
+  /* ── TH Level badge ── */
+  .th-badge {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0;
+    background: linear-gradient(135deg, #4A3520, #2A1A0A);
+    border: 1px solid #5C3A1E;
+  }
+
+  /* ── Page title ── */
+  .page-title { @apply text-xl font-bold text-white; }
+  .page-subtitle { @apply text-sm text-gray-400 mt-0.5; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4;
+  }
+  .modal-box {
+    @apply bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl w-full max-h-[90vh] overflow-y-auto;
+  }
+
+  /* Touch: always show action buttons */
+  @media (hover: none) and (pointer: coarse) {
+    .group-hover-show { opacity: 1 !important; }
+  }
+}
+
+/* ── Animations ── */
+@keyframes fade-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fade-in { from { opacity:0; } to { opacity:1; } }
+@keyframes scale-in { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+@keyframes gold-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(244,161,48,0.3); } 50% { box-shadow: 0 0 0 6px rgba(244,161,48,0); } }
+
+.animate-fade-up   { animation: fade-up 0.25s ease forwards; }
+.animate-fade-in   { animation: fade-in 0.2s ease forwards; }
+.animate-scale-in  { animation: scale-in 0.2s ease forwards; }
+.animate-gold-pulse{ animation: gold-pulse 2s infinite; }

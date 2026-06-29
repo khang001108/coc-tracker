@@ -1,0 +1,216 @@
+"use client";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { formatDate, thColor } from "@/lib/utils";
+import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy } from "lucide-react";
+
+function AttackBar({ attacks, maxAttacks = 2 }: { attacks: any[]; maxAttacks?: number }) {
+  return (
+    <div className="flex gap-1">
+      {Array.from({ length: maxAttacks }).map((_, i) => {
+        const a = attacks[i];
+        return (
+          <div key={i} className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold ${
+            a ? `bg-yellow-500/20 text-yellow-400 border border-yellow-500/40` : "bg-gray-800 text-gray-600 border border-gray-700"
+          }`}>
+            {a ? `${a.stars}⭐` : "—"}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WarMemberRow({ member, mapPosition }: { member: any; mapPosition: number }) {
+  const attacks = member.attacks || [];
+  const totalStars = attacks.reduce((s: number, a: any) => s + a.stars, 0);
+  const bestDestruction = attacks.length > 0 ? Math.max(...attacks.map((a: any) => a.destructionPercentage)) : 0;
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-gray-800 last:border-0">
+      <span className="text-gray-600 text-xs w-5 shrink-0">#{mapPosition}</span>
+      <div className="th-badge text-[11px]" style={{ color: thColor(member.townHallLevel) }}>
+        {member.townHallLevel}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white truncate">{member.name}</p>
+        {attacks.length > 0 && (
+          <p className="text-xs text-gray-500">{bestDestruction.toFixed(0)}% phá hủy</p>
+        )}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <AttackBar attacks={attacks} />
+        {attacks.length > 0 && (
+          <span className="badge-gold text-xs">⭐{totalStars}</span>
+        )}
+        {attacks.length === 0 && (
+          <span className="badge-red text-xs">Chưa đánh</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function WarPage() {
+  const [war, setWar] = useState<any>(null);
+  const [warLog, setWarLog] = useState<any[]>([]);
+  const [cwl, setCwl] = useState<any>(null);
+  const [tab, setTab] = useState<"current" | "log" | "cwl">("current");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const [w, wl, c] = await Promise.allSettled([
+        api.getCurrentWar(), api.getWarLog(), api.getCWL()
+      ]);
+      if (w.status === "fulfilled") setWar(w.value);
+      if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
+      if (c.status === "fulfilled") setCwl(c.value);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const clanMembers = war?.clan?.members?.sort((a: any, b: any) => a.mapPosition - b.mapPosition) || [];
+  const notAttacked = clanMembers.filter((m: any) => (m.attacks || []).length === 0);
+
+  return (
+    <div className="space-y-5 animate-fade-up">
+      <div>
+        <h1 className="page-title flex items-center gap-2"><Swords size={22} className="text-red-400" /> War & CWL</h1>
+        <p className="page-subtitle">Theo dõi chiến tranh clan</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-800 rounded-xl w-fit">
+        {([["current","War hiện tại"],["log","Lịch sử"],["cwl","CWL"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+              tab === id ? "bg-gray-900 text-yellow-400 shadow" : "text-gray-500 hover:text-gray-300"
+            }`}>{label}</button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="card h-64 animate-pulse bg-gray-800" />
+      ) : tab === "current" ? (
+        <>
+          {!war || war.state === "notInWar" ? (
+            <div className="card text-center py-12">
+              <Shield size={40} className="mx-auto mb-3 text-gray-700" />
+              <p className="text-gray-400">Clan không có War đang diễn ra</p>
+            </div>
+          ) : (
+            <>
+              {/* War header */}
+              <div className="card" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: "#5C1E1E" }}>
+                <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 truncate">{war.clan?.name}</p>
+                    <p className="text-3xl font-bold text-yellow-400">⭐{war.clan?.stars}</p>
+                    <p className="text-sm text-gray-300">{war.clan?.attacks}/{war.teamSize * 2} attack</p>
+                    <p className="text-xs text-gray-500">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
+                  </div>
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-gray-500 font-bold">VS</span>
+                    <span className={`text-xs mt-1 font-semibold ${
+                      war.state === "inWar" ? "text-green-400" :
+                      war.state === "preparation" ? "text-yellow-400" : "text-blue-400"
+                    }`}>
+                      {{ inWar: "Đang đánh", preparation: "Chuẩn bị", warEnded: "Kết thúc" }[war.state as string] || war.state}
+                    </span>
+                    {war.endTime && <p className="text-[10px] text-gray-600 mt-0.5">{formatDate(war.endTime)}</p>}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1 truncate">{war.opponent?.name}</p>
+                    <p className="text-3xl font-bold text-red-400">⭐{war.opponent?.stars}</p>
+                    <p className="text-sm text-gray-300">{war.opponent?.attacks}/{war.teamSize * 2} attack</p>
+                    <p className="text-xs text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Missing attacks warning */}
+              {notAttacked.length > 0 && (
+                <div className="card border-red-500/30 bg-red-500/5">
+                  <p className="text-red-400 font-semibold text-sm flex items-center gap-2 mb-2">
+                    <XCircle size={16} /> {notAttacked.length} thành viên chưa đánh
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {notAttacked.map((m: any) => (
+                      <span key={m.tag} className="badge-red">{m.name}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Member list */}
+              <div className="card">
+                <h3 className="font-bold text-white mb-3">Danh sách tấn công ({clanMembers.length} thành viên)</h3>
+                {clanMembers.map((m: any) => (
+                  <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} />
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      ) : tab === "log" ? (
+        <div className="card">
+          <h3 className="font-bold text-white mb-4">Lịch sử War ({warLog.length} war)</h3>
+          {warLog.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">Không có lịch sử war</p>
+          ) : (
+            <div className="space-y-3">
+              {warLog.map((w: any, i: number) => {
+                const won = w.clan?.stars > w.opponent?.stars;
+                const draw = w.clan?.stars === w.opponent?.stars;
+                return (
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-gray-800">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                      won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
+                    }`}>
+                      {won ? "W" : draw ? "D" : "L"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">vs {w.opponent?.name}</p>
+                      <p className="text-xs text-gray-500">{w.teamSize}v{w.teamSize} · {w.endTime?.slice(0, 8)}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-yellow-400">⭐{w.clan?.stars} — {w.opponent?.stars}⭐</p>
+                      <p className="text-xs text-gray-500">{w.clan?.destructionPercentage?.toFixed(1)}% vs {w.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        // CWL tab
+        <div className="card">
+          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+            <Trophy size={18} className="text-yellow-400" /> Clan War League
+          </h3>
+          {!cwl || cwl.error ? (
+            <p className="text-gray-500 text-center py-8">Không có CWL đang diễn ra</p>
+          ) : (
+            <div className="space-y-2">
+              {(cwl.clans || []).map((c: any, i: number) => (
+                <div key={c.tag} className={`flex items-center gap-3 p-3 rounded-xl ${c.tag === cwl.clan?.tag ? "bg-yellow-500/10 border border-yellow-500/20" : "bg-gray-800"}`}>
+                  <span className="text-gray-500 w-5 text-right text-sm shrink-0">{i + 1}</span>
+                  {c.badgeUrls?.small && <img src={c.badgeUrls.small} alt="" className="w-8 h-8 shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{c.name}</p>
+                    <p className="text-xs text-gray-500">Level {c.clanLevel}</p>
+                  </div>
+                  {c.tag === cwl.clan?.tag && <span className="badge-gold text-xs">Clan mình</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
