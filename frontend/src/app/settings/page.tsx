@@ -148,7 +148,7 @@ export default function SettingsPage() {
           <ol className="list-decimal list-inside space-y-0.5 text-blue-400">
             <li>Vào <a href="https://developer.clashofclans.com" target="_blank" className="underline hover:text-white">developer.clashofclans.com</a></li>
             <li>Đăng nhập bằng tài khoản Supercell</li>
-            <li>Tạo key mới với <strong>IP của server Render</strong> (xem trong Dashboard → Render → Settings → Static IP)</li>
+            <li>Tạo key mới, mục <strong>IP Address</strong> điền <code>45.79.218.79</code> (IP cố định của proxy RoyaleAPI mà backend đang dùng — không phải IP của Render)</li>
             <li>Copy key và dán vào đây</li>
           </ol>
         </div>
