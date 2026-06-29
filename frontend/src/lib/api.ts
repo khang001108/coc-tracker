@@ -1,50 +1,78 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", ...opts?.headers },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `API error ${res.status}`);
+async function apiFetch(path: string, opts?: RequestInit, retries = 1) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(`${API}${path}`, {
+        ...opts,
+        headers: {
+          "Content-Type": "application/json",
+          ...opts?.headers,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || err.message || `Lỗi ${res.status}`);
+      }
+      return res.json();
+    } catch (e: any) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
   }
-  return res.json();
 }
 
 export const api = {
   // Clan
-  getClan:       () => apiFetch("/api/clan/"),
-  refreshClan:   () => apiFetch("/api/clan/refresh"),
+  getClan:        () => apiFetch("/api/clan/"),
+  refreshClan:    () => apiFetch("/api/clan/refresh"),
 
   // War
-  getCurrentWar: () => apiFetch("/api/war/current"),
-  getWarLog:     () => apiFetch("/api/war/log"),
-  getCWL:        () => apiFetch("/api/war/cwl"),
+  getCurrentWar:  () => apiFetch("/api/war/current"),
+  getWarLog:      () => apiFetch("/api/war/log"),
+  getCWL:         () => apiFetch("/api/war/cwl"),
 
   // Capital
   getRaidSeasons: () => apiFetch("/api/capital/raids"),
 
   // Games / Donate
-  getClanGames:  () => apiFetch("/api/games/"),
+  getClanGames:   () => apiFetch("/api/games/"),
 
   // Members
-  getMembers:    () => apiFetch("/api/members/"),
-  getMemberLog:  () => apiFetch("/api/members/log"),
-  getPlayer:     (tag: string) => apiFetch(`/api/members/${encodeURIComponent(tag)}`),
+  getMembers:     () => apiFetch("/api/members/"),
+  getMemberLog:   () => apiFetch("/api/members/log"),
+  getPlayer:      (tag: string) => apiFetch(`/api/members/${encodeURIComponent(tag)}`),
 
   // Settings
-  getSettings:   () => apiFetch("/api/settings/"),
-  saveSetting:   (key: string, value: string) =>
-    apiFetch("/api/settings/", { method: "POST", body: JSON.stringify({ key, value }) }),
+  getSettings:    () => apiFetch("/api/settings/"),
+  saveSetting:    (key: string, value: string) =>
+    apiFetch("/api/settings/", {
+      method: "POST",
+      body: JSON.stringify({ key, value }),
+    }),
   testClan: (api_key: string, clan_tag: string) =>
-    apiFetch("/api/settings/test-clan", { method: "POST", body: JSON.stringify({ api_key, clan_tag }) }),
+    apiFetch("/api/settings/test-clan", {
+      method: "POST",
+      body: JSON.stringify({ api_key, clan_tag }),
+    }),
   testDiscord: (webhook_url: string) =>
-    apiFetch("/api/settings/test-discord", { method: "POST", body: JSON.stringify({ webhook_url }) }),
+    apiFetch("/api/settings/test-discord", {
+      method: "POST",
+      body: JSON.stringify({ webhook_url }),
+    }),
   testTelegram: (bot_token: string, chat_id: string) =>
-    apiFetch("/api/settings/test-telegram", { method: "POST", body: JSON.stringify({ bot_token, chat_id }) }),
+    apiFetch("/api/settings/test-telegram", {
+      method: "POST",
+      body: JSON.stringify({ bot_token, chat_id }),
+    }),
 
   // Notify
   sendNotify: (message: string, title?: string) =>
-    apiFetch("/api/notify/send", { method: "POST", body: JSON.stringify({ message, title }) }),
+    apiFetch("/api/notify/send", {
+      method: "POST",
+      body: JSON.stringify({ message, title }),
+    }),
+
+  // Health check
+  health: () => apiFetch("/health"),
 };

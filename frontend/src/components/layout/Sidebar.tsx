@@ -1,7 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Swords, Castle, Gamepad2, Heart, Users, BarChart3, Settings, Shield } from "lucide-react";
+import {
+  LayoutDashboard, Swords, Castle, Gamepad2,
+  Heart, Users, BarChart3, Settings, Shield
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -52,7 +55,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
       <div className="p-4 border-t border-gray-800">
         <p className="text-xs text-gray-600 text-center">Powered by Supercell API</p>
       </div>

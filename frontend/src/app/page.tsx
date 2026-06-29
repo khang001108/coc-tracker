@@ -59,7 +59,12 @@ export default function DashboardPage() {
     setRefreshing(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Auto-refresh mỗi 5 phút
+    const t = setInterval(() => load(), 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
 
   if (loading) return (
     <div className="space-y-4 animate-fade-in">

@@ -30,10 +30,7 @@ Theo dõi clan Clash of Clans: War, Raid, Donate, Thành viên, Thống kê.
    SUPABASE_SERVICE_KEY  = eyJhbGciOiJ...
    ```
 6. Deploy → lấy URL backend (VD: `https://coc-tracker-api.onrender.com`)
-7. **Lưu ý**: Render free/standard **không cấp 1 IP tĩnh duy nhất** (chỉ có dải IP
-   dùng chung theo region), nên CoC API key sẽ không whitelist được IP backend
-   trực tiếp. Xem mục 4 bên dưới — dùng proxy miễn phí của RoyaleAPI để né vấn đề
-   này, không cần upgrade plan.
+7. **Lưu ý**: Lấy Static IP của Render để đăng ký CoC API Key
 
 ### 3. Render — Frontend (Next.js)
 1. New Web Service → Connect GitHub repo
@@ -46,27 +43,11 @@ Theo dõi clan Clash of Clans: War, Raid, Donate, Thành viên, Thống kê.
    ```
 
 ### 4. CoC API Key
-
-> ⚠️ Render free/standard không cấp IP tĩnh riêng cho từng service (chỉ có dải IP
-> dùng chung theo region, không whitelist được trực tiếp với CoC API). Cách rẻ
-> nhất là dùng **proxy miễn phí của RoyaleAPI** — backend đã được cấu hình sẵn
-> để dùng proxy này (xem `backend/services/coc_api.py`), bạn chỉ cần whitelist
-> đúng 1 IP cố định của RoyaleAPI thay vì IP của Render.
-
 1. Vào [developer.clashofclans.com](https://developer.clashofclans.com)
 2. Đăng nhập bằng tài khoản Supercell
 3. My Keys → Create New Key
-4. **IP Address**: điền `45.79.218.79` (IP cố định của proxy RoyaleAPI, không phải IP của Render)
+4. **IP Address**: điền Static IP của Render backend
 5. Copy key → dán vào Settings trong app
-
-Backend mặc định gọi API qua `https://cocproxy.royaleapi.dev/v1` (proxy của
-RoyaleAPI cho Clash of Clans — xem [docs.royaleapi.com/proxy](https://docs.royaleapi.com/proxy)).
-Nếu sau này bạn có IP tĩnh thật (upgrade Render lên Pro + Dedicated IPs, hoặc
-dùng QuotaGuard/Fixie), set biến môi trường sau trong Render để gọi trực tiếp:
-```
-COC_BASE_URL = https://api.clashofclans.com/v1
-```
-và đổi IP whitelist trong CoC dev portal sang IP tĩnh thật của bạn.
 
 ### 5. Discord Webhook (tùy chọn)
 1. Discord Server → Channel Settings → Integrations → Webhooks
@@ -139,5 +120,5 @@ coc-tracker/
 ## ⚠️ Lưu ý
 
 - CoC API **không có webhook** → phải dùng polling
-- Render free tier **không có IP tĩnh riêng** → dùng proxy RoyaleAPI (free, đã setup sẵn) thay vì upgrade plan hoặc mua static IP add-on
+- Render free tier **không có Static IP** → cần upgrade hoặc dùng proxy
 - Supabase free tier: 500MB, project pause sau 7 ngày không hoạt động

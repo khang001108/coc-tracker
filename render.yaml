@@ -12,12 +12,7 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
       - key: PYTHON_VERSION
-        value: "3.11"
-      # Mặc định backend đã dùng proxy free của RoyaleAPI (cocproxy.royaleapi.dev)
-      # để né vấn đề Render free không có IP tĩnh. Set giá trị dưới đây nếu bạn
-      # có IP tĩnh thật và muốn gọi trực tiếp api.clashofclans.com.
-      - key: COC_BASE_URL
-        value: "https://cocproxy.royaleapi.dev/v1"
+        value: "3.11.9"
 
   # ── Next.js Frontend ───────────────────────────────────────────────────────
   - type: web
