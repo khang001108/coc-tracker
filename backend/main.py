@@ -12,9 +12,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CoC Tracker API", version="1.0.0", lifespan=lifespan)
 
+# Fix CORS — cho phép mọi origin (frontend Render gọi được backend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=False,      # phải False khi allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -26,6 +28,10 @@ app.include_router(games.router,    prefix="/api/games",    tags=["Games"])
 app.include_router(members.router,  prefix="/api/members",  tags=["Members"])
 app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(notify.router,   prefix="/api/notify",   tags=["Notify"])
+
+@app.get("/")
+async def root():
+    return {"message": "CoC Tracker API", "docs": "/docs", "health": "/health"}
 
 @app.get("/health")
 async def health():
