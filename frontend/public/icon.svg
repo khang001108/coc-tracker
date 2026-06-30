@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD27A"/>
+      <stop offset="45%" stop-color="#F4A130"/>
+      <stop offset="100%" stop-color="#8B4513"/>
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E8E8E8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="none" stroke="#6B4115" stroke-width="10"/>
+  <rect x="20" y="20" width="472" height="180" rx="92" fill="#FFFFFF" opacity="0.12"/>
+
+  <!-- Shield -->
+  <path d="M256 96 L368 134 V246 C368 332 308 388 256 412 C204 388 144 332 144 246 V134 Z"
+    fill="url(#shieldGrad)" stroke="#6B4115" stroke-width="10"/>
+
+  <!-- Sword crossed lightning / clash mark -->
+  <path d="M256 150 L292 226 L262 226 L286 320 L218 220 L250 220 Z"
+    fill="#F4A130" stroke="#8B4513" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Small stars -->
+  <circle cx="170" cy="180" r="10" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="342" cy="180" r="10" fill="#FFFFFF" opacity="0.85"/>
+</svg>
