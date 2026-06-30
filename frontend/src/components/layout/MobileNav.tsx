@@ -1,17 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Users, Settings, MoreHorizontal,
   Castle, Gamepad2, Heart, BarChart3, PartyPopper, X, Shield,
-  MessageCircle, UserCheck,
+  MessageCircle, UserCheck, UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Portal } from "@/components/ui/Portal";
 import { MusicControls } from "@/components/ui/MusicControls";
 import { GamePlayButton } from "@/components/ui/GamePlayButton";
+import { getMemberAuth } from "@/lib/api";
 
 const LEFT = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
@@ -50,7 +51,18 @@ function NavLink({ href, label, icon: Icon, active }: any) {
 export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [memberName, setMemberName] = useState<string | null>(null);
   const moreActive = MORE.some(({ href }) => pathname.startsWith(href));
+
+  useEffect(() => {
+    setMemberName(getMemberAuth()?.player_name || null);
+  }, [pathname]);
+
+  const moreItems = MORE.map(item =>
+    item.href === "/login" && memberName
+      ? { ...item, label: memberName, icon: UserCircle2 }
+      : item
+  );
 
   return (
     <>
@@ -101,21 +113,22 @@ export function MobileNav() {
               <button onClick={() => setOpen(false)} className="p-1 text-gray-500"><X size={18} /></button>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-3">
-              {MORE.map(({ href, label, icon: Icon }) => {
+              {moreItems.map(({ href, label, icon: Icon }) => {
                 const active = pathname.startsWith(href);
+                const isMe = href === "/login" && memberName;
                 return (
                   <Link key={href} href={href} onClick={() => setOpen(false)}
                     className={cn(
                       "flex flex-col items-center justify-center gap-2 py-4 rounded-xl border transition-colors",
-                      active ? "border-yellow-500/30 bg-yellow-500/10" : "border-gray-800 bg-gray-800/40"
+                      active ? "border-yellow-500/30 bg-yellow-500/10" : isMe ? "border-green-500/30 bg-green-500/10" : "border-gray-800 bg-gray-800/40"
                     )}>
                     <span className={cn(
                       "w-9 h-9 rounded-full flex items-center justify-center",
-                      active ? "icon-btn-game" : "bg-gray-800 border border-gray-700"
+                      active ? "icon-btn-game" : isMe ? "bg-green-500/15 border border-green-500/30" : "bg-gray-800 border border-gray-700"
                     )}>
-                      <Icon size={16} className={active ? "text-gray-900" : "text-gray-400"} />
+                      <Icon size={16} className={active ? "text-gray-900" : isMe ? "text-green-400" : "text-gray-400"} />
                     </span>
-                    <span className={cn("text-[11px] font-medium text-center", active ? "text-yellow-400" : "text-gray-300")}>{label}</span>
+                    <span className={cn("text-[11px] font-medium text-center truncate w-full", active ? "text-yellow-400" : isMe ? "text-green-400" : "text-gray-300")}>{label}</span>
                   </Link>
                 );
               })}

@@ -1,13 +1,15 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Castle, Gamepad2,
-  Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle
+  Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle, UserCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { GamePlayButton } from "@/components/ui/GamePlayButton";
+import { getMemberAuth } from "@/lib/api";
 
 const NAV = [
   { href: "/",          label: "Tổng quan",    icon: LayoutDashboard },
@@ -25,6 +27,30 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [memberName, setMemberName] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMemberName(getMemberAuth()?.player_name || null);
+    function onStorage() { setMemberName(getMemberAuth()?.player_name || null); }
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onStorage);
+    };
+  }, []);
+
+  // Bắt được trường hợp vừa đăng nhập xong rồi điều hướng sang trang khác (cùng tab)
+  useEffect(() => {
+    setMemberName(getMemberAuth()?.player_name || null);
+  }, [pathname]);
+
+  const navItems = NAV.map(item =>
+    item.href === "/login" && memberName
+      ? { ...item, label: memberName, icon: UserCircle2 }
+      : item
+  );
+
   return (
     <aside className="hidden md:flex w-60 bg-gray-900 border-r border-gray-800 flex-col fixed h-full z-20">
       {/* Logo */}
@@ -43,23 +69,26 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const isMe = href === "/login" && memberName;
           return (
             <Link key={href} href={href}
               className={cn(
                 "flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium transition-all",
                 active
                   ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                  : isMe
+                  ? "text-green-400 hover:bg-gray-800"
                   : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
               )}>
               <span className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all",
-                active ? "icon-btn-game" : "bg-gray-800 border border-gray-700"
+                active ? "icon-btn-game" : isMe ? "bg-green-500/15 border border-green-500/30" : "bg-gray-800 border border-gray-700"
               )}>
-                <Icon size={15} className={active ? "text-gray-900" : "text-gray-400"} />
+                <Icon size={15} className={active ? "text-gray-900" : isMe ? "text-green-400" : "text-gray-400"} />
               </span>
-              {label}
+              <span className="truncate">{label}</span>
             </Link>
           );
         })}
