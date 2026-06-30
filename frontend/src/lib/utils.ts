@@ -29,11 +29,12 @@ export function formatDate(iso: string): string {
 }
 
 export function roleLabel(role: string): string {
-  return { leader: "Leader", coLeader: "Co-Leader", elder: "Elder", member: "Member" }[role] || role;
+  // CoC API trả về "admin" cho cấp Elder (Huynh Trưởng) — không phải "elder"
+  return { leader: "Leader", coLeader: "Co-Leader", admin: "Elder", elder: "Elder", member: "Member" }[role] || role;
 }
 
 export function roleClass(role: string): string {
-  return { leader: "role-leader", coLeader: "role-coLeader", elder: "role-elder", member: "role-member" }[role] || "";
+  return { leader: "role-leader", coLeader: "role-coLeader", admin: "role-elder", elder: "role-elder", member: "role-member" }[role] || "";
 }
 
 export function thColor(th: number): string {

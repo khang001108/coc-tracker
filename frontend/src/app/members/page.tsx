@@ -5,15 +5,15 @@ import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/u
 import { Users, Search, UserPlus, UserMinus, Trophy, Crown } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 
-const ROLE_ORDER = ["leader", "coLeader", "elder", "member"];
+const ROLE_ORDER = ["leader", "coLeader", "admin", "member"];
 const ROLE_TITLE: Record<string, string> = {
-  leader: "Thủ Lĩnh", coLeader: "Đồng Thủ Lĩnh", elder: "Huy Trưởng", member: "Thành Viên",
+  leader: "Thủ Lĩnh", coLeader: "Đồng Thủ Lĩnh", admin: "Huynh Trưởng", member: "Thành Viên",
 };
 
 function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any) => void }) {
   const groups = ROLE_ORDER.map(role => ({
     role,
-    list: [...members.filter(m => m.role === role)].sort((a, b) => b.trophies - a.trophies),
+    list: [...members.filter(m => m.role === role || (role === "admin" && m.role === "elder"))].sort((a, b) => b.trophies - a.trophies),
   })).filter(g => g.list.length > 0);
 
   return (
