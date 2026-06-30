@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { MusicPlayer } from "@/components/ui/MusicPlayer";
+import { ThemeInitScript } from "@/components/ui/ThemeToggle";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,6 +32,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi" className="dark">
+      <head>
+        <ThemeInitScript />
+      </head>
       <body className={inter.className}>
         <div className="min-h-screen bg-gray-950 flex">
           {/* Desktop sidebar */}

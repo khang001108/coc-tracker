@@ -141,3 +141,59 @@
 .animate-fade-in   { animation: fade-in 0.2s ease forwards; }
 .animate-scale-in  { animation: scale-in 0.2s ease forwards; }
 .animate-gold-pulse{ animation: gold-pulse 2s infinite; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   THEME HOÀNG KIM — giao diện sáng trắng-vàng, bật bằng class .theme-gold
+   trên thẻ <html>. Override các class Tailwind hay dùng nhất trong app
+   bằng selector cụ thể hơn (.theme-gold .bg-gray-xxx), không cần sửa
+   từng component.
+   ════════════════════════════════════════════════════════════════════════ */
+.theme-gold body { background-color: #FBF6EA; }
+
+.theme-gold .bg-gray-950 { background-color: #FBF6EA !important; }
+.theme-gold .bg-gray-900,
+.theme-gold .bg-gray-900\/95 { background-color: #FFFFFF !important; }
+.theme-gold .bg-gray-800,
+.theme-gold .bg-gray-800\/50,
+.theme-gold .bg-gray-800\/40,
+.theme-gold .bg-gray-800\/30 { background-color: #FBEFD4 !important; }
+.theme-gold .bg-gray-700 { background-color: #F2DFAD !important; }
+
+.theme-gold .text-white { color: #3A2A0F !important; }
+.theme-gold .text-gray-100,
+.theme-gold .text-gray-200,
+.theme-gold .text-gray-300 { color: #5C4A26 !important; }
+.theme-gold .text-gray-400,
+.theme-gold .text-gray-500 { color: #8A7440 !important; }
+.theme-gold .text-gray-600 { color: #B39B5E !important; }
+
+.theme-gold .border-gray-800,
+.theme-gold .border-gray-700,
+.theme-gold .divide-gray-800 > * + * { border-color: #E8D49A !important; }
+
+.theme-gold .card,
+.theme-gold .modal-box {
+  background: #FFFFFF !important;
+  border-color: #E8D49A !important;
+  box-shadow: 0 2px 14px rgba(180,140,30,0.10);
+}
+.theme-gold .input {
+  background: #FFFDF5 !important;
+  border-color: #E2C572 !important;
+  color: #3A2A0F !important;
+}
+.theme-gold .input::placeholder { color: #B39B5E; }
+
+.theme-gold .btn-secondary {
+  background: linear-gradient(180deg, #FFF6DE, #F2DFAD) !important;
+  color: #5C4517 !important;
+  border-color: #D8B968 !important;
+  box-shadow: 0 2px 0 #C9A24F, inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+.theme-gold .btn-secondary:hover { background: linear-gradient(180deg, #FFFBEF, #F7E7BC) !important; }
+
+.theme-gold .icon-btn-game,
+.theme-gold .bg-gray-800.border.border-gray-700 {
+  background: linear-gradient(180deg, #FFFBEF, #F2DFAD) !important;
+  border-color: #C9A24F !important;
+}

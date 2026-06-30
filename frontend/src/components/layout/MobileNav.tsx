@@ -7,6 +7,7 @@ import {
   Castle, Gamepad2, Heart, BarChart3, PartyPopper, X, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const MAIN = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
@@ -92,6 +93,7 @@ export function MobileNav() {
               style={{ background: "linear-gradient(135deg, #F4A130, #8B4513)" }}>
               <Shield size={16} /> Vào Clash of Clans
             </a>
+            <div className="mt-2"><ThemeToggle /></div>
           </div>
         </div>
       )}
