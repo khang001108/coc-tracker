@@ -33,7 +33,11 @@ async def get_tag() -> str | None:
 
 def upsert_snapshot(table: str, data: dict):
     sb = get_supabase()
-    sb.table(table).upsert({
+    # Các bảng snapshot_* không có cột UNIQUE nên upsert() sẽ tạo dòng MỚI mỗi lần
+    # thay vì cập nhật — xoá hết dòng cũ trước khi chèn để luôn chỉ có đúng 1 dòng
+    # mới nhất, tránh việc đọc dữ liệu (limit 1, không order) trả về dòng cũ.
+    sb.table(table).delete().neq("id", 0).execute()
+    sb.table(table).insert({
         "data": json.dumps(data),
         "updated_at": datetime.utcnow().isoformat()
     }).execute()

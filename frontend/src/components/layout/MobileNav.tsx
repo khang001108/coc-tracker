@@ -15,6 +15,7 @@ import { GamePlayButton } from "@/components/ui/GamePlayButton";
 
 const LEFT = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
+  { href: "/members",  label: "Thành viên",icon: Users },
   { href: "/war",      label: "War",       icon: Swords },
 ];
 const RIGHT = [
@@ -23,7 +24,6 @@ const RIGHT = [
 ];
 
 const MORE = [
-  { href: "/members",  label: "Thành viên",   icon: Users },
   { href: "/login",    label: "Đăng nhập",    icon: UserCheck },
   { href: "/capital",  label: "Clan Capital", icon: Castle },
   { href: "/games",    label: "Clan Games",   icon: Gamepad2 },

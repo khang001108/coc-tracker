@@ -8,7 +8,7 @@ router = APIRouter()
 @router.get("/raids")
 async def raid_seasons():
     sb = get_supabase()
-    res = sb.table("snapshot_raid").select("data,updated_at").limit(1).execute()
+    res = sb.table("snapshot_raid").select("data,updated_at").order("id", desc=True).limit(1).execute()
     if res.data:
         return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
     cfg = await get_coc_config()

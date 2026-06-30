@@ -114,10 +114,9 @@ export default function DashboardPage() {
             <p className="page-subtitle">#{clan?.tag?.replace("#", "") || "—"}</p>
           </div>
         </div>
-        <button onClick={refresh} disabled={refreshing}
-          className="btn-secondary flex items-center gap-2 text-sm shrink-0">
-          <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-          Làm mới
+        <button onClick={refresh} disabled={refreshing} title="Làm mới"
+          className="icon-btn-game w-10 h-10 text-gray-900 shrink-0 disabled:opacity-60">
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
         </button>
       </div>
 
