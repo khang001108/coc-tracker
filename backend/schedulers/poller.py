@@ -201,7 +201,7 @@ async def poll_asset_cleanup():
             sb.table("member_inventory").delete().eq("player_tag", tag).execute()
             sb.table("member_accounts").update({
                 "coins": 0, "equipped_castle": "castle_classic", "equipped_cannon": "cannon_basic",
-                "assets_cleared": True,
+                "equipped_effect": None, "assets_cleared": True,
             }).eq("player_tag", tag).execute()
             log.info(f"Cleared assets for {tag} (left clan > {days} days)")
     except Exception as e:

@@ -166,7 +166,13 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('cannon', 'cannon_basic',    'Pháo Cơ Bản',         0),
   ('cannon', 'cannon_double',   'Pháo Nòng Đôi',       2000),
   ('cannon', 'cannon_turret',   'Tháp Pháo Xoay',      5000),
-  ('cannon', 'cannon_mythic',   'Pháo Huyền Thoại',    8000)
+  ('cannon', 'cannon_mythic',   'Pháo Huyền Thoại',    8000),
+  ('effect', 'effect_sparkle',  'Tia Lửa Quanh Tên',   3000),
+  ('effect', 'effect_glow',     'Hào Quang Vàng',      4000),
+  ('effect', 'effect_rainbow',  'Ánh Cầu Vồng',        5000),
+  ('effect', 'effect_fire',     'Ngọn Lửa Cháy',       6000),
+  ('effect', 'effect_ice',      'Băng Giá Lấp Lánh',   6000),
+  ('effect', 'effect_royal',    'Hoàng Gia Lấp Lánh',  9000)
 ON CONFLICT (svg_key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS member_inventory (
@@ -179,6 +185,7 @@ CREATE TABLE IF NOT EXISTS member_inventory (
 
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_castle TEXT DEFAULT 'castle_classic';
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_cannon TEXT DEFAULT 'cannon_basic';
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_effect TEXT;
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS assets_cleared  BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE shop_items       ENABLE ROW LEVEL SECURITY;

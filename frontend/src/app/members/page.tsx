@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
-import { Users, Search, UserPlus, UserMinus, Trophy, Crown } from "lucide-react";
+import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
+import { NameEffect } from "@/components/ui/NameEffect";
 
 const ROLE_ORDER = ["leader", "coLeader", "admin", "member"];
 const ROLE_TITLE: Record<string, string> = {
@@ -56,6 +57,7 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [memberLog, setMemberLog] = useState<any[]>([]);
+  const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"list" | "pyramid" | "log">("list");
   const [selected, setSelected] = useState<any>(null);
@@ -66,9 +68,14 @@ export default function MembersPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [m, log] = await Promise.allSettled([api.getMembers(), api.getMemberLog()]);
+      const [m, log, roster] = await Promise.allSettled([api.getMembers(), api.getMemberLog(), api.getRoster()]);
       if (m.status === "fulfilled") setMembers((m.value as any).items || []);
       if (log.status === "fulfilled") setMemberLog(log.value as any[]);
+      if (roster.status === "fulfilled") {
+        const map: Record<string, any> = {};
+        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+        setRosterMap(map);
+      }
       setLoading(false);
     }
     load();
@@ -132,7 +139,9 @@ export default function MembersPage() {
                     {m.townHallLevel}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                    <p className="text-sm font-semibold text-white truncate">
+                      <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                    </p>
                     <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                   </div>
                   <div className="text-right shrink-0 space-y-0.5">
@@ -187,8 +196,15 @@ export default function MembersPage() {
                   {selected.townHallLevel}
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-lg">{selected.name}</h3>
+                  <h3 className="font-bold text-white text-lg">
+                    <NameEffect effectKey={rosterMap[selected.tag]?.equipped_effect}>{selected.name}</NameEffect>
+                  </h3>
                   <p className={`text-sm ${roleClass(selected.role)}`}>{roleLabel(selected.role)}</p>
+                  {rosterMap[selected.tag]?.claimed && (
+                    <p className="text-xs text-yellow-400 flex items-center gap-1 mt-0.5">
+                      <Coins size={11} /> {(rosterMap[selected.tag]?.coins ?? 0).toLocaleString()} Coins
+                    </p>
+                  )}
                 </div>
                 <button onClick={() => { setSelected(null); setPlayerDetail(null); }}
                   className="ml-auto p-2 rounded-xl hover:bg-gray-800 text-gray-400">✕</button>

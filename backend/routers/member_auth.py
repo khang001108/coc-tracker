@@ -17,14 +17,16 @@ async def roster():
         raise HTTPException(400, "Chưa cấu hình clan tag")
     members = await get_clan_members(tag)
     sb = get_supabase()
-    res = sb.table("member_accounts").select("player_tag,player_name,equipped_castle,equipped_cannon").execute()
+    res = sb.table("member_accounts").select("player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect").execute()
     claimed = {r["player_tag"]: r for r in res.data}
     return [
         {
             "tag": m["tag"], "name": m["name"], "role": m.get("role"), "townHallLevel": m.get("townHallLevel"),
             "claimed": m["tag"] in claimed,
+            "coins": claimed.get(m["tag"], {}).get("coins") or 0,
             "equipped_castle": claimed.get(m["tag"], {}).get("equipped_castle") or "castle_classic",
             "equipped_cannon": claimed.get(m["tag"], {}).get("equipped_cannon") or "cannon_basic",
+            "equipped_effect": claimed.get(m["tag"], {}).get("equipped_effect"),
         }
         for m in members
     ]
