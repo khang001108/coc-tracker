@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, Music2, Upload, Trash2, Play, Pause } from "lucide-react";
+import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
+import { roleLabel, roleClass } from "@/lib/utils";
 
 function MusicSettings() {
   const [tracks, setTracks] = useState<any[]>([]);
@@ -468,12 +469,74 @@ function SettingsPageInner() {
   );
 }
 
+function MemberAccountsSettings() {
+  const [roster, setRoster] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyTag, setBusyTag] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try { setRoster(await api.getRoster()); } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleRelease(tag: string, name: string) {
+    if (!confirm(`Gỡ tài khoản đã nhận cho "${name}"? Người này sẽ mất quyền chat Clan cho đến khi có ai nhận lại (có thể chính chủ nhận lại, hoặc người khác nhận nhầm thì người đúng có thể nhận lại).`)) return;
+    setBusyTag(tag);
+    try {
+      await api.releaseMember(tag);
+      await load();
+    } catch (e: any) {
+      alert(e.message || "Lỗi gỡ tài khoản");
+    } finally {
+      setBusyTag(null);
+    }
+  }
+
+  const claimedList = roster.filter(m => m.claimed);
+
+  return (
+    <div className="card space-y-4">
+      <h3 className="font-bold text-white flex items-center gap-2">
+        <ShieldCheck size={18} className="text-blue-400" /> Quản lý tài khoản thành viên
+      </h3>
+      <p className="text-sm text-gray-400">
+        Danh sách người đã "nhận" làm danh tính trong clan. Nếu ai đó nhận nhầm tên (vd nhận nhầm thành thủ lĩnh),
+        bấm "Gỡ" để xoá lượt nhận đó — người đúng sẽ vào <a href="/login" className="text-yellow-500 underline">/login</a> nhận lại bình thường.
+      </p>
+
+      {loading ? (
+        <div className="h-20 bg-gray-800 rounded-xl animate-pulse" />
+      ) : claimedList.length === 0 ? (
+        <p className="text-sm text-gray-600">Chưa có ai nhận tài khoản</p>
+      ) : (
+        <div className="space-y-1.5">
+          {claimedList.map(m => (
+            <div key={m.tag} className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
+              </div>
+              <button onClick={() => handleRelease(m.tag, m.name)} disabled={busyTag === m.tag}
+                className="btn-danger text-xs !px-3 !py-1.5 flex items-center gap-1.5">
+                <UserX size={13} /> {busyTag === m.tag ? "..." : "Gỡ"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <AdminGate>
       <div className="space-y-6 max-w-2xl">
         <SettingsPageInner />
         <MusicSettings />
+        <MemberAccountsSettings />
       </div>
     </AdminGate>
   );
