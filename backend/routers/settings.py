@@ -45,7 +45,7 @@ async def test_clan_connection(request: Request):
         clan_tag = body.get("clan_tag", "").strip()
         if not api_key or not clan_tag:
             raise HTTPException(400, "Cần cả api_key và clan_tag")
-        tag_enc = quote(clan_tag.replace("#", "%23"), safe="")
+        tag_enc = quote(clan_tag, safe="")
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.get(
                 f"https://api.clashofclans.com/v1/clans/{tag_enc}",

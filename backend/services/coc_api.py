@@ -27,7 +27,7 @@ async def coc_get(path: str) -> dict:
         return r.json()
 
 def encode_tag(tag: str) -> str:
-    return quote(tag.replace("#", "%23"), safe="")
+    return quote(tag, safe="")
 
 # ── Clan ──────────────────────────────────────────────────────────────────────
 async def get_clan(tag: str) -> dict:
