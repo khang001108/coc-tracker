@@ -28,16 +28,42 @@
   /* ── Buttons ── */
   .btn-gold {
     @apply font-bold px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50;
-    background: linear-gradient(135deg, #F4A130, #D4821A);
+    background: linear-gradient(180deg, #FFD27A 0%, #F4A130 45%, #D4821A 100%);
     color: #1A0F05;
-    box-shadow: 0 2px 8px rgba(244,161,48,0.3);
+    border: 1px solid #8B5A1E;
+    box-shadow: 0 3px 0 #8B5A1E, 0 4px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
   }
-  .btn-gold:hover { background: linear-gradient(135deg, #F8B84A, #E89220); }
+  .btn-gold:hover { filter: brightness(1.08); }
+  .btn-gold:active { box-shadow: 0 1px 0 #8B5A1E, inset 0 1px 4px rgba(0,0,0,0.3); transform: translateY(2px); }
   .btn-secondary {
-    @apply bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold px-4 py-2 rounded-xl transition-all;
+    @apply text-gray-200 font-semibold px-4 py-2 rounded-xl transition-all active:scale-95;
+    background: linear-gradient(180deg, #3a3f4b 0%, #262a33 100%);
+    border: 1px solid #1c1f26;
+    box-shadow: 0 2px 0 #14161a, inset 0 1px 0 rgba(255,255,255,0.08);
   }
+  .btn-secondary:hover { background: linear-gradient(180deg, #454b59, #2c303a); }
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl transition-all;
+    @apply text-white font-semibold px-4 py-2 rounded-xl transition-all active:scale-95;
+    background: linear-gradient(180deg, #f87171, #dc2626);
+    border: 1px solid #7f1d1d;
+    box-shadow: 0 2px 0 #7f1d1d, inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .btn-primary {
+    @apply font-bold px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50;
+    background: linear-gradient(180deg, #7dd3fc 0%, #3b82f6 50%, #1d4ed8 100%);
+    color: #fff;
+    border: 1px solid #1e3a8a;
+    box-shadow: 0 3px 0 #1e3a8a, 0 4px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:active { box-shadow: 0 1px 0 #1e3a8a, inset 0 1px 4px rgba(0,0,0,0.3); transform: translateY(2px); }
+
+  /* ── Game-style icon button (glossy, 3D) ── */
+  .icon-btn-game {
+    @apply relative flex items-center justify-center rounded-full shrink-0 transition-transform active:scale-90;
+    background: radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%);
+    border: 2px solid #6B4115;
+    box-shadow: 0 3px 0 #6B4115, 0 5px 10px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.6);
   }
 
   /* ── Input ── */

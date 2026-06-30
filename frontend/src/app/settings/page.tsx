@@ -71,8 +71,10 @@ function MusicSettings() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-300">Bật nhạc nền cho website</p>
         <button onClick={() => saveConfig({ enabled: !config.enabled })}
-          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${config.enabled ? "bg-yellow-500" : "bg-gray-700"}`}>
-          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${config.enabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${config.enabled ? "bg-yellow-500" : "bg-gray-700"}`}
+          style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.3)" }}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${config.enabled ? "translate-x-5" : "translate-x-0"}`}
+            style={{ background: "linear-gradient(180deg, #fff, #e2e2e2)", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
         </button>
       </div>
 
@@ -138,8 +140,10 @@ function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
 function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
     <button onClick={onChange}
-      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${checked ? "bg-yellow-500" : "bg-gray-700"}`}>
-      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-5" : ""}`} />
+      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 overflow-hidden ${checked ? "bg-yellow-500" : "bg-gray-700"}`}
+      style={{ boxShadow: "inset 0 1px 2px rgba(0,0,0,0.3)" }}>
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
+        style={{ background: "linear-gradient(180deg, #fff, #e2e2e2)", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
     </button>
   );
 }

@@ -85,13 +85,24 @@ export function MusicPlayer() {
 
       {needsUnlock ? (
         <button onClick={togglePlay}
-          className="fixed bottom-20 md:bottom-5 right-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-yellow-500 text-gray-900 font-semibold text-sm shadow-lg animate-pulse">
+          className="fixed bottom-24 md:bottom-6 right-3 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm animate-pulse"
+          style={{
+            background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
+            color: "#1A0F05",
+            border: "2px solid #6B4115",
+            boxShadow: "0 3px 0 #6B4115, 0 5px 12px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.6)",
+          }}>
           <Music2 size={16} /> Bật nhạc nền
         </button>
       ) : (
-        <div className="fixed bottom-20 md:bottom-5 right-4 z-40 flex items-center gap-1 bg-gray-900/95 backdrop-blur border border-gray-800 rounded-full px-2 py-2 shadow-lg">
-          <button onClick={togglePlay} className="p-1.5 rounded-full hover:bg-gray-800 text-yellow-400">
-            {playing ? <Pause size={16} /> : <Play size={16} />}
+        <div className="fixed bottom-24 md:bottom-6 right-3 z-40 flex items-center gap-1 rounded-full px-2 py-2"
+          style={{
+            background: "linear-gradient(180deg, #2a2f3a, #161920)",
+            border: "2px solid #0d0f13",
+            boxShadow: "0 3px 0 #0d0f13, 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+          }}>
+          <button onClick={togglePlay} className="icon-btn-game w-8 h-8 text-gray-900">
+            {playing ? <Pause size={14} /> : <Play size={14} />}
           </button>
           {playlist.length > 1 && (
             <button onClick={skip} className="p-1.5 rounded-full hover:bg-gray-800 text-gray-400">
