@@ -275,3 +275,20 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.member_accounts  TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_messages    TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.donation_tracker TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- ── Event participants (thành viên đăng ký tham gia sự kiện) ─────────────────
+-- Chỉ thành viên đã đăng nhập web (có member_accounts) mới join được
+-- Leaderboard/xét thưởng chỉ tính người có trong bảng này
+CREATE TABLE IF NOT EXISTS event_participants (
+  id          SERIAL PRIMARY KEY,
+  event_id    INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  joined_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(event_id, player_tag)
+);
+ALTER TABLE event_participants ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON event_participants;
+CREATE POLICY "service_all" ON event_participants FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_participants TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;

@@ -163,6 +163,33 @@ export const api = {
   getClaims:        (id: number) => apiFetch(`/api/events/${id}/claims`),
   markClaimed:      (eventId: number, claimId: number, claimed: boolean) =>
     apiFetch(`/api/events/${eventId}/claims/${claimId}/mark`, { method: "POST", body: JSON.stringify({ claimed }) }),
+  getParticipants:  (id: number) => apiFetch(`/api/events/${id}/participants`),
+  joinEvent: async (id: number) => {
+    const member = getMemberAuth();
+    if (!member) throw new Error("Cần đăng nhập thành viên");
+    const res = await fetch(`${API}/api/events/${id}/join`, {
+      method: "POST",
+      headers: { "X-Member-Token": member.token },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi tham gia" }));
+      throw new Error(err.detail || "Lỗi tham gia");
+    }
+    return res.json();
+  },
+  leaveEvent: async (id: number) => {
+    const member = getMemberAuth();
+    if (!member) throw new Error("Cần đăng nhập thành viên");
+    const res = await fetch(`${API}/api/events/${id}/leave`, {
+      method: "DELETE",
+      headers: { "X-Member-Token": member.token },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi rời sự kiện" }));
+      throw new Error(err.detail || "Lỗi rời sự kiện");
+    }
+    return res.json();
+  },
   uploadEventImage: async (file: File) => {
     const token = getAdminToken();
     const fd = new FormData();

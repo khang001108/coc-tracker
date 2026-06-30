@@ -8,7 +8,7 @@ import { FireworkField } from "@/components/ui/FireworkField";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
-  ThumbsUp, ThumbsDown, AlertTriangle,
+  ThumbsUp, ThumbsDown, AlertTriangle, Users, LogIn, LogOut, Lock,
 } from "lucide-react";
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
@@ -16,11 +16,11 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  pending: { label: "⏳ Chờ duyệt", cls: "badge-purple" },
-  active: { label: "🔥 Đang diễn ra", cls: "badge-green" },
-  pending_delete: { label: "⚠️ Chờ xác nhận xoá", cls: "badge-red" },
-  closed: { label: "Đã đóng", cls: "badge-red" },
-  rejected: { label: "Đã từ chối", cls: "badge-red" },
+  pending:        { label: "⏳ Chờ duyệt",          cls: "badge-purple" },
+  active:         { label: "🔥 Đang diễn ra",        cls: "badge-green" },
+  pending_delete: { label: "⚠️ Chờ xác nhận xoá",   cls: "badge-red" },
+  closed:         { label: "Đã đóng",                cls: "badge-red" },
+  rejected:       { label: "Đã từ chối",             cls: "badge-red" },
 };
 
 function fmtDateTime(s?: string) {
@@ -73,8 +73,10 @@ function Hero() {
   );
 }
 
-function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
+/* ── EventCard ── */
+function EventCard({ event, myTag, onOpen }: { event: any; myTag?: string; onOpen: () => void }) {
   const badge = STATUS_BADGE[event.status] || STATUS_BADGE.active;
+  const iJoined = event._iJoined;
   return (
     <div onClick={onOpen}
       className="relative card cursor-pointer overflow-hidden group hover:border-yellow-500/40 hover:-translate-y-0.5 transition-all">
@@ -93,6 +95,11 @@ function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold text-white">{event.title}</h3>
             <span className={`badge text-[10px] ${badge.cls}`}>{badge.label}</span>
+            {iJoined && (
+              <span className="badge text-[10px] badge-green flex items-center gap-0.5">
+                <CheckCircle2 size={9} /> Đã tham gia
+              </span>
+            )}
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {EVENT_TYPE_LABEL[event.event_type] || event.event_type}
@@ -109,29 +116,139 @@ function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
               <Gift size={13} /> {event.reward_name}
             </p>
           )}
+          {/* Participant count */}
+          {event.participant_count > 0 && (
+            <p className="text-[11px] text-gray-600 mt-1 flex items-center gap-1">
+              <Users size={10} /> {event.participant_count} người tham gia
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+/* ── JoinButton ── */
+function JoinButton({ event, myTag, participants, onChanged }: {
+  event: any; myTag?: string; participants: any[]; onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const member = getMemberAuth();
+
+  // Không hiện nút nếu: chưa đăng nhập, hoặc sự kiện không phải active
+  if (!member) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-gray-500"
+        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <Lock size={14} className="shrink-0" />
+        <span>
+          <a href="/login" className="text-yellow-400 hover:underline font-medium">Đăng nhập thành viên</a>{" "}
+          để tham gia sự kiện và được xét thưởng.
+        </span>
+      </div>
+    );
+  }
+
+  const joined = participants.some(p => p.player_tag === member.player_tag);
+  const canJoin = event.status === "active";
+
+  async function handleJoin() {
+    setBusy(true);
+    try {
+      await api.joinEvent(event.id);
+      onChanged();
+    } catch (e: any) {
+      alert(e.message || "Lỗi tham gia sự kiện");
+    } finally { setBusy(false); }
+  }
+
+  async function handleLeave() {
+    if (!confirm("Rút khỏi sự kiện này? Bạn sẽ không được xét thưởng nữa.")) return;
+    setBusy(true);
+    try {
+      await api.leaveEvent(event.id);
+      onChanged();
+    } catch (e: any) {
+      alert(e.message || "Lỗi rời sự kiện");
+    } finally { setBusy(false); }
+  }
+
+  if (!canJoin) return null;
+
+  if (joined) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-sm font-medium text-green-400">
+          <CheckCircle2 size={16} /> Bạn đã tham gia sự kiện này
+        </div>
+        <button onClick={handleLeave} disabled={busy}
+          className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors ml-auto">
+          <LogOut size={12} /> Rút
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={handleJoin} disabled={busy}
+      className="btn-gold w-full flex items-center justify-center gap-2 text-sm">
+      <LogIn size={16} /> {busy ? "Đang đăng ký..." : "Tham gia sự kiện"}
+    </button>
+  );
+}
+
+/* ── ParticipantList ── */
+function ParticipantList({ participants }: { participants: any[] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!participants.length) return null;
+  const show = expanded ? participants : participants.slice(0, 5);
+  return (
+    <div>
+      <button onClick={() => setExpanded(e => !e)}
+        className="flex items-center gap-1.5 text-sm font-bold text-white mb-2 w-full text-left">
+        <Users size={14} className="text-blue-400" />
+        Người tham gia ({participants.length})
+        <span className="text-gray-600 text-xs ml-auto">{expanded ? "Thu gọn ▲" : "Xem tất cả ▼"}</span>
+      </button>
+      <div className="space-y-1">
+        {show.map((p: any, i: number) => (
+          <div key={p.player_tag} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5">
+            <span className="text-xs text-gray-600 w-4 text-right">{i + 1}</span>
+            <span className="text-sm text-gray-200 flex-1 truncate">{p.player_name}</span>
+            <span className="text-[10px] text-gray-600">{fmtDateTime(p.joined_at)}</span>
+          </div>
+        ))}
+        {!expanded && participants.length > 5 && (
+          <p className="text-xs text-gray-600 text-center py-1">...và {participants.length - 5} người khác</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── EventDetailModal ── */
 function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any) {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [claims, setClaims] = useState<any[]>([]);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [lbNote, setLbNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const member = getMemberAuth();
 
   async function load() {
     setLoading(true);
     try {
-      const [lb, cl] = await Promise.all([
+      const [lb, cl, pt] = await Promise.all([
         api.getLeaderboard(event.id).catch(() => ({ leaderboard: [], note: "" })),
         api.getClaims(event.id).catch(() => []),
+        api.getParticipants(event.id).catch(() => []),
       ]);
       setLeaderboard(lb.leaderboard || []);
-      setNote(lb.note || "");
+      setLbNote(lb.note || "");
       setClaims(cl || []);
+      setParticipants(pt || []);
     } finally {
       setLoading(false);
     }
@@ -158,11 +275,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
       await api.deleteEvent(event.id);
       onChanged?.();
       onClose();
-    } catch (e: any) {
-      alert(e.message || "Lỗi");
-    } finally {
-      setBusy(false);
-    }
+    } catch (e: any) { alert(e.message || "Lỗi"); } finally { setBusy(false); }
   }
 
   async function handleApprove() {
@@ -197,6 +310,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
           <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full opacity-10 pointer-events-none"
             style={{ background: "radial-gradient(circle, #F4A130, transparent)" }} />
 
+          {/* Header */}
           <div className="relative flex items-start justify-between gap-3">
             <div>
               <h3 className="font-bold text-white text-lg flex items-center gap-2">
@@ -210,9 +324,10 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
             </button>
           </div>
 
+          {/* Admin: duyệt sự kiện */}
           {isAdmin && event.status === "pending" && (
             <div className="card !p-3 border-purple-500/30 bg-purple-500/5 space-y-2">
-              <p className="text-sm text-purple-300 flex items-center gap-1.5"><ShieldCheck size={14} /> Sự kiện này đang chờ bạn duyệt.</p>
+              <p className="text-sm text-purple-300 flex items-center gap-1.5"><ShieldCheck size={14} /> Sự kiện đang chờ bạn duyệt.</p>
               <div className="flex gap-2">
                 <button onClick={handleReject} disabled={busy} className="btn-danger flex-1 text-sm flex items-center justify-center gap-1.5"><ThumbsDown size={14} /> Từ chối</button>
                 <button onClick={handleApprove} disabled={busy} className="btn-gold flex-1 text-sm flex items-center justify-center gap-1.5"><ThumbsUp size={14} /> Duyệt</button>
@@ -229,6 +344,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
             </div>
           )}
 
+          {/* Creator info */}
           {event.creator_name && (
             <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
               <span>👤 Người tạo: <span className="text-gray-300 font-medium">{event.creator_name}</span></span>
@@ -249,6 +365,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
 
           {event.description && <p className="text-sm text-gray-300">{event.description}</p>}
 
+          {/* Reward */}
           {event.reward_name && (
             <div className="relative rounded-2xl p-4 overflow-hidden"
               style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.12), rgba(236,72,153,0.08))", border: "1px solid rgba(244,161,48,0.25)" }}>
@@ -274,16 +391,38 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
             </div>
           )}
 
+          {/* ── NÚT THAM GIA (cho thành viên đã đăng nhập) ── */}
+          <div className="pt-1 border-t border-gray-800/60">
+            <JoinButton
+              event={event}
+              myTag={member?.player_tag}
+              participants={participants}
+              onChanged={load}
+            />
+          </div>
+
+          {/* ── DANH SÁCH NGƯỜI THAM GIA ── */}
+          {loading ? (
+            <div className="h-16 bg-gray-800 rounded-xl animate-pulse" />
+          ) : (
+            <ParticipantList participants={participants} />
+          )}
+
+          {/* ── BẢNG XẾP HẠNG ── */}
           <div>
             <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
               <Trophy size={14} className="text-yellow-400" /> Bảng xếp hạng (Top {event.top_n})
             </h4>
+            {/* Ghi chú: chỉ tính người đã tham gia */}
+            <p className="text-[11px] text-blue-400/70 bg-blue-500/5 border border-blue-500/15 rounded-lg px-2.5 py-1.5 mb-2 flex items-center gap-1.5">
+              <Users size={11} /> Chỉ thành viên đã <strong>tham gia sự kiện</strong> mới được xét điều kiện nhận thưởng.
+            </p>
             {loading ? (
               <div className="h-20 bg-gray-800 rounded-xl animate-pulse" />
-            ) : note ? (
-              <p className="text-sm text-gray-500">{note}</p>
+            ) : lbNote ? (
+              <p className="text-sm text-gray-500">{lbNote}</p>
             ) : leaderboard.length === 0 ? (
-              <p className="text-sm text-gray-500">Chưa có dữ liệu — cần ít nhất 1 trận war đang diễn ra hoặc vừa kết thúc để tính điểm.</p>
+              <p className="text-sm text-gray-500">Chưa có dữ liệu — cần có người tham gia và ít nhất 1 trận war đang diễn ra/vừa kết thúc.</p>
             ) : (
               <div className="space-y-1.5">
                 {leaderboard.map((m: any) => (
@@ -305,6 +444,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
             </button>
           )}
 
+          {/* ── TRẠNG THÁI TRAO THƯỞNG ── */}
           {claims.length > 0 && (
             <div>
               <h4 className="text-sm font-bold text-white mb-2">Trạng thái trao thưởng</h4>
@@ -341,6 +481,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   );
 }
 
+/* ── ImageUploadField ── */
 function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -388,6 +529,7 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (url: 
   );
 }
 
+/* ── CreateEventForm ── */
 function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [conditions, setConditions] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -414,9 +556,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
       }));
     } catch {
       alert("Không lấy được thời gian war hiện tại");
-    } finally {
-      setLoadingWarTime(false);
-    }
+    } finally { setLoadingWarTime(false); }
   }
 
   async function submit(e: React.FormEvent) {
@@ -433,9 +573,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
       onCreated();
     } catch (e: any) {
       setError(e.message || "Lỗi tạo sự kiện");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   if (!open) {
@@ -493,7 +631,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
           {conditions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
         <p className="text-[11px] text-gray-600 mt-1">
-          Dữ liệu lấy trực tiếp từ war hiện tại/gần nhất qua CoC API. Chọn "Admin tự chọn thủ công" nếu muốn tự nhập người thắng.
+          Chỉ người đã bấm <strong className="text-gray-400">Tham gia sự kiện</strong> mới được xét điểm. Chọn "Admin tự chọn thủ công" nếu muốn tự nhập người thắng.
         </p>
       </div>
 
@@ -534,6 +672,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+/* ── CreateEventGate ── */
 function CreateEventGate({ children }: { children: React.ReactNode }) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const isAdmin = !!getAdminToken();
@@ -560,16 +699,38 @@ function CreateEventGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/* ── EventsPageInner ── */
 function EventsPageInner() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
+  // Danh sách event_id mà member này đã tham gia (để badge trên card)
+  const [myJoinedIds, setMyJoinedIds] = useState<Set<number>>(new Set());
   const isAdmin = !!getAdminToken();
   const member = getMemberAuth();
 
   async function load() {
     setLoading(true);
-    try { setEvents(await api.getEvents()); } finally { setLoading(false); }
+    try {
+      const evs = await api.getEvents();
+      setEvents(evs);
+
+      // Nếu đã đăng nhập thành viên, xác định event nào đã join
+      if (member) {
+        const joined = new Set<number>();
+        await Promise.all(
+          evs.filter((e: any) => e.status === "active").map(async (e: any) => {
+            try {
+              const pts = await api.getParticipants(e.id);
+              if (pts.some((p: any) => p.player_tag === member.player_tag)) {
+                joined.add(e.id);
+              }
+            } catch {}
+          })
+        );
+        setMyJoinedIds(joined);
+      }
+    } finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, []);
@@ -578,7 +739,7 @@ function EventsPageInner() {
     if (ev.status === "active" || ev.status === "pending_delete" || ev.status === "closed") return true;
     if (ev.status === "pending") return isAdmin || ev.creator_tag === member?.player_tag;
     return false;
-  });
+  }).map(ev => ({ ...ev, _iJoined: myJoinedIds.has(ev.id) }));
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -604,14 +765,20 @@ function EventsPageInner() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {visibleEvents.map(ev => <EventCard key={ev.id} event={ev} onOpen={() => setSelected(ev)} />)}
+          {visibleEvents.map(ev => (
+            <EventCard key={ev.id} event={ev} myTag={member?.player_tag} onOpen={() => setSelected(ev)} />
+          ))}
         </div>
       )}
 
       {selected && (
-        <EventDetailModal event={selected} isAdmin={isAdmin}
+        <EventDetailModal
+          event={selected}
+          isAdmin={isAdmin}
           isCreator={selected.creator_tag === member?.player_tag}
-          onClose={() => setSelected(null)} onChanged={load} />
+          onClose={() => setSelected(null)}
+          onChanged={load}
+        />
       )}
     </div>
   );
