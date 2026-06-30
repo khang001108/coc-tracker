@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Portal } from "@/components/ui/Portal";
 import { MusicControls } from "@/components/ui/MusicControls";
+import { GamePlayButton } from "@/components/ui/GamePlayButton";
 
 const LEFT = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
@@ -61,8 +62,7 @@ export function MobileNav() {
         ))}
 
         {/* Cột giữa — nút Chơi, có không gian riêng, chỉ nổi lên cao hơn 1 chút */}
-        <a href="https://link.clashofclans.com/" target="_blank" rel="noreferrer"
-          className="flex-1 flex flex-col items-center justify-center min-w-0">
+        <GamePlayButton className="flex-1 flex flex-col items-center justify-center min-w-0">
           <span className="w-12 h-12 rounded-full flex items-center justify-center -mt-5 shrink-0"
             style={{
               background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
@@ -72,7 +72,7 @@ export function MobileNav() {
             <Shield size={18} className="text-gray-900" />
           </span>
           <span className="text-[9px] font-bold text-yellow-400 mt-0.5">Chơi</span>
-        </a>
+        </GamePlayButton>
 
         {RIGHT.map(({ href, label, icon }) => (
           <NavLink key={href} href={href} label={label} icon={icon} active={pathname.startsWith(href)} />
