@@ -4,7 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { MusicPlayer } from "@/components/ui/MusicPlayer";
-import { ThemeInitScript } from "@/components/ui/ThemeToggle";
+import { ThemeInitScript, ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -52,6 +52,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           {/* Nhạc nền — luôn mount, không bị gián đoạn khi chuyển trang */}
           <MusicPlayer />
+
+          {/* Nút đổi giao diện — nổi cố định góc trái trên */}
+          <ThemeToggle />
         </div>
       </body>
     </html>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { getMemberAuth, setMemberAuth, clearMemberAuth } from "@/lib/api";
 import { thColor, roleLabel, roleClass } from "@/lib/utils";
-import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown } from "lucide-react";
+import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 
 export default function LoginPage() {
@@ -30,7 +30,9 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    setMe(getMemberAuth());
+    const m = getMemberAuth();
+    setMe(m);
+    if (m) api.getMyMemberInfo().then(full => { if (full) setMe(full); });
     load();
   }, []);
 
@@ -92,6 +94,9 @@ export default function LoginPage() {
           <div className="flex-1">
             <p className="text-sm text-gray-400">Đang đăng nhập với tư cách</p>
             <p className="font-bold text-white">{me.player_name}</p>
+            <p className="text-xs text-yellow-400 flex items-center gap-1 mt-0.5">
+              <Coins size={12} /> {(me as any).coins ?? 0} Coins
+            </p>
           </div>
           <button onClick={logout} className="btn-secondary text-sm flex items-center gap-1.5">
             <LogOut size={14} /> Đăng xuất

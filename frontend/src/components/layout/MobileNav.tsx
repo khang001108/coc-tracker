@@ -8,12 +8,12 @@ import {
   MessageCircle, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const MAIN = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
   { href: "/war",      label: "War",       icon: Swords },
   { href: "/chat",     label: "Chat",      icon: MessageCircle },
+  { href: "/events",   label: "Sự kiện",   icon: PartyPopper },
 ];
 
 const MORE = [
@@ -23,7 +23,6 @@ const MORE = [
   { href: "/games",    label: "Clan Games",   icon: Gamepad2 },
   { href: "/donate",   label: "Donate",       icon: Heart },
   { href: "/stats",    label: "Thống kê",     icon: BarChart3 },
-  { href: "/events",   label: "Sự kiện",      icon: PartyPopper },
   { href: "/settings", label: "Cài đặt",      icon: Settings },
 ];
 
@@ -35,7 +34,7 @@ export function MobileNav() {
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch">
-        {MAIN.map(({ href, label, icon: Icon }) => {
+        {MAIN.slice(0, 2).map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link key={href} href={href}
@@ -50,6 +49,26 @@ export function MobileNav() {
             </Link>
           );
         })}
+
+        {/* Khoảng trống giữa cho nút "Chơi" nổi đè lên */}
+        <div className="flex-1" />
+
+        {MAIN.slice(2).map(({ href, label, icon: Icon }) => {
+          const active = pathname.startsWith(href);
+          return (
+            <Link key={href} href={href}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
+                active ? "text-yellow-400" : "text-gray-500"
+              )}>
+              <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", active && "icon-btn-game")}>
+                <Icon size={active ? 14 : 18} className={active ? "text-gray-900" : ""} />
+              </span>
+              <span className="text-[9px] font-medium">{label}</span>
+            </Link>
+          );
+        })}
+
         <button onClick={() => setOpen(true)}
           className={cn(
             "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
@@ -61,6 +80,19 @@ export function MobileNav() {
           <span className="text-[9px] font-medium">Thêm</span>
         </button>
       </nav>
+
+      {/* Nút "Chơi" to, nổi đè lên giữa thanh nav */}
+      <a href="https://link.clashofclans.com/" target="_blank" rel="noreferrer"
+        className="md:hidden fixed z-30 flex flex-col items-center justify-center w-16 h-16 rounded-full"
+        style={{
+          left: "50%", transform: "translateX(-50%)", bottom: 26,
+          background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
+          border: "3px solid #160d24",
+          boxShadow: "0 4px 0 #6B4115, 0 8px 18px rgba(0,0,0,0.5)",
+        }}>
+        <Shield size={22} className="text-gray-900" />
+        <span className="text-[9px] font-bold text-gray-900 mt-0.5">Chơi</span>
+      </a>
 
       {open && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)}>
@@ -90,13 +122,6 @@ export function MobileNav() {
                 );
               })}
             </div>
-            <a href="https://link.clashofclans.com/" target="_blank" rel="noreferrer"
-              onClick={() => setOpen(false)}
-              className="mt-3 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white"
-              style={{ background: "linear-gradient(135deg, #F4A130, #8B4513)" }}>
-              <Shield size={16} /> Vào Clash of Clans
-            </a>
-            <div className="mt-2"><ThemeToggle /></div>
           </div>
         </div>
       )}

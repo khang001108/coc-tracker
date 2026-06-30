@@ -39,7 +39,7 @@ export function ThemeToggle({ variant = "full" }: { variant?: "full" | "icon" })
 
   return (
     <button onClick={toggle}
-      className="flex items-center justify-center icon-btn-game w-10 h-10 mx-auto">
+      className="fixed top-3 left-3 md:left-[15.5rem] z-40 icon-btn-game w-10 h-10">
       {theme === "dark" ? <Sun size={16} className="text-gray-900" /> : <Moon size={16} className="text-gray-900" />}
     </button>
   );

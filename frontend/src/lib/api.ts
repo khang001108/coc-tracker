@@ -175,6 +175,13 @@ export const api = {
     apiFetch("/api/member/login", { method: "POST", body: JSON.stringify({ player_tag, pin }) }),
   releaseMember: (player_tag: string) =>
     apiFetch("/api/member/release", { method: "POST", body: JSON.stringify({ player_tag }) }),
+  getMyMemberInfo: async () => {
+    const member = getMemberAuth();
+    if (!member) return null;
+    const res = await fetch(`${API}/api/member/me`, { headers: { "X-Member-Token": member.token } });
+    if (!res.ok) return null;
+    return res.json();
+  },
 
   // Chat
   getMessages: (room: "clan" | "global", afterId = 0) =>

@@ -143,8 +143,10 @@ CREATE TABLE IF NOT EXISTS member_accounts (
   player_tag  TEXT PRIMARY KEY,
   player_name TEXT NOT NULL,
   pin_hash    TEXT NOT NULL,
+  coins       INTEGER NOT NULL DEFAULT 0,
   claimed_at  TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0;
 
 -- ── Chat messages ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chat_messages (

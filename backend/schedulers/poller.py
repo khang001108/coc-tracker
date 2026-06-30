@@ -139,8 +139,9 @@ async def poll_members():
 
 async def poll_donations():
     """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
-    nếu phát hiện ai đó vừa donate tăng. (CoC API không có dữ liệu 'xin lính' theo
-    thời gian thực — đây là cách gần nhất có thể làm được.)"""
+    và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng.
+    (CoC API không có dữ liệu 'xin lính' theo thời gian thực — đây là cách gần
+    nhất có thể làm được: phát hiện SAU khi họ đã donate xong.)"""
     try:
         tag = await get_tag()
         if not tag: return
@@ -158,9 +159,14 @@ async def poll_donations():
                     "room": "clan",
                     "sender_name": "Hệ thống",
                     "sender_tag": None,
-                    "message": f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur})",
+                    "message": f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur}) — +{diff} Coins!",
                     "is_system": True,
                 }).execute()
+                # Cộng Coins nếu tài khoản player này đã được ai đó nhận (claim)
+                acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
+                if acc.data:
+                    new_coins = (acc.data[0].get("coins") or 0) + diff
+                    sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
             sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur}).execute()
 
         log.info("Donation deltas checked")
