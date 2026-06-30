@@ -60,7 +60,7 @@ export default function MembersPage() {
   const [memberLog, setMemberLog] = useState<any[]>([]);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"list" | "pyramid" | "log">("list");
+  const [tab, setTab] = useState<"list" | "pyramid" | "log">("pyramid");
   const [selected, setSelected] = useState<any>(null);
   const [playerDetail, setPlayerDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,7 @@ export default function MembersPage() {
 
       {/* Tabs */}
       <div className="tab-pill-group">
-        {([["list","👥 Danh sách"],["pyramid","🔺 Sơ đồ"],["log","📋 Nhật ký"]] as const).map(([id, label]) => (
+        {([["pyramid","🔺 Sơ đồ"],["list","👥 Danh sách"],["log","📋 Nhật ký"]] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`${
               tab === id ? "tab-pill-active" : "tab-pill"

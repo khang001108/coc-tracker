@@ -8,8 +8,8 @@ export default function ShopPage() {
   const member = getMemberAuth();
 
   return (
-    <div className="space-y-5 animate-fade-up max-w-2xl">
-      <div className="relative rounded-2xl overflow-hidden p-5"
+    <div className="space-y-5 animate-fade-up max-w-5xl">
+      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
         <EmberField count={16} />
         <div className="relative">

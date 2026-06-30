@@ -81,8 +81,8 @@ export default function LoginPage() {
   const filtered = roster.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-5 animate-fade-up max-w-2xl">
-      <div className="relative rounded-2xl overflow-hidden p-5 -m-1"
+    <div className="space-y-5 animate-fade-up max-w-3xl">
+      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
         <EmberField count={16} />
         <div className="relative">

@@ -62,7 +62,7 @@ export default function ShopSection() {
 
   function ItemGrid({ list }: { list: any[] }) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
         {list.map(item => {
           const owned = item.price_coins === 0 || inv.owned_item_ids.includes(item.id);
           const equippedField = item.item_type === "castle" ? inv.equipped_castle
