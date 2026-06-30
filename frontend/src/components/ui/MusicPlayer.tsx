@@ -21,8 +21,8 @@ export function MusicPlayer() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [idle, setIdle] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragInfo = useRef<{ startX: number; startY: number; baseX: number; baseY: number; dragging: boolean; moved: boolean }>({
-    startX: 0, startY: 0, baseX: 0, baseY: 0, dragging: false, moved: false,
+  const dragInfo = useRef<{ startX: number; startY: number; baseX: number; baseY: number; dragging: boolean; moved: boolean; lastPos: { x: number; y: number } | null }>({
+    startX: 0, startY: 0, baseX: 0, baseY: 0, dragging: false, moved: false, lastPos: null,
   });
 
   function resetIdleTimer() {
@@ -68,21 +68,27 @@ export function MusicPlayer() {
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!dragInfo.current.dragging) return;
+    if (!dragInfo.current.dragging || !boxRef.current) return;
     const dx = e.clientX - dragInfo.current.startX;
     const dy = e.clientY - dragInfo.current.startY;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragInfo.current.moved = true;
     const next = clampPos(dragInfo.current.baseX + dx, dragInfo.current.baseY + dy);
-    setPos(next);
+    // Thao tác DOM trực tiếp khi đang kéo — mượt hơn nhiều so với setState mỗi pixel
+    boxRef.current.style.left = `${next.x}px`;
+    boxRef.current.style.top = `${next.y}px`;
+    boxRef.current.style.right = "auto";
+    boxRef.current.style.bottom = "auto";
+    dragInfo.current.lastPos = next;
   }
 
   function onPointerUp() {
     if (!dragInfo.current.dragging) return;
     dragInfo.current.dragging = false;
-    setPos(p => {
-      if (p) { try { localStorage.setItem(POS_KEY, JSON.stringify(p)); } catch {} }
-      return p;
-    });
+    const final = dragInfo.current.lastPos;
+    if (final) {
+      setPos(final);
+      try { localStorage.setItem(POS_KEY, JSON.stringify(final)); } catch {}
+    }
   }
 
   const playlist = config.mode === "single"
@@ -163,7 +169,7 @@ export function MusicPlayer() {
           onMouseMove={resetIdleTimer}
           onTouchStart={resetIdleTimer}
           onClick={resetIdleTimer}
-          className="fixed z-40 flex items-center gap-1 rounded-full px-2 py-2 select-none transition-all duration-500"
+          className="fixed z-40 flex items-center gap-1 rounded-full px-2 py-2 select-none"
           style={{
             ...(pos ? { left: pos.x, top: pos.y, bottom: "auto", right: "auto" } : { bottom: 96, right: 12 }),
             background: "var(--player-bg)",
@@ -172,6 +178,7 @@ export function MusicPlayer() {
             opacity: idle ? 0.35 : 1,
             transform: idle ? "scale(0.82)" : "scale(1)",
             transformOrigin: pos ? "center" : "bottom right",
+            transition: "opacity 0.4s ease, transform 0.4s ease",
           }}>
           <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
             className="p-1 -ml-1 cursor-grab active:cursor-grabbing text-gray-600 touch-none">

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
 import { Users, Search, UserPlus, UserMinus, Trophy, Crown } from "lucide-react";
+import { Portal } from "@/components/ui/Portal";
 
 const ROLE_ORDER = ["leader", "coLeader", "elder", "member"];
 const ROLE_TITLE: Record<string, string> = {
@@ -177,6 +178,7 @@ export default function MembersPage() {
 
       {/* Player detail modal */}
       {selected && (
+        <Portal>
         <div className="modal-overlay" onClick={() => { setSelected(null); setPlayerDetail(null); }}>
           <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
             <div className="p-5">
@@ -245,6 +247,7 @@ export default function MembersPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

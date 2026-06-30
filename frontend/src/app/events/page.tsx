@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { getAdminToken } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
+import { Portal } from "@/components/ui/Portal";
 import { PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X, Gift, Sparkles, Upload, Image as ImageIcon, Trophy } from "lucide-react";
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
@@ -127,6 +128,7 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
   }
 
   return (
+    <Portal>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box max-w-lg" onClick={e => e.stopPropagation()}>
         <div className="relative p-5 space-y-4 max-h-[85vh] overflow-y-auto">
@@ -235,6 +237,7 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 
