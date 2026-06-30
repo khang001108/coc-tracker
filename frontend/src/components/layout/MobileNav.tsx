@@ -77,8 +77,8 @@ export function MobileNav() {
         {/* Cột giữa — nút Chơi, có không gian riêng, chỉ nổi lên cao hơn 1 chút */}
         <GamePlayButton className="flex-1 flex flex-col items-center justify-center min-w-0">
           <span className="relative -mt-6 shrink-0">
-            <span className="absolute inset-0 rounded-full animate-gold-pulse"
-              style={{ background: "radial-gradient(circle, rgba(244,161,48,0.5), transparent 70%)" }} />
+            <span className="absolute inset-0 rounded-full animate-glow-pulse"
+              style={{ background: "radial-gradient(circle, rgba(244,161,48,0.6), transparent 70%)" }} />
             <span className="relative flex items-center justify-center w-[52px] h-[52px] rounded-full"
               style={{
                 background: "conic-gradient(from 200deg, #FFE8B8, #F4A130, #B8731A, #F4A130, #FFE8B8)",
