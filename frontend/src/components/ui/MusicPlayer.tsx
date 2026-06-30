@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Music2, Play, Pause, Volume2, VolumeX, SkipForward } from "lucide-react";
+import { Music2, Play, Pause, Volume2, VolumeX, SkipForward, GripVertical } from "lucide-react";
+
+const POS_KEY = "coc_music_player_pos";
 
 export function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [tracks, setTracks] = useState<any[]>([]);
   const [config, setConfig] = useState<{ enabled: boolean; mode: string; selected_id: string }>({
     enabled: false, mode: "all", selected_id: "",
@@ -15,6 +18,10 @@ export function MusicPlayer() {
   const [showVolume, setShowVolume] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [trackIndex, setTrackIndex] = useState(0);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragInfo = useRef<{ startX: number; startY: number; baseX: number; baseY: number; dragging: boolean; moved: boolean }>({
+    startX: 0, startY: 0, baseX: 0, baseY: 0, dragging: false, moved: false,
+  });
 
   useEffect(() => {
     Promise.all([api.getTracks().catch(() => []), api.getMusicConfig().catch(() => null)])
@@ -22,7 +29,48 @@ export function MusicPlayer() {
         setTracks(t || []);
         if (c) setConfig(c);
       });
+    try {
+      const saved = localStorage.getItem(POS_KEY);
+      if (saved) setPos(JSON.parse(saved));
+    } catch {}
   }, []);
+
+  function clampPos(x: number, y: number) {
+    const w = boxRef.current?.offsetWidth || 160;
+    const h = boxRef.current?.offsetHeight || 44;
+    const maxX = window.innerWidth - w - 8;
+    const maxY = window.innerHeight - h - 8;
+    return { x: Math.min(Math.max(8, x), Math.max(8, maxX)), y: Math.min(Math.max(8, y), Math.max(8, maxY)) };
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    const rect = boxRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    dragInfo.current = {
+      startX: e.clientX, startY: e.clientY,
+      baseX: rect.left, baseY: rect.top,
+      dragging: true, moved: false,
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!dragInfo.current.dragging) return;
+    const dx = e.clientX - dragInfo.current.startX;
+    const dy = e.clientY - dragInfo.current.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragInfo.current.moved = true;
+    const next = clampPos(dragInfo.current.baseX + dx, dragInfo.current.baseY + dy);
+    setPos(next);
+  }
+
+  function onPointerUp() {
+    if (!dragInfo.current.dragging) return;
+    dragInfo.current.dragging = false;
+    setPos(p => {
+      if (p) { try { localStorage.setItem(POS_KEY, JSON.stringify(p)); } catch {} }
+      return p;
+    });
+  }
 
   const playlist = config.mode === "single"
     ? tracks.filter(t => String(t.id) === String(config.selected_id))
@@ -85,8 +133,10 @@ export function MusicPlayer() {
 
       {needsUnlock ? (
         <button onClick={togglePlay}
-          className="fixed bottom-24 md:bottom-6 right-3 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm animate-pulse"
+          ref={boxRef as any}
+          className="fixed z-40 flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm animate-pulse"
           style={{
+            ...(pos ? { left: pos.x, top: pos.y, bottom: "auto", right: "auto" } : { bottom: 96, right: 12 }),
             background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
             color: "#1A0F05",
             border: "2px solid #6B4115",
@@ -95,13 +145,18 @@ export function MusicPlayer() {
           <Music2 size={16} /> Bật nhạc nền
         </button>
       ) : (
-        <div className="fixed bottom-24 md:bottom-6 right-3 z-40 flex items-center gap-1 rounded-full px-2 py-2"
+        <div ref={boxRef} className="fixed z-40 flex items-center gap-1 rounded-full px-2 py-2 select-none"
           style={{
+            ...(pos ? { left: pos.x, top: pos.y, bottom: "auto", right: "auto" } : { bottom: 96, right: 12 }),
             background: "linear-gradient(180deg, #2a2f3a, #161920)",
             border: "2px solid #0d0f13",
             boxShadow: "0 3px 0 #0d0f13, 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
           }}>
-          <button onClick={togglePlay} className="icon-btn-game w-8 h-8 text-gray-900">
+          <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+            className="p-1 -ml-1 cursor-grab active:cursor-grabbing text-gray-600 touch-none">
+            <GripVertical size={14} />
+          </div>
+          <button onClick={() => { if (!dragInfo.current.moved) togglePlay(); }} className="icon-btn-game w-8 h-8 text-gray-900">
             {playing ? <Pause size={14} /> : <Play size={14} />}
           </button>
           {playlist.length > 1 && (

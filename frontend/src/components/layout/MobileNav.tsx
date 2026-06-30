@@ -36,27 +36,25 @@ export function MobileNav() {
           return (
             <Link key={href} href={href}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors relative",
+                "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
                 active ? "text-yellow-400" : "text-gray-500"
               )}>
-              <Icon size={20} />
+              <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", active && "icon-btn-game")}>
+                <Icon size={active ? 14 : 18} className={active ? "text-gray-900" : ""} />
+              </span>
               <span className="text-[9px] font-medium">{label}</span>
-              {active && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-yellow-500" />
-              )}
             </Link>
           );
         })}
         <button onClick={() => setOpen(true)}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors relative",
+            "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
             moreActive ? "text-yellow-400" : "text-gray-500"
           )}>
-          <MoreHorizontal size={20} />
+          <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", moreActive && "icon-btn-game")}>
+            <MoreHorizontal size={moreActive ? 14 : 18} className={moreActive ? "text-gray-900" : ""} />
+          </span>
           <span className="text-[9px] font-medium">Thêm</span>
-          {moreActive && (
-            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-yellow-500" />
-          )}
         </button>
       </nav>
 
@@ -74,11 +72,16 @@ export function MobileNav() {
                 return (
                   <Link key={href} href={href} onClick={() => setOpen(false)}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border transition-colors",
-                      active ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" : "border-gray-800 bg-gray-800/40 text-gray-300"
+                      "flex flex-col items-center justify-center gap-2 py-4 rounded-xl border transition-colors",
+                      active ? "border-yellow-500/30 bg-yellow-500/10" : "border-gray-800 bg-gray-800/40"
                     )}>
-                    <Icon size={20} />
-                    <span className="text-[11px] font-medium text-center">{label}</span>
+                    <span className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center",
+                      active ? "icon-btn-game" : "bg-gray-800 border border-gray-700"
+                    )}>
+                      <Icon size={16} className={active ? "text-gray-900" : "text-gray-400"} />
+                    </span>
+                    <span className={cn("text-[11px] font-medium text-center", active ? "text-yellow-400" : "text-gray-300")}>{label}</span>
                   </Link>
                 );
               })}
