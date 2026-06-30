@@ -149,7 +149,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
   );
 }
 
-function SettingsPageInner() {
+function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -252,15 +252,17 @@ function SettingsPageInner() {
   );
 
   return (
-    <div className="space-y-6 max-w-5xl animate-fade-up">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Settings size={22} className="text-yellow-400" /> Cài đặt
-        </h1>
-        <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
-      </div>
+    <div className={embedded ? "contents" : "space-y-6 max-w-5xl animate-fade-up"}>
+      {!embedded && (
+        <div>
+          <h1 className="page-title flex items-center gap-2">
+            <Settings size={22} className="text-yellow-400" /> Cài đặt
+          </h1>
+          <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
+        </div>
+      )}
 
-      <div className="columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
+      <div className={embedded ? "contents" : "columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6"}>
 
       {/* ── CoC API Key ── */}
       <div className="card space-y-4">
@@ -618,11 +620,19 @@ function ShopPricingSettings() {
 export default function SettingsPage() {
   return (
     <AdminGate>
-      <div className="space-y-6 max-w-5xl">
-        <SettingsPageInner />
-        <MusicSettings />
-        <MemberAccountsSettings />
-        <ShopPricingSettings />
+      <div className="space-y-6 max-w-5xl animate-fade-up">
+        <div>
+          <h1 className="page-title flex items-center gap-2">
+            <Settings size={22} className="text-yellow-400" /> Cài đặt
+          </h1>
+          <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
+        </div>
+        <div className="columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
+          <SettingsPageInner embedded />
+          <MusicSettings />
+          <MemberAccountsSettings />
+          <ShopPricingSettings />
+        </div>
       </div>
     </AdminGate>
   );
