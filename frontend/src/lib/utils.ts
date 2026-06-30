@@ -12,10 +12,20 @@ export function formatNumber(n: number): string {
 
 export function formatDate(iso: string): string {
   if (!iso) return "—";
+  // CoC API trả về dạng "20260629T120000.000Z" (không có dấu - và :)
+  // Cần chuyển sang ISO chuẩn trước khi parse
+  let normalized = iso;
+  const match = iso.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
+  if (match) {
+    const [, y, mo, d, h, mi, s] = match;
+    normalized = `${y}-${mo}-${d}T${h}:${mi}:${s}Z`;
+  }
+  const date = new Date(normalized);
+  if (isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
-  }).format(new Date(iso));
+  }).format(date);
 }
 
 export function roleLabel(role: string): string {
