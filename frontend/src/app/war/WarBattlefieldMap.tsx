@@ -1,67 +1,85 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
 
-const starColor = (s: number) =>
-  s === 3 ? "#FFD700" : s === 2 ? "#C0C0C0" : s === 1 ? "#CD7F32" : "#444";
+/* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
+const STAR_FILL = (s: number) =>
+  s === 3 ? "#B8860B" : s === 2 ? "#606060" : s === 1 ? "#7B4513" : "#888";
+const STAR_FILL_EMPTY = "#CCCCCC44";
 
-const starEmoji = (s: number) =>
-  s === 3 ? "⭐⭐⭐" : s === 2 ? "⭐⭐" : s === 1 ? "⭐" : "—";
-
-function Stars({ stars, size = 10 }: { stars: number; size?: number }) {
+function Stars({ stars }: { stars: number }) {
   return (
     <div className="flex gap-0.5">
       {[0, 1, 2].map(i => (
-        <svg key={i} width={size} height={size} viewBox="0 0 10 10">
+        <svg key={i} width={9} height={9} viewBox="0 0 10 10">
           <polygon points="5,1 6.2,3.8 9.5,3.8 7,5.8 7.9,9 5,7.2 2.1,9 3,5.8 0.5,3.8 3.8,3.8"
-            fill={i < stars ? "#FFD700" : "#2A1B4A"} stroke="#F4A13055" strokeWidth="0.5" />
+            fill={i < stars ? STAR_FILL(stars) : STAR_FILL_EMPTY} />
         </svg>
       ))}
     </div>
   );
 }
 
-function MemberCard({
-  member, attacks, defenses, side, iconMap, selected, onSelect,
-}: {
-  member: any; attacks: any[]; defenses: any[]; side: "left" | "right";
+/* Badge kết quả 1 đòn đánh — gọn, đọc được trên cả 2 theme */
+function AttackBadge({ attack }: { attack: any }) {
+  const s = attack.stars;
+  const bg   = s === 3 ? "#92660022" : s === 2 ? "#44444422" : s === 1 ? "#6B320022" : "#33333311";
+  const text = s === 3 ? "#7A5500"   : s === 2 ? "#444444"   : s === 1 ? "#5C2A00"   : "#666";
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[9px] font-bold leading-none"
+      style={{ background: bg, color: text, border: `1px solid ${text}33` }}>
+      ⚔ #{attack.defenderPos}
+      {[0,1,2].map(i => (
+        <svg key={i} width={7} height={7} viewBox="0 0 10 10">
+          <polygon points="5,1 6.2,3.8 9.5,3.8 7,5.8 7.9,9 5,7.2 2.1,9 3,5.8 0.5,3.8 3.8,3.8"
+            fill={i < s ? STAR_FILL(s) : STAR_FILL_EMPTY} />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
+  member: any; attacks: any[]; side: "left" | "right";
   iconMap: Record<string, any>; selected: boolean; onSelect: () => void;
 }) {
-  const th = member.townHallLevel;
-  const color = thColor(th);
-  const totalStars = attacks.reduce((s, a) => s + a.stars, 0);
-  const maxStars = attacks.length * 3;
-  const defended = defenses.some(d => d.stars === 0);
   const isRight = side === "right";
+  const totalStars = attacks.reduce((s, a) => s + a.stars, 0);
 
   return (
     <button onClick={onSelect}
-      className={`w-full flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-2 rounded-xl px-2 py-2 transition-all text-left
-        ${selected ? "ring-2 ring-yellow-400/80 bg-yellow-400/8" : "hover:bg-white/5"}`}
+      className={`w-full rounded-xl px-1.5 py-1.5 transition-all ${selected ? "ring-1 ring-yellow-500" : "hover:bg-black/5"}`}
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
+      <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-      {/* Lâu đài icon */}
-      <div className="shrink-0">
-        <CastleIcon th={th} svgKey={iconMap[member.tag]?.castle} size={32} />
+        {/* Castle icon */}
+        <div className="shrink-0">
+          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.castle} size={28} />
+        </div>
+
+        {/* Name + stars + cannons */}
+        <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
+          <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: thColor(member.townHallLevel) }}>
+            {member.name}
+          </p>
+          <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
+            <Stars stars={totalStars} />
+          </div>
+          {/* 2 pháo = 2 lượt đánh */}
+          <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
+            {[0, 1].map(i => (
+              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} />
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Info */}
-      <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
-        <p className="text-[11px] font-semibold text-white truncate leading-tight">{member.name}</p>
-        <Stars stars={totalStars} />
-      </div>
-
-      {/* Kết quả tấn công badge */}
+      {/* Attack badges — hiện bên phải card bên trái, bên trái card bên phải */}
       {attacks.length > 0 && (
-        <div className={`flex flex-col gap-0.5 shrink-0 ${isRight ? "items-end" : "items-start"}`}>
-          {attacks.map((a, i) => (
-            <div key={i} className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-              style={{ background: starColor(a.stars) + "30", color: starColor(a.stars) }}>
-              ⚔️ #{a.defenderPos} {starEmoji(a.stars)}
-            </div>
-          ))}
+        <div className={`flex flex-wrap gap-0.5 mt-1 ${isRight ? "justify-end" : "justify-start"}`}>
+          {attacks.map((a, i) => <AttackBadge key={i} attack={a} />)}
         </div>
       )}
     </button>
@@ -80,119 +98,106 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
     }).catch(() => {});
   }, []);
 
-  const ourTeam: any[] = [...(war?.clan?.members || [])].sort((a, b) => a.mapPosition - b.mapPosition);
-  const theirTeam: any[] = [...(war?.opponent?.members || [])].sort((a, b) => a.mapPosition - b.mapPosition);
+  const ourTeam  = [...(war?.clan?.members   || [])].sort((a, b) => a.mapPosition - b.mapPosition);
+  const theirTeam = [...(war?.opponent?.members || [])].sort((a, b) => a.mapPosition - b.mapPosition);
 
-  // Xây dựng lookup: mỗi thành viên nhận attacksGiven + defensesTaken
-  function buildLookup(attackers: any[], defenders: any[]) {
-    const defenderByTag: Record<string, any> = {};
-    defenders.forEach(m => { defenderByTag[m.tag] = m; });
-
+  function buildAttackLookup(attackers: any[], defenders: any[]) {
+    const byTag: Record<string, any> = {};
+    defenders.forEach(m => { byTag[m.tag] = m; });
     return attackers.reduce((acc, m) => {
       acc[m.tag] = (m.attacks || []).map((a: any) => ({
-        ...a,
-        defenderPos: defenderByTag[a.defenderTag]?.mapPosition ?? "?",
+        ...a, defenderPos: byTag[a.defenderTag]?.mapPosition ?? "?",
       }));
       return acc;
     }, {} as Record<string, any[]>);
   }
 
-  function buildDefenses(defenders: any[], attackers: any[]) {
-    const defMap: Record<string, any[]> = {};
+  function buildDefMap(defenders: any[], attackers: any[]) {
+    const map: Record<string, any[]> = {};
     attackers.forEach(m => {
       (m.attacks || []).forEach((a: any) => {
-        if (!defMap[a.defenderTag]) defMap[a.defenderTag] = [];
-        defMap[a.defenderTag].push(a);
+        (map[a.defenderTag] ||= []).push({ ...a, attackerTag: m.tag });
       });
     });
-    return defMap;
+    return map;
   }
 
-  const ourAttacks   = buildLookup(ourTeam, theirTeam);
-  const theirAttacks = buildLookup(theirTeam, ourTeam);
-  const ourDefenses  = buildDefenses(ourTeam, theirTeam);
-  const theirDefenses = buildDefenses(theirTeam, ourTeam);
+  const ourAtks   = buildAttackLookup(ourTeam,   theirTeam);
+  const theirAtks = buildAttackLookup(theirTeam, ourTeam);
+  const ourDefs   = buildDefMap(ourTeam,   theirTeam);
+  const theirDefs = buildDefMap(theirTeam, ourTeam);
 
-  // Khi hover/select 1 thành viên, làm nổi bật các thành viên có kết nối
-  const connectedTags = new Set<string>();
+  const connected = new Set<string>();
   if (selected) {
-    const team = selected.side === "left" ? ourTeam : theirTeam;
-    const attacks = selected.side === "left" ? ourAttacks : theirAttacks;
-    const opp = selected.side === "left" ? theirTeam : ourTeam;
-    const m = team.find((m: any) => m.tag === selected.tag);
-    if (m) {
-      connectedTags.add(m.tag);
-      (attacks[m.tag] || []).forEach((a: any) => {
-        const def = opp.find((o: any) => o.mapPosition === a.defenderPos);
-        if (def) connectedTags.add(def.tag);
-      });
-      const defMap = selected.side === "left" ? ourDefenses : theirDefenses;
-      (defMap[m.tag] || []).forEach((a: any) => {
-        const att = (selected.side === "left" ? theirTeam : ourTeam).find((o: any) =>
-          (o.attacks || []).some((atk: any) => atk.defenderTag === m.tag));
-        if (att) connectedTags.add(att.tag);
-      });
-    }
+    const isLeft = selected.side === "left";
+    const myAtks = isLeft ? ourAtks   : theirAtks;
+    const myDefs = isLeft ? ourDefs   : theirDefs;
+    const oppTeam = isLeft ? theirTeam : ourTeam;
+    connected.add(selected.tag);
+    (myAtks[selected.tag] || []).forEach((a: any) => {
+      const def = oppTeam.find(o => o.mapPosition === a.defenderPos);
+      if (def) connected.add(def.tag);
+    });
+    (myDefs[selected.tag] || []).forEach((a: any) => connected.add(a.attackerTag));
   }
 
-  function isHighlighted(tag: string) {
-    return !selected || connectedTags.has(tag);
-  }
+  const fade = (tag: string) => !selected || connected.has(tag);
+
+  const rows = Math.max(ourTeam.length, theirTeam.length);
 
   return (
     <div className="card !p-0 overflow-hidden">
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <h3 className="font-bold text-white text-sm flex items-center gap-2">🗺️ Bản đồ chiến trường</h3>
-        <div className="flex items-center gap-3 text-[10px] text-gray-500">
-          <span>⭐⭐⭐ = 3 sao</span>
-          <span>⚔️ # = vị trí tấn công</span>
-          {selected && <button onClick={() => setSelected(null)} className="text-yellow-500 hover:underline">✕ Bỏ chọn</button>}
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">
+        <h3 className="font-bold text-white text-sm">🗺️ Bản đồ chiến trường</h3>
+        <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
+          <span>⚔ #X = vị trí tấn công</span>
+          <span>🔫🔫 = 2 lượt đánh</span>
+          {selected && (
+            <button onClick={() => setSelected(null)} className="text-yellow-600 font-bold">✕</button>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-0 px-2 pb-4" style={{ gridTemplateColumns: "1fr 8px 1fr" }}>
-        {/* Header */}
-        <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wide px-2 pb-1">{war?.clan?.name}</div>
+      {/* Team labels */}
+      <div className="grid px-2" style={{ gridTemplateColumns: "1fr 20px 1fr" }}>
+        <p className="text-[9px] font-bold text-blue-600 truncate">{war?.clan?.name}</p>
         <div />
-        <div className="text-[10px] font-bold text-red-400 uppercase tracking-wide px-2 pb-1 text-right">{war?.opponent?.name}</div>
-
-        {/* Hàng thành viên */}
-        {Array.from({ length: Math.max(ourTeam.length, theirTeam.length) }).map((_, i) => {
-          const left  = ourTeam[i];
-          const right = theirTeam[i];
-          return [
-            <div key={`l-${i}`}
-              style={{ opacity: left && isHighlighted(left.tag) ? 1 : 0.25, transition: "opacity 0.2s" }}>
-              {left && (
-                <MemberCard member={left} side="left"
-                  attacks={ourAttacks[left.tag] || []}
-                  defenses={ourDefenses[left.tag] || []}
-                  iconMap={iconMap}
-                  selected={selected?.tag === left.tag}
-                  onSelect={() => setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" })} />
-              )}
-            </div>,
-            <div key={`sep-${i}`} className="flex items-center justify-center">
-              <span className="text-[9px] text-gray-700 font-mono">{i + 1}</span>
-            </div>,
-            <div key={`r-${i}`}
-              style={{ opacity: right && isHighlighted(right.tag) ? 1 : 0.25, transition: "opacity 0.2s" }}>
-              {right && (
-                <MemberCard member={right} side="right"
-                  attacks={theirAttacks[right.tag] || []}
-                  defenses={theirDefenses[right.tag] || []}
-                  iconMap={iconMap}
-                  selected={selected?.tag === right.tag}
-                  onSelect={() => setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" })} />
-              )}
-            </div>,
-          ];
-        })}
+        <p className="text-[9px] font-bold text-red-500 truncate text-right">{war?.opponent?.name}</p>
       </div>
 
-      <p className="text-[10px] text-gray-600 px-4 pb-3">
-        Bấm vào thành viên để highlight trận đánh liên quan. Badge ⚔️ #X = đánh vị trí X của đối phương.
-      </p>
+      {/* Member rows */}
+      <div className="px-1 pb-3 space-y-0">
+        {Array.from({ length: rows }).map((_, i) => {
+          const left  = ourTeam[i];
+          const right = theirTeam[i];
+          return (
+            <div key={i} className="grid items-start" style={{ gridTemplateColumns: "1fr 18px 1fr" }}>
+              <div style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
+                {left && (
+                  <MemberCard member={left} side="left"
+                    attacks={ourAtks[left.tag] || []} iconMap={iconMap}
+                    selected={selected?.tag === left.tag}
+                    onSelect={() => setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" })} />
+                )}
+              </div>
+
+              <div className="flex items-center justify-center pt-2">
+                <span className="text-[9px] text-gray-400 font-mono font-bold">{i + 1}</span>
+              </div>
+
+              <div style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
+                {right && (
+                  <MemberCard member={right} side="right"
+                    attacks={theirAtks[right.tag] || []} iconMap={iconMap}
+                    selected={selected?.tag === right.tag}
+                    onSelect={() => setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" })} />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
