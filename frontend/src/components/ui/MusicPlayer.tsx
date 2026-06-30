@@ -19,9 +19,22 @@ export function MusicPlayer() {
   const [volume, setVolume] = useState(0.5);
   const [trackIndex, setTrackIndex] = useState(0);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragInfo = useRef<{ startX: number; startY: number; baseX: number; baseY: number; dragging: boolean; moved: boolean }>({
     startX: 0, startY: 0, baseX: 0, baseY: 0, dragging: false, moved: false,
   });
+
+  function resetIdleTimer() {
+    setIdle(false);
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => setIdle(true), 3000);
+  }
+
+  useEffect(() => {
+    resetIdleTimer();
+    return () => { if (idleTimer.current) clearTimeout(idleTimer.current); };
+  }, []);
 
   useEffect(() => {
     Promise.all([api.getTracks().catch(() => []), api.getMusicConfig().catch(() => null)])
@@ -145,12 +158,20 @@ export function MusicPlayer() {
           <Music2 size={16} /> Bật nhạc nền
         </button>
       ) : (
-        <div ref={boxRef} className="fixed z-40 flex items-center gap-1 rounded-full px-2 py-2 select-none"
+        <div ref={boxRef}
+          onMouseEnter={resetIdleTimer}
+          onMouseMove={resetIdleTimer}
+          onTouchStart={resetIdleTimer}
+          onClick={resetIdleTimer}
+          className="fixed z-40 flex items-center gap-1 rounded-full px-2 py-2 select-none transition-all duration-500"
           style={{
             ...(pos ? { left: pos.x, top: pos.y, bottom: "auto", right: "auto" } : { bottom: 96, right: 12 }),
             background: "var(--player-bg)",
             border: "2px solid var(--player-border)",
             boxShadow: "0 3px 0 var(--player-border), 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+            opacity: idle ? 0.35 : 1,
+            transform: idle ? "scale(0.82)" : "scale(1)",
+            transformOrigin: pos ? "center" : "bottom right",
           }}>
           <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
             className="p-1 -ml-1 cursor-grab active:cursor-grabbing text-gray-600 touch-none">
