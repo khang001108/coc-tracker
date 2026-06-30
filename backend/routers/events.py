@@ -14,10 +14,11 @@ qua endpoint currentwar / warlog cho từng thành viên trong 1 trận war:
 CoC API KHÔNG cung cấp: thời gian mỗi lượt đánh, donate theo khoảng thời gian tùy chọn
 (chỉ có tổng hiện tại), lịch sử chi tiết quá khứ ngoài 20 war log gần nhất.
 """
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File
 from supabase_client import get_supabase
 from auth import require_admin
 from services.coc_api import get_current_war, get_war_log, get_clan_members, get_coc_config
+import uuid
 
 router = APIRouter()
 
@@ -36,6 +37,27 @@ CONDITION_LABELS = {
 async def list_conditions():
     """Cho frontend hiển thị danh sách điều kiện khả dụng khi tạo sự kiện."""
     return [{"value": k, "label": v} for k, v in CONDITION_LABELS.items()]
+
+
+@router.post("/upload-image")
+async def upload_image(file: UploadFile = File(...), _: bool = Depends(require_admin)):
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(400, "Chỉ chấp nhận ảnh JPEG, PNG, WEBP hoặc GIF")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "Ảnh tối đa 5MB")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "jpg"
+    path = f"{uuid.uuid4().hex}.{ext}"
+    sb = get_supabase()
+    try:
+        sb.storage.from_("event-rewards").upload(
+            path, content, {"content-type": file.content_type}
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Lỗi tải ảnh lên: {str(e)}")
+    public_url = sb.storage.from_("event-rewards").get_public_url(path)
+    return {"url": public_url}
 
 
 @router.get("/")

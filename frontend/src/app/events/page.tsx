@@ -1,36 +1,82 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { getAdminToken } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
-import { PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X } from "lucide-react";
+import { PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X, Gift, Sparkles, Upload, Image as ImageIcon, Trophy } from "lucide-react";
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
   war: "War thường", cwl: "CWL / War giải", custom: "Tự viết",
 };
 
+function Confetti() {
+  const pieces = Array.from({ length: 14 });
+  const colors = ["#F4A130", "#ec4899", "#22c55e", "#3b82f6", "#a855f7"];
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-2xl">
+      {pieces.map((_, i) => (
+        <span key={i} className="absolute rounded-sm opacity-30"
+          style={{
+            left: `${(i * 137) % 100}%`,
+            top: `${(i * 53) % 100}%`,
+            width: 6, height: 6,
+            background: colors[i % colors.length],
+            transform: `rotate(${(i * 47) % 360}deg)`,
+          }} />
+      ))}
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <div className="relative rounded-2xl overflow-hidden p-6 md:p-8"
+      style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.18), rgba(236,72,153,0.12), rgba(139,69,19,0.15))" }}>
+      <Confetti />
+      <div className="relative flex items-center gap-4">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 animate-gold-pulse"
+          style={{ background: "linear-gradient(135deg, #F4A130, #ec4899)" }}>
+          <Trophy size={26} className="text-white" />
+        </div>
+        <div>
+          <h1 className="page-title flex items-center gap-2">
+            Sự kiện & Trao thưởng <Sparkles size={18} className="text-yellow-400" />
+          </h1>
+          <p className="page-subtitle">War giải, thử thách, quà từ cửa hàng của clan</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
   return (
-    <div className="card cursor-pointer hover:border-yellow-500/30 transition-colors" onClick={onOpen}>
-      <div className="flex items-start gap-4">
+    <div onClick={onOpen}
+      className="relative card cursor-pointer overflow-hidden group hover:border-yellow-500/40 hover:-translate-y-0.5 transition-all">
+      <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 group-hover:opacity-20 transition-opacity"
+        style={{ background: "radial-gradient(circle, #F4A130, transparent)" }} />
+      <div className="relative flex items-start gap-4">
         {event.reward_image_url ? (
-          <img src={event.reward_image_url} alt="reward" className="w-16 h-16 rounded-xl object-cover shrink-0 bg-gray-800" />
+          <img src={event.reward_image_url} alt="reward"
+            className="w-16 h-16 rounded-xl object-cover shrink-0 bg-gray-800 ring-2 ring-yellow-500/20" />
         ) : (
-          <div className="w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center shrink-0">
-            <PartyPopper size={24} className="text-yellow-500" />
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-500/20 to-pink-500/20 flex items-center justify-center shrink-0">
+            <Gift size={24} className="text-yellow-400" />
           </div>
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold text-white">{event.title}</h3>
             <span className={`badge text-[10px] ${event.status === "active" ? "badge-green" : "badge-red"}`}>
-              {event.status === "active" ? "Đang diễn ra" : "Đã đóng"}
+              {event.status === "active" ? "🔥 Đang diễn ra" : "Đã đóng"}
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">{EVENT_TYPE_LABEL[event.event_type] || event.event_type}</p>
           {event.description && <p className="text-sm text-gray-400 mt-1.5 line-clamp-2">{event.description}</p>}
           {event.reward_name && (
-            <p className="text-sm text-yellow-400 mt-1.5 font-medium">🎁 {event.reward_name}</p>
+            <p className="text-sm text-yellow-400 mt-1.5 font-medium flex items-center gap-1">
+              <Gift size={13} /> {event.reward_name}
+            </p>
           )}
         </div>
       </div>
@@ -83,10 +129,15 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box max-w-lg" onClick={e => e.stopPropagation()}>
-        <div className="p-5 space-y-4 max-h-[85vh] overflow-y-auto">
-          <div className="flex items-start justify-between gap-3">
+        <div className="relative p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full opacity-10 pointer-events-none"
+            style={{ background: "radial-gradient(circle, #F4A130, transparent)" }} />
+
+          <div className="relative flex items-start justify-between gap-3">
             <div>
-              <h3 className="font-bold text-white text-lg">{event.title}</h3>
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <PartyPopper size={18} className="text-pink-400" /> {event.title}
+              </h3>
               <p className="text-xs text-gray-500">{EVENT_TYPE_LABEL[event.event_type]}</p>
             </div>
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 shrink-0">
@@ -97,17 +148,23 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
           {event.description && <p className="text-sm text-gray-300">{event.description}</p>}
 
           {event.reward_name && (
-            <div className="card !p-3 bg-yellow-500/5 border-yellow-500/20 space-y-2">
+            <div className="relative rounded-2xl p-4 overflow-hidden"
+              style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.12), rgba(236,72,153,0.08))", border: "1px solid rgba(244,161,48,0.25)" }}>
               <div className="flex items-center gap-3">
-                {event.reward_image_url && (
-                  <img src={event.reward_image_url} className="w-14 h-14 rounded-xl object-cover" alt="" />
+                {event.reward_image_url ? (
+                  <img src={event.reward_image_url} className="w-16 h-16 rounded-xl object-cover ring-2 ring-yellow-500/30" alt="" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+                    <Gift size={26} className="text-yellow-400" />
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-yellow-400">{event.reward_name}</p>
+                  <p className="text-xs text-yellow-500/70 font-medium uppercase tracking-wide">Phần quà</p>
+                  <p className="text-sm font-bold text-yellow-400">{event.reward_name}</p>
                   {event.reward_shop_link && (
                     <a href={event.reward_shop_link} target="_blank" rel="noreferrer"
-                      className="text-xs text-blue-400 hover:underline flex items-center gap-1 mt-1">
-                      Xem trên Shopee <ExternalLink size={11} />
+                      className="text-xs text-orange-400 hover:underline flex items-center gap-1 mt-1.5 font-medium">
+                      🛒 Xem trên Shopee <ExternalLink size={11} />
                     </a>
                   )}
                 </div>
@@ -116,18 +173,22 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
           )}
 
           <div>
-            <h4 className="text-sm font-bold text-white mb-2">Bảng xếp hạng (Top {event.top_n})</h4>
+            <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
+              <Trophy size={14} className="text-yellow-400" /> Bảng xếp hạng (Top {event.top_n})
+            </h4>
             {loading ? (
               <div className="h-20 bg-gray-800 rounded-xl animate-pulse" />
             ) : note ? (
               <p className="text-sm text-gray-500">{note}</p>
             ) : leaderboard.length === 0 ? (
-              <p className="text-sm text-gray-500">Chưa có dữ liệu (chưa có war kết thúc hoặc chưa cấu hình clan tag)</p>
+              <p className="text-sm text-gray-500">Chưa có dữ liệu — cần ít nhất 1 trận war đang diễn ra hoặc vừa kết thúc để tính điểm.</p>
             ) : (
               <div className="space-y-1.5">
                 {leaderboard.map((m: any) => (
                   <div key={m.player_tag} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-                    <span className="text-xs text-gray-500 w-5 text-right">{m.rank}</span>
+                    <span className={`text-xs w-5 text-right font-bold ${
+                      m.rank === 1 ? "text-yellow-400" : m.rank === 2 ? "text-gray-300" : m.rank === 3 ? "text-amber-600" : "text-gray-500"
+                    }`}>{m.rank <= 3 ? ["🥇","🥈","🥉"][m.rank-1] : m.rank}</span>
                     <span className="text-sm text-white flex-1 truncate">{m.player_name}</span>
                     <span className="text-xs text-yellow-400 font-semibold">{m.metric_value}</span>
                   </div>
@@ -177,6 +238,53 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
   );
 }
 
+function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const res = await api.uploadEventImage(file);
+      onChange(res.url);
+    } catch (err: any) {
+      setError(err.message || "Lỗi tải ảnh");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs text-gray-500 block">Ảnh quà</label>
+      <div className="flex items-center gap-3">
+        {value ? (
+          <img src={value} className="w-16 h-16 rounded-xl object-cover ring-2 ring-yellow-500/20" alt="" />
+        ) : (
+          <div className="w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
+            <ImageIcon size={20} className="text-gray-600" />
+          </div>
+        )}
+        <div className="flex-1 space-y-1.5">
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="btn-secondary text-xs flex items-center gap-1.5 w-fit">
+            <Upload size={13} /> {uploading ? "Đang tải lên..." : "Tải ảnh từ thiết bị"}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+          <input className="input text-xs" placeholder="...hoặc dán link ảnh URL"
+            value={value} onChange={e => onChange(e.target.value)} />
+          {error && <p className="text-xs text-red-400">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [conditions, setConditions] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -205,16 +313,20 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="btn-gold flex items-center gap-2 text-sm">
+      <button onClick={() => setOpen(true)}
+        className="btn-gold flex items-center gap-2 text-sm shadow-lg shadow-yellow-500/10">
         <Plus size={16} /> Tạo sự kiện mới
       </button>
     );
   }
 
   return (
-    <form onSubmit={submit} className="card space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-white">Tạo sự kiện mới</h3>
+    <form onSubmit={submit} className="relative card space-y-3 overflow-hidden">
+      <Confetti />
+      <div className="relative flex items-center justify-between">
+        <h3 className="font-bold text-white flex items-center gap-2">
+          <Sparkles size={16} className="text-yellow-400" /> Tạo sự kiện mới
+        </h3>
         <button type="button" onClick={() => setOpen(false)} className="text-gray-500"><X size={18} /></button>
       </div>
 
@@ -253,11 +365,11 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
       </div>
 
       <div className="pt-2 border-t border-gray-800 space-y-3">
-        <p className="text-xs text-gray-500 font-medium">Phần quà (tuỳ chọn)</p>
+        <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5"><Gift size={13} /> Phần quà (tuỳ chọn)</p>
         <input className="input" placeholder="Tên quà (vd: Thanh kiếm Barbarian phiên bản giới hạn)"
           value={form.reward_name} onChange={e => setForm({ ...form, reward_name: e.target.value })} />
-        <input className="input" placeholder="Link ảnh quà (URL ảnh)"
-          value={form.reward_image_url} onChange={e => setForm({ ...form, reward_image_url: e.target.value })} />
+        <ImageUploadField value={form.reward_image_url}
+          onChange={url => setForm({ ...form, reward_image_url: url })} />
         <input className="input" placeholder="Link Shopee"
           value={form.reward_shop_link} onChange={e => setForm({ ...form, reward_shop_link: e.target.value })} />
       </div>
@@ -284,30 +396,25 @@ function EventsPageInner() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <PartyPopper size={22} className="text-pink-400" /> Sự kiện & Trao thưởng
-          </h1>
-          <p className="page-subtitle">War giải, thử thách, quà từ cửa hàng của clan</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={load} className="btn-secondary flex items-center gap-2 text-sm">
-            <RefreshCw size={14} /> Làm mới
-          </button>
-        </div>
-      </div>
+      <Hero />
 
-      <AdminGate>
-        <CreateEventForm onCreated={load} />
-      </AdminGate>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <AdminGate>
+          <CreateEventForm onCreated={load} />
+        </AdminGate>
+        <button onClick={load} className="btn-secondary flex items-center gap-2 text-sm ml-auto">
+          <RefreshCw size={14} /> Làm mới
+        </button>
+      </div>
 
       {loading ? (
         <div className="grid gap-3">{[1,2].map(i => <div key={i} className="card h-24 animate-pulse bg-gray-800" />)}</div>
       ) : events.length === 0 ? (
-        <div className="card text-center py-10">
-          <PartyPopper size={36} className="mx-auto mb-3 text-gray-700" />
-          <p className="text-gray-400">Chưa có sự kiện nào</p>
+        <div className="card text-center py-12 relative overflow-hidden">
+          <Confetti />
+          <PartyPopper size={40} className="mx-auto mb-3 text-yellow-500/50" />
+          <p className="text-gray-300 font-medium">Chưa có sự kiện nào</p>
+          <p className="text-sm text-gray-600 mt-1">Tạo sự kiện đầu tiên để trao quà cho thành viên xuất sắc!</p>
         </div>
       ) : (
         <div className="grid gap-3">
@@ -324,7 +431,5 @@ function EventsPageInner() {
 }
 
 export default function EventsPage() {
-  // Trang sự kiện công khai cho mọi người xem (thưởng, bảng xếp hạng, ai đã nhận),
-  // nhưng nút tạo/sửa/xoá/trao thưởng chỉ hiện khi đã đăng nhập admin (AdminGate lồng bên trong từng phần).
   return <EventsPageInner />;
 }

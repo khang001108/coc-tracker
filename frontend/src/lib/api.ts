@@ -108,4 +108,19 @@ export const api = {
   getClaims:        (id: number) => apiFetch(`/api/events/${id}/claims`),
   markClaimed:      (eventId: number, claimId: number, claimed: boolean) =>
     apiFetch(`/api/events/${eventId}/claims/${claimId}/mark`, { method: "POST", body: JSON.stringify({ claimed }) }),
+  uploadEventImage: async (file: File) => {
+    const token = getAdminToken();
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${API}/api/events/upload-image`, {
+      method: "POST",
+      headers: token ? { "X-Admin-Token": token } : {},
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi tải ảnh" }));
+      throw new Error(err.detail || "Lỗi tải ảnh");
+    }
+    return res.json();
+  },
 };
