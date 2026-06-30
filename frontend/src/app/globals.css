@@ -6,7 +6,11 @@
   *, *::before, *::after { box-sizing: border-box; }
   html { height: 100%; -webkit-text-size-adjust: 100%; }
   body {
-    @apply bg-gray-950 text-gray-100 antialiased;
+    @apply text-gray-100 antialiased;
+    background: radial-gradient(ellipse at 20% 0%, #2a1750 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 15%, #3a1f5c 0%, transparent 50%),
+                linear-gradient(165deg, #150a28 0%, #1d0f38 45%, #140a26 100%);
+    background-attachment: fixed;
     overflow-x: hidden;
   }
   ::-webkit-scrollbar { width: 5px; }
@@ -64,6 +68,26 @@
     background: radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%);
     border: 2px solid #6B4115;
     box-shadow: 0 3px 0 #6B4115, 0 5px 10px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.6);
+  }
+
+  /* ── Tab pill bóng kiểu game (War/Lịch sử/CWL, Donate/Games, Danh sách/Nhật ký...) ── */
+  .tab-pill-group {
+    @apply flex gap-1 p-1 rounded-2xl w-fit;
+    background: linear-gradient(180deg, #221536, #160d24);
+    border: 1px solid #3D2A66;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.35);
+  }
+  .tab-pill {
+    @apply px-4 py-2 text-sm font-semibold rounded-xl transition-all;
+    color: #9c8fc2;
+  }
+  .tab-pill:hover { color: #c9bce8; }
+  .tab-pill-active {
+    @apply px-4 py-2 text-sm font-bold rounded-xl transition-all;
+    background: linear-gradient(180deg, #FFD27A 0%, #F4A130 50%, #D4821A 100%);
+    color: #1A0F05;
+    border: 1px solid #8B5A1E;
+    box-shadow: 0 2px 0 #8B5A1E, 0 3px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
   }
 
   /* ── Input ── */
@@ -143,14 +167,28 @@
 .animate-gold-pulse{ animation: gold-pulse 2s infinite; }
 
 /* ════════════════════════════════════════════════════════════════════════
+   THEME TỐI MẶC ĐỊNH — tông tím-xanh huyền ảo bầu trời đêm Clash of Clans,
+   thay cho xám phẳng. Override trực tiếp class Tailwind hay dùng.
+   ════════════════════════════════════════════════════════════════════════ */
+.bg-gray-950 { background: transparent !important; }
+.bg-gray-900,
+.bg-gray-900\/95 { background-color: #1E1138 !important; }
+.bg-gray-800,
+.bg-gray-800\/50,
+.bg-gray-800\/40,
+.bg-gray-800\/30 { background-color: #2A1B4A !important; }
+.bg-gray-700 { background-color: #3B2860 !important; }
+.border-gray-800,
+.border-gray-700 { border-color: #3D2A66 !important; }
+.divide-gray-800 > * + * { border-color: #3D2A66 !important; }
+
+/* ════════════════════════════════════════════════════════════════════════
    THEME HOÀNG KIM — giao diện sáng trắng-vàng, bật bằng class .theme-gold
    trên thẻ <html>. Override các class Tailwind hay dùng nhất trong app
    bằng selector cụ thể hơn (.theme-gold .bg-gray-xxx), không cần sửa
    từng component.
    ════════════════════════════════════════════════════════════════════════ */
-.theme-gold body { background-color: #FBF6EA; }
-
-.theme-gold .bg-gray-950 { background-color: #FBF6EA !important; }
+.theme-gold body { background: #FBF6EA !important; }
 .theme-gold .bg-gray-900,
 .theme-gold .bg-gray-900\/95 { background-color: #FFFFFF !important; }
 .theme-gold .bg-gray-800,
@@ -197,3 +235,10 @@
   background: linear-gradient(180deg, #FFFBEF, #F2DFAD) !important;
   border-color: #C9A24F !important;
 }
+.theme-gold .tab-pill-group {
+  background: linear-gradient(180deg, #FFFBEF, #F7E8BF) !important;
+  border-color: #E2C572 !important;
+  box-shadow: inset 0 2px 4px rgba(180,140,30,0.15) !important;
+}
+.theme-gold .tab-pill { color: #A38844 !important; }
+.theme-gold .tab-pill:hover { color: #5C4517 !important; }

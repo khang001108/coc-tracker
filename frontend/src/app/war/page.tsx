@@ -83,11 +83,11 @@ export default function WarPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-800 rounded-xl w-fit">
+      <div className="tab-pill-group">
         {([["current","War hiện tại"],["log","Lịch sử"],["cwl","CWL"]] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-              tab === id ? "bg-gray-900 text-yellow-400 shadow" : "text-gray-500 hover:text-gray-300"
+            className={`${
+              tab === id ? "tab-pill-active" : "tab-pill"
             }`}>{label}</button>
         ))}
       </div>
