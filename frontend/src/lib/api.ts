@@ -1,12 +1,26 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const TOKEN_KEY = "coc_admin_token";
+
+export function getAdminToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function setAdminToken(token: string) {
+  if (typeof window !== "undefined") localStorage.setItem(TOKEN_KEY, token);
+}
+export function clearAdminToken() {
+  if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
+}
 
 async function apiFetch(path: string, opts?: RequestInit, retries = 1) {
   for (let i = 0; i <= retries; i++) {
     try {
+      const token = getAdminToken();
       const res = await fetch(`${API}${path}`, {
         ...opts,
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { "X-Admin-Token": token } : {}),
           ...opts?.headers,
         },
       });
@@ -43,6 +57,13 @@ export const api = {
   getMemberLog:   () => apiFetch("/api/members/log"),
   getPlayer:      (tag: string) => apiFetch(`/api/members/${encodeURIComponent(tag)}`),
 
+  // Auth
+  login: (password: string) =>
+    apiFetch("/api/settings/login", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
+
   // Settings
   getSettings:    () => apiFetch("/api/settings/"),
   saveSetting:    (key: string, value: string) =>
@@ -75,4 +96,16 @@ export const api = {
 
   // Health check
   health: () => apiFetch("/health"),
+
+  // Events
+  getEvents:        () => apiFetch("/api/events/"),
+  getConditions:    () => apiFetch("/api/events/conditions"),
+  createEvent:      (data: any) => apiFetch("/api/events/", { method: "POST", body: JSON.stringify(data) }),
+  updateEvent:      (id: number, data: any) => apiFetch(`/api/events/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteEvent:      (id: number) => apiFetch(`/api/events/${id}`, { method: "DELETE" }),
+  getLeaderboard:   (id: number) => apiFetch(`/api/events/${id}/leaderboard`),
+  saveClaims:       (id: number, entries: any[]) => apiFetch(`/api/events/${id}/claim`, { method: "POST", body: JSON.stringify({ entries }) }),
+  getClaims:        (id: number) => apiFetch(`/api/events/${id}/claims`),
+  markClaimed:      (eventId: number, claimId: number, claimed: boolean) =>
+    apiFetch(`/api/events/${eventId}/claims/${claimId}/mark`, { method: "POST", body: JSON.stringify({ claimed }) }),
 };

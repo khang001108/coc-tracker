@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from supabase_client import get_supabase
+from auth import require_admin, create_token, verify_password
 import httpx
 from urllib.parse import quote
 
@@ -12,8 +13,16 @@ ALLOWED_KEYS = [
     "notify_war", "notify_raid", "notify_donate", "notify_member",
 ]
 
+@router.post("/login")
+async def login(request: Request):
+    body = await request.json()
+    password = body.get("password", "")
+    if not verify_password(password):
+        raise HTTPException(401, "Sai mật khẩu")
+    return {"token": create_token()}
+
 @router.get("/")
-async def get_settings():
+async def get_settings(_: bool = Depends(require_admin)):
     try:
         sb = get_supabase()
         res = sb.table("settings").select("key,value").execute()
@@ -22,7 +31,7 @@ async def get_settings():
         raise HTTPException(500, f"DB error: {str(e)}")
 
 @router.post("/")
-async def upsert_setting(request: Request):
+async def upsert_setting(request: Request, _: bool = Depends(require_admin)):
     try:
         body = await request.json()
         key = body.get("key", "")
@@ -38,7 +47,7 @@ async def upsert_setting(request: Request):
         raise HTTPException(500, f"Lỗi lưu: {str(e)}")
 
 @router.post("/test-clan")
-async def test_clan_connection(request: Request):
+async def test_clan_connection(request: Request, _: bool = Depends(require_admin)):
     try:
         body = await request.json()
         api_key = body.get("api_key", "").strip()
@@ -68,7 +77,7 @@ async def test_clan_connection(request: Request):
         raise HTTPException(500, str(e))
 
 @router.post("/test-discord")
-async def test_discord(request: Request):
+async def test_discord(request: Request, _: bool = Depends(require_admin)):
     try:
         body = await request.json()
         webhook = body.get("webhook_url", "").strip()
@@ -85,7 +94,7 @@ async def test_discord(request: Request):
         raise HTTPException(500, str(e))
 
 @router.post("/test-telegram")
-async def test_telegram(request: Request):
+async def test_telegram(request: Request, _: bool = Depends(require_admin)):
     try:
         body = await request.json()
         token = body.get("bot_token", "").strip()

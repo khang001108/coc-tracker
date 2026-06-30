@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Castle, Gamepad2,
-  Heart, Users, BarChart3, Settings, Shield
+  Heart, Users, BarChart3, Settings, Shield, PartyPopper
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/games",     label: "Clan Games",   icon: Gamepad2 },
   { href: "/donate",    label: "Donate",       icon: Heart },
   { href: "/members",   label: "Thành viên",   icon: Users },
+  { href: "/events",    label: "Sự kiện",      icon: PartyPopper },
   { href: "/stats",     label: "Thống kê",     icon: BarChart3 },
   { href: "/settings",  label: "Cài đặt",      icon: Settings },
 ];

@@ -85,3 +85,43 @@ CREATE POLICY "service_all" ON snapshot_war  FOR ALL TO service_role USING (true
 CREATE POLICY "service_all" ON snapshot_raid FOR ALL TO service_role USING (true);
 CREATE POLICY "service_all" ON member_log    FOR ALL TO service_role USING (true);
 CREATE POLICY "service_all" ON war_history   FOR ALL TO service_role USING (true);
+
+-- ── Events (sự kiện trao thưởng) ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS events (
+  id               SERIAL PRIMARY KEY,
+  title            TEXT NOT NULL,
+  description      TEXT DEFAULT '',
+  event_type       TEXT NOT NULL DEFAULT 'war',      -- 'war' | 'cwl' | 'custom'
+  condition_type   TEXT NOT NULL DEFAULT 'total_stars',
+  -- 'total_stars' | 'best_destruction' | 'perfect_war' | 'most_attacks_used'
+  -- | 'fewest_stars_conceded' | 'top_donations' | 'manual'
+  top_n            INTEGER NOT NULL DEFAULT 3,        -- lấy top N người
+  reward_name      TEXT DEFAULT '',
+  reward_image_url TEXT DEFAULT '',
+  reward_shop_link TEXT DEFAULT '',
+  war_end_time     TEXT DEFAULT '',                   -- endTime của war dùng để tính (lưu lúc tạo/kết thúc)
+  status           TEXT NOT NULL DEFAULT 'active',     -- 'active' | 'closed'
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+-- ── Event claims (người nhận thưởng) ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS event_claims (
+  id          SERIAL PRIMARY KEY,
+  event_id    INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  rank        INTEGER,
+  metric_value TEXT,                                  -- giá trị đạt được (vd "9 sao", "3 trận hoàn hảo")
+  claimed     BOOLEAN NOT NULL DEFAULT false,
+  claimed_at  TIMESTAMPTZ,
+  UNIQUE(event_id, player_tag)
+);
+
+ALTER TABLE events       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_claims ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_all" ON events       FOR ALL TO service_role USING (true);
+CREATE POLICY "service_all" ON event_claims FOR ALL TO service_role USING (true);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.events       TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_claims TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;

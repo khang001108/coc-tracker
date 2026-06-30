@@ -43,11 +43,13 @@ export default function DonatePage() {
   const totalReceived = members.reduce((s, m) => s + (m.donationsReceived || 0), 0);
   const topDonor = [...members].sort((a, b) => b.donations - a.donations)[0];
 
-  function SortBtn({ k, label }: { k: SortKey; label: string }) {
+  function SortBtn({ k, label, align = "left" }: { k: SortKey; label: string; align?: "left" | "right" }) {
     return (
       <button onClick={() => toggleSort(k)}
-        className={`flex items-center gap-1 text-xs font-medium transition-colors ${sortKey === k ? "text-yellow-400" : "text-gray-500 hover:text-gray-300"}`}>
-        {label} <ArrowUpDown size={10} />
+        className={`flex items-center gap-1 text-xs font-medium transition-colors w-full ${
+          align === "right" ? "justify-end" : "justify-start"
+        } ${sortKey === k ? "text-yellow-400" : "text-gray-500 hover:text-gray-300"}`}>
+        {label} <ArrowUpDown size={10} className="shrink-0" />
       </button>
     );
   }
@@ -95,19 +97,19 @@ export default function DonatePage() {
           {/* Table */}
           <div className="card !p-0 overflow-hidden">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-800/50 text-xs text-gray-500 font-medium border-b border-gray-800">
+            <div className="grid grid-cols-12 gap-1 px-3 py-3 bg-gray-800/50 text-xs text-gray-500 font-medium border-b border-gray-800">
               <div className="col-span-1"><SortBtn k="th" label="TH" /></div>
               <div className="col-span-4"><SortBtn k="name" label="Tên" /></div>
-              <div className="col-span-3 text-right"><SortBtn k="donations" label="Donate" /></div>
-              <div className="col-span-3 text-right"><SortBtn k="donationsReceived" label="Nhận" /></div>
-              <div className="col-span-1 text-right"><SortBtn k="ratio" label="Ratio" /></div>
+              <div className="col-span-3"><SortBtn k="donations" label="Donate" align="right" /></div>
+              <div className="col-span-3"><SortBtn k="donationsReceived" label="Nhận" align="right" /></div>
+              <div className="col-span-1"><SortBtn k="ratio" label="Ratio" align="right" /></div>
             </div>
             <div className="divide-y divide-gray-800/50">
               {sorted.map((m, i) => {
                 const ratio = m.donationsReceived > 0 ? (m.donations / m.donationsReceived).toFixed(1) : "∞";
                 const ratioNum = m.donationsReceived > 0 ? m.donations / m.donationsReceived : 99;
                 return (
-                  <div key={m.tag} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-800/30 transition-colors">
+                  <div key={m.tag} className="grid grid-cols-12 gap-1 px-3 py-3 items-center hover:bg-gray-800/30 transition-colors">
                     <div className="col-span-1">
                       <div className="w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center"
                         style={{ color: thColor(m.th), background: thColor(m.th) + "22" }}>

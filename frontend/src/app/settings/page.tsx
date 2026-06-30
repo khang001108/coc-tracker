@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { AdminGate } from "@/components/ui/AdminGate";
 
 function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
   return (
@@ -23,7 +24,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
   );
 }
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -334,5 +335,13 @@ export default function SettingsPage() {
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <AdminGate>
+      <SettingsPageInner />
+    </AdminGate>
   );
 }
