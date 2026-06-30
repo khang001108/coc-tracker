@@ -8,10 +8,13 @@ import {
   MessageCircle, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-const MAIN = [
+const LEFT = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
   { href: "/war",      label: "War",       icon: Swords },
+];
+const RIGHT = [
   { href: "/chat",     label: "Chat",      icon: MessageCircle },
   { href: "/events",   label: "Sự kiện",   icon: PartyPopper },
 ];
@@ -26,6 +29,21 @@ const MORE = [
   { href: "/settings", label: "Cài đặt",      icon: Settings },
 ];
 
+function NavLink({ href, label, icon: Icon, active }: any) {
+  return (
+    <Link href={href}
+      className={cn(
+        "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-w-0 transition-colors",
+        active ? "text-yellow-400" : "text-gray-500"
+      )}>
+      <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", active && "icon-btn-game")}>
+        <Icon size={active ? 14 : 17} className={active ? "text-gray-900" : ""} />
+      </span>
+      <span className="text-[9px] font-medium truncate">{label}</span>
+    </Link>
+  );
+}
+
 export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -33,66 +51,42 @@ export function MobileNav() {
 
   return (
     <>
+      {/* 6 cột bằng nhau: mỗi mục có chỗ riêng, nút "Chơi" cũng là 1 cột — không đè lên mục khác */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch">
-        {MAIN.slice(0, 2).map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          return (
-            <Link key={href} href={href}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
-                active ? "text-yellow-400" : "text-gray-500"
-              )}>
-              <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", active && "icon-btn-game")}>
-                <Icon size={active ? 14 : 18} className={active ? "text-gray-900" : ""} />
-              </span>
-              <span className="text-[9px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
+        {LEFT.map(({ href, label, icon }) => (
+          <NavLink key={href} href={href} label={label} icon={icon}
+            active={href === "/" ? pathname === "/" : pathname.startsWith(href)} />
+        ))}
 
-        {/* Khoảng trống giữa cho nút "Chơi" nổi đè lên */}
-        <div className="flex-1" />
+        {/* Cột giữa — nút Chơi, có không gian riêng, chỉ nổi lên cao hơn 1 chút */}
+        <a href="https://link.clashofclans.com/" target="_blank" rel="noreferrer"
+          className="flex-1 flex flex-col items-center justify-center min-w-0">
+          <span className="w-12 h-12 rounded-full flex items-center justify-center -mt-5 shrink-0"
+            style={{
+              background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
+              border: "3px solid #160d24",
+              boxShadow: "0 4px 0 #6B4115, 0 8px 16px rgba(0,0,0,0.5)",
+            }}>
+            <Shield size={18} className="text-gray-900" />
+          </span>
+          <span className="text-[9px] font-bold text-yellow-400 mt-0.5">Chơi</span>
+        </a>
 
-        {MAIN.slice(2).map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          return (
-            <Link key={href} href={href}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
-                active ? "text-yellow-400" : "text-gray-500"
-              )}>
-              <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", active && "icon-btn-game")}>
-                <Icon size={active ? 14 : 18} className={active ? "text-gray-900" : ""} />
-              </span>
-              <span className="text-[9px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
+        {RIGHT.map(({ href, label, icon }) => (
+          <NavLink key={href} href={href} label={label} icon={icon} active={pathname.startsWith(href)} />
+        ))}
 
         <button onClick={() => setOpen(true)}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors relative",
+            "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-w-0 transition-colors",
             moreActive ? "text-yellow-400" : "text-gray-500"
           )}>
-          <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", moreActive && "icon-btn-game")}>
-            <MoreHorizontal size={moreActive ? 14 : 18} className={moreActive ? "text-gray-900" : ""} />
+          <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", moreActive && "icon-btn-game")}>
+            <MoreHorizontal size={moreActive ? 14 : 17} className={moreActive ? "text-gray-900" : ""} />
           </span>
           <span className="text-[9px] font-medium">Thêm</span>
         </button>
       </nav>
-
-      {/* Nút "Chơi" to, nổi đè lên giữa thanh nav */}
-      <a href="https://link.clashofclans.com/" target="_blank" rel="noreferrer"
-        className="md:hidden fixed z-30 flex flex-col items-center justify-center w-16 h-16 rounded-full"
-        style={{
-          left: "50%", transform: "translateX(-50%)", bottom: 26,
-          background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
-          border: "3px solid #160d24",
-          boxShadow: "0 4px 0 #6B4115, 0 8px 18px rgba(0,0,0,0.5)",
-        }}>
-        <Shield size={22} className="text-gray-900" />
-        <span className="text-[9px] font-bold text-gray-900 mt-0.5">Chơi</span>
-      </a>
 
       {open && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)}>
@@ -102,7 +96,7 @@ export function MobileNav() {
               <p className="text-sm font-semibold text-gray-300">Thêm mục</p>
               <button onClick={() => setOpen(false)} className="p-1 text-gray-500"><X size={18} /></button>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               {MORE.map(({ href, label, icon: Icon }) => {
                 const active = pathname.startsWith(href);
                 return (
@@ -122,6 +116,7 @@ export function MobileNav() {
                 );
               })}
             </div>
+            <ThemeToggle />
           </div>
         </div>
       )}

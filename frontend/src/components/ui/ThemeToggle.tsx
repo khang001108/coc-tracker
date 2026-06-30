@@ -37,10 +37,25 @@ export function ThemeToggle({ variant = "full" }: { variant?: "full" | "icon" })
     );
   }
 
+  if (variant === "icon") {
+    return (
+      <button onClick={toggle} className="icon-btn-game w-9 h-9">
+        {theme === "dark" ? <Sun size={15} className="text-gray-900" /> : <Moon size={15} className="text-gray-900" />}
+      </button>
+    );
+  }
+
   return (
     <button onClick={toggle}
-      className="fixed top-3 left-3 md:left-[15.5rem] z-40 icon-btn-game w-10 h-10">
-      {theme === "dark" ? <Sun size={16} className="text-gray-900" /> : <Moon size={16} className="text-gray-900" />}
+      className="flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm w-full transition-all"
+      style={{
+        background: theme === "dark"
+          ? "linear-gradient(180deg, #FFF6DE, #F2DFAD)"
+          : "linear-gradient(180deg, #2a2f3a, #161920)",
+        color: theme === "dark" ? "#5C4517" : "#e5e7eb",
+        border: `1px solid ${theme === "dark" ? "#D8B968" : "#1c1f26"}`,
+      }}>
+      {theme === "dark" ? <><Sun size={15} /> Giao diện sáng</> : <><Moon size={15} /> Giao diện tối</>}
     </button>
   );
 }
