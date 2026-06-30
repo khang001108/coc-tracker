@@ -76,16 +76,30 @@ export function MobileNav() {
 
         {/* Cột giữa — nút Chơi, có không gian riêng, chỉ nổi lên cao hơn 1 chút */}
         <GamePlayButton className="flex-1 flex flex-col items-center justify-center min-w-0">
-          <span className="w-12 h-12 rounded-full flex items-center justify-center -mt-5 shrink-0"
-            style={{
-              background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
-              border: "3px solid #160d24",
-              boxShadow: "0 4px 0 #6B4115, 0 8px 16px rgba(0,0,0,0.5)",
-            }}>
-            <Shield size={18} className="text-gray-900" />
+          <span className="relative -mt-6 shrink-0">
+            <span className="absolute inset-0 rounded-full animate-gold-pulse"
+              style={{ background: "radial-gradient(circle, rgba(244,161,48,0.5), transparent 70%)" }} />
+            <span className="relative flex items-center justify-center w-[52px] h-[52px] rounded-full"
+              style={{
+                background: "conic-gradient(from 200deg, #FFE8B8, #F4A130, #B8731A, #F4A130, #FFE8B8)",
+                padding: 3,
+                boxShadow: "0 4px 0 #6B4115, 0 10px 20px rgba(0,0,0,0.55)",
+              }}>
+              <span className="flex items-center justify-center w-full h-full rounded-full"
+                style={{
+                  background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
+                  border: "2px solid #160d24",
+                }}>
+                <Shield size={20} className="text-gray-900 drop-shadow" />
+              </span>
+            </span>
           </span>
-          <span className="text-[9px] font-bold text-yellow-400 mt-0.5">Chơi</span>
+          <span className="text-[9px] font-extrabold tracking-wide mt-1 px-1.5 py-0.5 rounded-full"
+            style={{ color: "#1A0F05", background: "linear-gradient(180deg, #FFE8B8, #F4A130)" }}>
+            CHƠI
+          </span>
         </GamePlayButton>
+
 
         {RIGHT.map(({ href, label, icon }) => (
           <NavLink key={href} href={href} label={label} icon={icon} active={pathname.startsWith(href)} />
