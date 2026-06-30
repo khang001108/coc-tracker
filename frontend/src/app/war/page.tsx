@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatDate, thColor } from "@/lib/utils";
-import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy } from "lucide-react";
+import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List } from "lucide-react";
+import WarBattlefieldMap from "./WarBattlefieldMap";
 
 function AttackBar({ attacks, maxAttacks = 2 }: { attacks: any[]; maxAttacks?: number }) {
   return (
@@ -56,6 +57,7 @@ export default function WarPage() {
   const [warLog, setWarLog] = useState<any[]>([]);
   const [cwl, setCwl] = useState<any>(null);
   const [tab, setTab] = useState<"current" | "log" | "cwl">("current");
+  const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -146,12 +148,29 @@ export default function WarPage() {
               )}
 
               {/* Member list */}
-              <div className="card">
-                <h3 className="font-bold text-white mb-3">Danh sách tấn công ({clanMembers.length} thành viên)</h3>
-                {clanMembers.map((m: any) => (
-                  <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} />
-                ))}
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white text-sm">Danh sách tấn công ({clanMembers.length} thành viên)</h3>
+                <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
+                  <button onClick={() => setViewMode("map")}
+                    className={`p-1.5 rounded-md ${viewMode === "map" ? "bg-yellow-500 text-gray-900" : "text-gray-500"}`}>
+                    <Map size={14} />
+                  </button>
+                  <button onClick={() => setViewMode("list")}
+                    className={`p-1.5 rounded-md ${viewMode === "list" ? "bg-yellow-500 text-gray-900" : "text-gray-500"}`}>
+                    <List size={14} />
+                  </button>
+                </div>
               </div>
+
+              {viewMode === "map" ? (
+                <WarBattlefieldMap war={war} />
+              ) : (
+                <div className="card">
+                  {clanMembers.map((m: any) => (
+                    <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </>
