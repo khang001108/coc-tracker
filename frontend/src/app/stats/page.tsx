@@ -170,7 +170,7 @@ export default function StatsPage() {
                     labelLine={false}>
                     {roleData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 12, fontSize: 12 }} />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>

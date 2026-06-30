@@ -39,13 +39,14 @@ export function roleClass(role: string): string {
 
 export function thColor(th: number): string {
   const colors: Record<number, string> = {
-    1: "#808080", 2: "#808080", 3: "#808080",
+    1: "#9CA3AF", 2: "#9CA3AF", 3: "#9CA3AF",
     4: "#4CAF50", 5: "#4CAF50", 6: "#4CAF50",
     7: "#2196F3", 8: "#2196F3", 9: "#2196F3",
     10: "#9C27B0", 11: "#9C27B0", 12: "#FF9800",
     13: "#FF5722", 14: "#F44336", 15: "#E91E63", 16: "#FFD700",
+    17: "#00E5FF", 18: "#76FF03", 19: "#FF6EC7", 20: "#FFFFFF",
   };
-  return colors[th] || "#666";
+  return colors[th] || "#E5E7EB";
 }
 
 export function warStateLabel(state: string): { label: string; color: string } {
