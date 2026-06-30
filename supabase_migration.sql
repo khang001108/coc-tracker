@@ -137,4 +137,41 @@ CREATE TABLE IF NOT EXISTS soundtracks (
 ALTER TABLE soundtracks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "service_all" ON soundtracks FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.soundtracks TO service_role;
+
+-- ── Member accounts (nhận diện thành viên — mỗi player_tag chỉ 1 người nhận) ──
+CREATE TABLE IF NOT EXISTS member_accounts (
+  player_tag  TEXT PRIMARY KEY,
+  player_name TEXT NOT NULL,
+  pin_hash    TEXT NOT NULL,
+  claimed_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ── Chat messages ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id          SERIAL PRIMARY KEY,
+  room        TEXT NOT NULL DEFAULT 'global',  -- 'clan' | 'global'
+  sender_name TEXT NOT NULL,
+  sender_tag  TEXT,
+  message     TEXT DEFAULT '',
+  image_url   TEXT,
+  is_system   BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_chat_room_id ON chat_messages(room, id);
+
+-- ── Donation tracker (phát hiện donate tăng để thông báo trong chat clan) ────
+CREATE TABLE IF NOT EXISTS donation_tracker (
+  player_tag      TEXT PRIMARY KEY,
+  last_donations  INTEGER NOT NULL DEFAULT 0
+);
+
+ALTER TABLE member_accounts   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE donation_tracker  ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_all" ON member_accounts  FOR ALL TO service_role USING (true);
+CREATE POLICY "service_all" ON chat_messages    FOR ALL TO service_role USING (true);
+CREATE POLICY "service_all" ON donation_tracker FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.member_accounts  TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_messages    TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.donation_tracker TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;

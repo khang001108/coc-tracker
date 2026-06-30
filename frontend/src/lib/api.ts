@@ -1,5 +1,7 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const TOKEN_KEY = "coc_admin_token";
+const MEMBER_TOKEN_KEY = "coc_member_token";
+const GUEST_NAME_KEY = "coc_guest_name";
 
 export function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -10,6 +12,25 @@ export function setAdminToken(token: string) {
 }
 export function clearAdminToken() {
   if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getMemberAuth(): { token: string; player_tag: string; player_name: string } | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(MEMBER_TOKEN_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+export function setMemberAuth(data: { token: string; player_tag: string; player_name: string }) {
+  if (typeof window !== "undefined") localStorage.setItem(MEMBER_TOKEN_KEY, JSON.stringify(data));
+}
+export function clearMemberAuth() {
+  if (typeof window !== "undefined") localStorage.removeItem(MEMBER_TOKEN_KEY);
+}
+export function getGuestName(): string {
+  if (typeof window === "undefined") return "Khách";
+  return localStorage.getItem(GUEST_NAME_KEY) || "";
+}
+export function setGuestName(name: string) {
+  if (typeof window !== "undefined") localStorage.setItem(GUEST_NAME_KEY, name);
 }
 
 async function apiFetch(path: string, opts?: RequestInit, retries = 1) {
@@ -142,6 +163,45 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Lỗi tải nhạc" }));
       throw new Error(err.detail || "Lỗi tải nhạc");
+    }
+    return res.json();
+  },
+
+  // Member identity (claim/login)
+  getRoster:    () => apiFetch("/api/member/roster"),
+  claimMember:  (player_tag: string, player_name: string, pin: string) =>
+    apiFetch("/api/member/claim", { method: "POST", body: JSON.stringify({ player_tag, player_name, pin }) }),
+  loginMember:  (player_tag: string, pin: string) =>
+    apiFetch("/api/member/login", { method: "POST", body: JSON.stringify({ player_tag, pin }) }),
+  releaseMember: (player_tag: string) =>
+    apiFetch("/api/member/release", { method: "POST", body: JSON.stringify({ player_tag }) }),
+
+  // Chat
+  getMessages: (room: "clan" | "global", afterId = 0) =>
+    apiFetch(`/api/chat/messages?room=${room}&after_id=${afterId}&limit=50`),
+  sendMessage: async (room: "clan" | "global", message: string, image_url?: string, sender_name?: string) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/chat/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(room === "clan" && member ? { "X-Member-Token": member.token } : {}),
+      },
+      body: JSON.stringify({ room, message, image_url, sender_name }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi gửi tin nhắn" }));
+      throw new Error(err.detail || "Lỗi gửi tin nhắn");
+    }
+    return res.json();
+  },
+  uploadChatImage: async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${API}/api/chat/upload-image`, { method: "POST", body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi tải ảnh" }));
+      throw new Error(err.detail || "Lỗi tải ảnh");
     }
     return res.json();
   },

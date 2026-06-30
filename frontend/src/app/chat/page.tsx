@@ -1,0 +1,209 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api";
+import { getMemberAuth, getGuestName, setGuestName } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { MessageCircle, Send, Image as ImageIcon, Smile, Lock, Users, Globe } from "lucide-react";
+
+const EMOJIS = ["😀","😂","😍","😎","🤔","👍","👎","🔥","❤️","🎉","😢","😡","🏆","⚔️","🛡️","💪","🙏","👏","😴","🤝"];
+const POLL_MS = 4000;
+
+function MessageBubble({ msg, isMine }: { msg: any; isMine: boolean }) {
+  if (msg.is_system) {
+    return (
+      <div className="flex justify-center">
+        <span className="text-[11px] text-yellow-500/80 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-3 py-1">
+          {msg.message}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+      <div className={`max-w-[78%] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
+        {!isMine && <span className="text-[11px] text-gray-500 px-1">{msg.sender_name}</span>}
+        <div className={`rounded-2xl px-3.5 py-2 ${isMine ? "bg-yellow-500 text-gray-900" : "card !p-0 !border-0"}`}
+          style={!isMine ? { padding: "8px 14px" } : {}}>
+          {msg.image_url && (
+            <img src={msg.image_url} alt="" className="rounded-xl max-w-[220px] max-h-[220px] object-cover mb-1.5" />
+          )}
+          {msg.message && <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>}
+        </div>
+        <span className="text-[10px] text-gray-600 px-1">{formatDate(msg.created_at)}</span>
+      </div>
+    </div>
+  );
+}
+
+export default function ChatPage() {
+  const [room, setRoom] = useState<"clan" | "global">("global");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [guestNameInput, setGuestNameInput] = useState("");
+  const [member, setMember] = useState<{ token: string; player_tag: string; player_name: string } | null>(null);
+  const lastIdRef = useRef(0);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setMember(getMemberAuth());
+    setGuestNameInput(getGuestName());
+  }, []);
+
+  async function loadInitial() {
+    lastIdRef.current = 0;
+    setMessages([]);
+    try {
+      const data = await api.getMessages(room, 0);
+      setMessages(data);
+      if (data.length) lastIdRef.current = data[data.length - 1].id;
+    } catch {}
+    scrollToBottom();
+  }
+
+  async function pollNew() {
+    try {
+      const data = await api.getMessages(room, lastIdRef.current);
+      if (data.length) {
+        setMessages(prev => [...prev, ...data]);
+        lastIdRef.current = data[data.length - 1].id;
+        scrollToBottom();
+      }
+    } catch {}
+  }
+
+  function scrollToBottom() {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    }, 50);
+  }
+
+  useEffect(() => {
+    loadInitial();
+    if (pollTimer.current) clearInterval(pollTimer.current);
+    pollTimer.current = setInterval(pollNew, POLL_MS);
+    return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
+  }, [room]);
+
+  async function handleSend(imageUrl?: string) {
+    const text = input.trim();
+    if (!text && !imageUrl) return;
+    if (room === "clan" && !member) {
+      setError("Cần đăng nhập thành viên để chat trong clan");
+      return;
+    }
+    setSending(true);
+    setError("");
+    try {
+      const name = room === "global" ? (guestNameInput.trim() || "Khách") : undefined;
+      if (room === "global" && guestNameInput.trim()) setGuestName(guestNameInput.trim());
+      await api.sendMessage(room, text, imageUrl, name);
+      setInput("");
+      await pollNew();
+    } catch (e: any) {
+      setError(e.message || "Lỗi gửi tin nhắn");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSending(true);
+    try {
+      const res = await api.uploadChatImage(file);
+      await handleSend(res.url);
+    } catch (e: any) {
+      setError(e.message || "Lỗi tải ảnh");
+    } finally {
+      setSending(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  const canType = room === "global" || !!member;
+
+  return (
+    <div className="space-y-4 animate-fade-up h-[calc(100vh-7rem)] md:h-[calc(100vh-5rem)] flex flex-col">
+      <div>
+        <h1 className="page-title flex items-center gap-2">
+          <MessageCircle size={22} className="text-blue-400" /> Chat
+        </h1>
+        <p className="page-subtitle">Nói chuyện với clan hoặc với mọi người</p>
+      </div>
+
+      <div className="tab-pill-group">
+        <button onClick={() => setRoom("clan")} className={room === "clan" ? "tab-pill-active" : "tab-pill"}>
+          <Users size={13} className="inline mr-1 -mt-0.5" /> Chat Clan
+        </button>
+        <button onClick={() => setRoom("global")} className={room === "global" ? "tab-pill-active" : "tab-pill"}>
+          <Globe size={13} className="inline mr-1 -mt-0.5" /> Chat Toàn Cầu
+        </button>
+      </div>
+
+      <div className="card flex-1 flex flex-col !p-0 overflow-hidden min-h-0">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+          {messages.length === 0 ? (
+            <p className="text-center text-sm text-gray-600 py-8">Chưa có tin nhắn nào — bắt đầu trò chuyện đi!</p>
+          ) : (
+            messages.map(m => (
+              <MessageBubble key={m.id} msg={m}
+                isMine={room === "clan" ? m.sender_tag === member?.player_tag : false} />
+            ))
+          )}
+        </div>
+
+        <div className="border-t border-gray-800 p-3 space-y-2">
+          {room === "clan" && !member && (
+            <div className="flex items-center gap-2 text-sm text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2">
+              <Lock size={14} /> Cần <a href="/login" className="underline font-semibold">đăng nhập thành viên</a> để chat trong clan.
+            </div>
+          )}
+          {room === "global" && (
+            <input className="input text-xs !py-1.5" placeholder="Tên hiển thị của bạn (tuỳ chọn)"
+              value={guestNameInput} onChange={e => setGuestNameInput(e.target.value)} maxLength={30} />
+          )}
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
+          <div className="flex items-end gap-2">
+            <div className="relative">
+              <button onClick={() => setShowEmoji(v => !v)} disabled={!canType}
+                className="p-2.5 rounded-xl hover:bg-gray-800 text-gray-400 disabled:opacity-40">
+                <Smile size={18} />
+              </button>
+              {showEmoji && (
+                <div className="absolute bottom-full left-0 mb-2 card !p-2 grid grid-cols-5 gap-1 w-56 z-10">
+                  {EMOJIS.map(e => (
+                    <button key={e} onClick={() => { setInput(i => i + e); setShowEmoji(false); }}
+                      className="text-xl hover:bg-gray-800 rounded-lg p-1">{e}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => fileRef.current?.click()} disabled={!canType || sending}
+              className="p-2.5 rounded-xl hover:bg-gray-800 text-gray-400 disabled:opacity-40">
+              <ImageIcon size={18} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
+
+            <input className="input flex-1" placeholder={canType ? "Nhập tin nhắn..." : "Đăng nhập để chat..."}
+              value={input} disabled={!canType || sending}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} />
+
+            <button onClick={() => handleSend()} disabled={!canType || sending || !input.trim()}
+              className="icon-btn-game w-10 h-10 text-gray-900 disabled:opacity-40">
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

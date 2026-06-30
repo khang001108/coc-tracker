@@ -14,10 +14,11 @@ log = logging.getLogger("poller")
 scheduler = AsyncIOScheduler()
 
 async def start_scheduler():
-    scheduler.add_job(poll_clan,    IntervalTrigger(minutes=15), id="poll_clan",    replace_existing=True)
-    scheduler.add_job(poll_war,     IntervalTrigger(minutes=5),  id="poll_war",     replace_existing=True)
-    scheduler.add_job(poll_raid,    IntervalTrigger(minutes=10), id="poll_raid",    replace_existing=True)
-    scheduler.add_job(poll_members, IntervalTrigger(minutes=10), id="poll_members", replace_existing=True)
+    scheduler.add_job(poll_clan,      IntervalTrigger(minutes=15), id="poll_clan",      replace_existing=True)
+    scheduler.add_job(poll_war,       IntervalTrigger(minutes=5),  id="poll_war",       replace_existing=True)
+    scheduler.add_job(poll_raid,      IntervalTrigger(minutes=10), id="poll_raid",      replace_existing=True)
+    scheduler.add_job(poll_members,   IntervalTrigger(minutes=10), id="poll_members",   replace_existing=True)
+    scheduler.add_job(poll_donations, IntervalTrigger(minutes=10), id="poll_donations", replace_existing=True)
     scheduler.start()
     log.info("Scheduler started")
 
@@ -135,3 +136,33 @@ async def poll_members():
         log.info(f"Members polled: {len(current)} active")
     except Exception as e:
         log.error(f"poll_members error: {e}")
+
+async def poll_donations():
+    """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
+    nếu phát hiện ai đó vừa donate tăng. (CoC API không có dữ liệu 'xin lính' theo
+    thời gian thực — đây là cách gần nhất có thể làm được.)"""
+    try:
+        tag = await get_tag()
+        if not tag: return
+        sb = get_supabase()
+        members = await get_clan_members(tag)
+        res = sb.table("donation_tracker").select("player_tag,last_donations").execute()
+        prev = {r["player_tag"]: r["last_donations"] for r in res.data}
+
+        for m in members:
+            cur = m.get("donations", 0)
+            old = prev.get(m["tag"])
+            if old is not None and cur > old:
+                diff = cur - old
+                sb.table("chat_messages").insert({
+                    "room": "clan",
+                    "sender_name": "Hệ thống",
+                    "sender_tag": None,
+                    "message": f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur})",
+                    "is_system": True,
+                }).execute()
+            sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur}).execute()
+
+        log.info("Donation deltas checked")
+    except Exception as e:
+        log.error(f"poll_donations error: {e}")

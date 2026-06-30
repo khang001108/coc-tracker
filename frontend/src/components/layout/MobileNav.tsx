@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Users, Settings, MoreHorizontal,
   Castle, Gamepad2, Heart, BarChart3, PartyPopper, X, Shield,
+  MessageCircle, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -12,10 +13,12 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 const MAIN = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
   { href: "/war",      label: "War",       icon: Swords },
-  { href: "/members",  label: "Thành viên",icon: Users },
+  { href: "/chat",     label: "Chat",      icon: MessageCircle },
 ];
 
 const MORE = [
+  { href: "/members",  label: "Thành viên",   icon: Users },
+  { href: "/login",    label: "Đăng nhập",    icon: UserCheck },
   { href: "/capital",  label: "Clan Capital", icon: Castle },
   { href: "/games",    label: "Clan Games",   icon: Gamepad2 },
   { href: "/donate",   label: "Donate",       icon: Heart },
