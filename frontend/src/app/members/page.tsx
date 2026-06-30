@@ -2,13 +2,61 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
-import { Users, Search, UserPlus, UserMinus, Trophy } from "lucide-react";
+import { Users, Search, UserPlus, UserMinus, Trophy, Crown } from "lucide-react";
+
+const ROLE_ORDER = ["leader", "coLeader", "elder", "member"];
+const ROLE_TITLE: Record<string, string> = {
+  leader: "Thủ Lĩnh", coLeader: "Đồng Thủ Lĩnh", elder: "Huy Trưởng", member: "Thành Viên",
+};
+
+function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any) => void }) {
+  const groups = ROLE_ORDER.map(role => ({
+    role,
+    list: [...members.filter(m => m.role === role)].sort((a, b) => b.trophies - a.trophies),
+  })).filter(g => g.list.length > 0);
+
+  return (
+    <div className="space-y-6 py-2">
+      {groups.map((g, gi) => (
+        <div key={g.role} className="space-y-3">
+          <div className="flex items-center justify-center gap-2">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-yellow-500/30" style={{ maxWidth: 60 }} />
+            <span className="text-xs font-bold uppercase tracking-widest text-yellow-400 flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{ background: "linear-gradient(180deg, #2A1B4A, #1E1138)", border: "1px solid #4A3580" }}>
+              <Crown size={12} /> {ROLE_TITLE[g.role]} ({g.list.length})
+            </span>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-yellow-500/30" style={{ maxWidth: 60 }} />
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-3">
+            {g.list.map(m => (
+              <button key={m.tag} onClick={() => onSelect(m)}
+                className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl transition-all hover:-translate-y-1"
+                style={{
+                  background: "linear-gradient(180deg, #241640, #1A0F2E)",
+                  border: `1px solid ${gi === 0 ? "#F4A130" : "#3D2A66"}`,
+                  minWidth: gi === 0 ? 110 : 90,
+                  boxShadow: gi === 0 ? "0 0 16px rgba(244,161,48,0.25)" : "none",
+                }}>
+                <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
+                  {m.townHallLevel}
+                </div>
+                <p className="text-xs font-semibold text-white truncate max-w-[90px]">{m.name}</p>
+                <p className="text-[10px] text-yellow-400 font-medium">🏆 {formatNumber(m.trophies)}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [memberLog, setMemberLog] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"list" | "log">("list");
+  const [tab, setTab] = useState<"list" | "pyramid" | "log">("list");
   const [selected, setSelected] = useState<any>(null);
   const [playerDetail, setPlayerDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -50,7 +98,7 @@ export default function MembersPage() {
 
       {/* Tabs */}
       <div className="tab-pill-group">
-        {([["list","👥 Danh sách"],["log","📋 Nhật ký"]] as const).map(([id, label]) => (
+        {([["list","👥 Danh sách"],["pyramid","🔺 Sơ đồ"],["log","📋 Nhật ký"]] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`${
               tab === id ? "tab-pill-active" : "tab-pill"
@@ -60,6 +108,10 @@ export default function MembersPage() {
 
       {loading ? (
         <div className="card h-64 animate-pulse bg-gray-800" />
+      ) : tab === "pyramid" ? (
+        <div className="card">
+          <PyramidView members={members} onSelect={openPlayer} />
+        </div>
       ) : tab === "list" ? (
         <>
           {/* Search */}

@@ -21,7 +21,9 @@
 @layer components {
   /* ── Cards ── */
   .card {
-    @apply bg-gray-900 rounded-2xl border border-gray-800 p-5;
+    @apply rounded-2xl border p-5;
+    background-color: #1E1138;
+    border-color: #3D2A66;
   }
   .card-coc {
     @apply rounded-2xl border p-5;
@@ -92,9 +94,11 @@
 
   /* ── Input ── */
   .input {
-    @apply w-full border border-gray-700 rounded-xl px-4 py-2.5 text-sm
-           bg-gray-800 text-gray-100 placeholder-gray-500
+    @apply w-full rounded-xl px-4 py-2.5 text-sm border
+           text-gray-100 placeholder-gray-500
            focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-600;
+    background-color: #2A1B4A;
+    border-color: #3B2860;
   }
   .label { @apply block text-sm font-medium text-gray-400 mb-1; }
 
@@ -146,7 +150,10 @@
     @apply fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4;
   }
   .modal-box {
-    @apply bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl w-full max-h-[90vh] overflow-y-auto;
+    @apply rounded-2xl border shadow-2xl w-full max-h-[90vh] overflow-y-auto;
+    background-color: #1E1138;
+    border-color: #4A3580;
+    box-shadow: 0 0 0 1px rgba(244,161,48,0.15), 0 20px 50px rgba(0,0,0,0.6);
   }
 
   /* Touch: always show action buttons */
