@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { MusicPlayer } from "@/components/ui/MusicPlayer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -35,6 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           {/* Mobile bottom nav */}
           <MobileNav />
+
+          {/* Nhạc nền — luôn mount, không bị gián đoạn khi chuyển trang */}
+          <MusicPlayer />
         </div>
       </body>
     </html>

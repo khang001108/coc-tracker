@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Users, Settings, MoreHorizontal,
-  Castle, Gamepad2, Heart, BarChart3, PartyPopper, X,
+  Castle, Gamepad2, Heart, BarChart3, PartyPopper, X, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +83,12 @@ export function MobileNav() {
                 );
               })}
             </div>
+            <a href="https://link.clashofclans.com/" target="_blank" rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="mt-3 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white"
+              style={{ background: "linear-gradient(135deg, #F4A130, #8B4513)" }}>
+              <Shield size={16} /> Vào Clash of Clans
+            </a>
           </div>
         </div>
       )}

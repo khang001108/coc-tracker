@@ -124,4 +124,17 @@ CREATE POLICY "service_all" ON event_claims FOR ALL TO service_role USING (true)
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.events       TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_claims TO service_role;
+
+-- ── Soundtracks (nhạc nền) ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS soundtracks (
+  id          SERIAL PRIMARY KEY,
+  title       TEXT NOT NULL,
+  file_url    TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE soundtracks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_all" ON soundtracks FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.soundtracks TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;

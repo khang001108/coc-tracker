@@ -1,8 +1,128 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, Music2, Upload, Trash2, Play, Pause } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
+
+function MusicSettings() {
+  const [tracks, setTracks] = useState<any[]>([]);
+  const [config, setConfig] = useState({ enabled: false, mode: "all", selected_id: "" });
+  const [uploading, setUploading] = useState(false);
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const previewRef = useRef<HTMLAudioElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function load() {
+    const [t, c] = await Promise.all([api.getTracks().catch(() => []), api.getMusicConfig().catch(() => null)]);
+    setTracks(t || []);
+    if (c) setConfig(c);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function saveConfig(next: Partial<typeof config>) {
+    const merged = { ...config, ...next };
+    setConfig(merged);
+    await api.updateMusicConfig(merged);
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        await api.uploadTrack(file);
+      }
+      await load();
+    } catch (err: any) {
+      alert(err.message || "Lỗi tải nhạc lên");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("Xoá bài hát này?")) return;
+    await api.deleteTrack(id);
+    await load();
+  }
+
+  function preview(track: any) {
+    if (!previewRef.current) return;
+    if (playingId === track.id) {
+      previewRef.current.pause();
+      setPlayingId(null);
+    } else {
+      previewRef.current.src = track.file_url;
+      previewRef.current.play();
+      setPlayingId(track.id);
+    }
+  }
+
+  return (
+    <div className="card space-y-4">
+      <audio ref={previewRef} onEnded={() => setPlayingId(null)} />
+      <h3 className="font-bold text-white flex items-center gap-2">
+        <Music2 size={18} className="text-purple-400" /> Nhạc nền
+      </h3>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-300">Bật nhạc nền cho website</p>
+        <button onClick={() => saveConfig({ enabled: !config.enabled })}
+          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${config.enabled ? "bg-yellow-500" : "bg-gray-700"}`}>
+          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${config.enabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1.5 block">Chế độ phát</label>
+        <div className="flex gap-2">
+          <button onClick={() => saveConfig({ mode: "all" })}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${config.mode === "all" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30" : "bg-gray-800 text-gray-400"}`}>
+            Phát tất cả (lần lượt)
+          </button>
+          <button onClick={() => saveConfig({ mode: "single" })}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${config.mode === "single" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30" : "bg-gray-800 text-gray-400"}`}>
+            Phát 1 bài chỉ định
+          </button>
+        </div>
+        {config.mode === "single" && (
+          <select className="input mt-2" value={config.selected_id}
+            onChange={e => saveConfig({ selected_id: e.target.value })}>
+            <option value="">— Chọn bài hát —</option>
+            {tracks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+        )}
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1.5 block">Danh sách bài hát ({tracks.length})</label>
+        <div className="space-y-1.5 mb-3">
+          {tracks.map(t => (
+            <div key={t.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+              <button onClick={() => preview(t)} className="p-1.5 rounded-full hover:bg-gray-700 text-yellow-400 shrink-0">
+                {playingId === t.id ? <Pause size={14} /> : <Play size={14} />}
+              </button>
+              <span className="text-sm text-white flex-1 truncate">{t.title}</span>
+              <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-full hover:bg-gray-700 text-red-400 shrink-0">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          {tracks.length === 0 && <p className="text-sm text-gray-600">Chưa có bài hát nào</p>}
+        </div>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="btn-secondary text-sm flex items-center gap-2 w-fit">
+          <Upload size={14} /> {uploading ? "Đang tải lên..." : "Tải nhạc lên (chọn nhiều file)"}
+        </button>
+        <input ref={fileRef} type="file" accept="audio/*" multiple className="hidden" onChange={handleUpload} />
+        <p className="text-[11px] text-gray-600 mt-1.5">Hỗ trợ MP3, WAV, OGG, M4A — tối đa 20MB mỗi file.</p>
+      </div>
+    </div>
+  );
+}
 
 function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
   return (
@@ -341,7 +461,10 @@ function SettingsPageInner() {
 export default function SettingsPage() {
   return (
     <AdminGate>
-      <SettingsPageInner />
+      <div className="space-y-6 max-w-2xl">
+        <SettingsPageInner />
+        <MusicSettings />
+      </div>
     </AdminGate>
   );
 }

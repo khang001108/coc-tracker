@@ -123,4 +123,26 @@ export const api = {
     }
     return res.json();
   },
+
+  // Music
+  getTracks:    () => apiFetch("/api/music/tracks"),
+  getMusicConfig: () => apiFetch("/api/music/config"),
+  updateMusicConfig: (data: any) => apiFetch("/api/music/config", { method: "POST", body: JSON.stringify(data) }),
+  deleteTrack:  (id: number) => apiFetch(`/api/music/tracks/${id}`, { method: "DELETE" }),
+  uploadTrack: async (file: File, title?: string) => {
+    const token = getAdminToken();
+    const fd = new FormData();
+    fd.append("file", file);
+    if (title) fd.append("title", title);
+    const res = await fetch(`${API}/api/music/tracks${title ? `?title=${encodeURIComponent(title)}` : ""}`, {
+      method: "POST",
+      headers: token ? { "X-Admin-Token": token } : {},
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi tải nhạc" }));
+      throw new Error(err.detail || "Lỗi tải nhạc");
+    }
+    return res.json();
+  },
 };
