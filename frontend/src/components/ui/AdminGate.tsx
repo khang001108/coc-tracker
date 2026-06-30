@@ -45,6 +45,8 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
           <p className="text-sm text-gray-400">Nhập mật khẩu admin để tiếp tục</p>
           <input
             type="password"
+            name="admin_password_login"
+            autoComplete="current-password"
             className="input"
             placeholder="Mật khẩu"
             value={password}

@@ -284,6 +284,12 @@ function SettingsPageInner() {
             <input
               className="input pr-10"
               type={showKey ? "text" : "password"}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              name="coc_api_key_field"
+              data-lpignore="true"
+              data-1p-ignore
               value={settings.coc_api_key || ""}
               onChange={e => set("coc_api_key", e.target.value)}
               placeholder="eyJ0eXAiOiJKV1Qi..."
