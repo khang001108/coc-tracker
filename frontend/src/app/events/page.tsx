@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { Portal } from "@/components/ui/Portal";
+import { FireworkField } from "@/components/ui/FireworkField";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
@@ -55,7 +56,7 @@ function Hero() {
   return (
     <div className="relative rounded-2xl overflow-hidden p-6 md:p-8"
       style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.18), rgba(236,72,153,0.12), rgba(139,69,19,0.15))" }}>
-      <Confetti />
+      <FireworkField bursts={4} />
       <div className="relative flex items-center gap-4">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 animate-gold-pulse"
           style={{ background: "linear-gradient(135deg, #F4A130, #ec4899)" }}>

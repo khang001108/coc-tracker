@@ -252,13 +252,15 @@ function SettingsPageInner() {
   );
 
   return (
-    <div className="space-y-6 max-w-2xl animate-fade-up">
+    <div className="space-y-6 max-w-5xl animate-fade-up">
       <div>
         <h1 className="page-title flex items-center gap-2">
           <Settings size={22} className="text-yellow-400" /> Cài đặt
         </h1>
         <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
       </div>
+
+      <div className="columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
 
       {/* ── CoC API Key ── */}
       <div className="card space-y-4">
@@ -480,6 +482,8 @@ function SettingsPageInner() {
         </button>
       </div>
 
+      </div>
+
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </div>
   );
@@ -614,7 +618,7 @@ function ShopPricingSettings() {
 export default function SettingsPage() {
   return (
     <AdminGate>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-5xl">
         <SettingsPageInner />
         <MusicSettings />
         <MemberAccountsSettings />

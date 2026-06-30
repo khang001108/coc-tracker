@@ -105,27 +105,59 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
             {war?.opponent?.name || "Địch"}
           </div>
 
-          {/* SVG đường tấn công */}
+          {/* SVG đường tấn công — đường cong, hiệu ứng dòng năng lượng chạy + nổ ở điểm đáp */}
           <svg className="absolute inset-0 pointer-events-none" width="100%" height={height} style={{ overflow: "visible" }}>
             <defs>
               <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
                 <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" />
               </marker>
+              <filter id="line-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
             {lines.map(l => {
               const rightX = containerWidth - COL_X_RIGHT_OFFSET;
               const x1 = l.fromSide === "left" ? COL_X_LEFT : rightX;
               const x2 = l.fromSide === "left" ? rightX : COL_X_LEFT;
               const active = hovered === null || hovered === l.id;
+              // Đường cong khoa học: điểm điều khiển lệch theo chiều dọc, tạo dáng vòng cung thay vì thẳng tắp
+              const midX = (x1 + x2) / 2;
+              const bow = Math.min(Math.abs(l.toY - l.fromY) * 0.35 + 18, 60) * (l.fromSide === "left" ? 1 : -1);
+              const midY = (l.fromY + l.toY) / 2 - bow;
+              const path = `M ${x1} ${l.fromY} Q ${midX} ${midY} ${x2} ${l.toY}`;
               return (
-                <g key={l.id} opacity={active ? 1 : 0.12} style={{ color: starColor(l.stars), transition: "opacity 0.2s" }}>
-                  <line x1={x1} y1={l.fromY} x2={x2} y2={l.toY}
-                    stroke={starColor(l.stars)} strokeWidth={hovered === l.id ? 2.5 : 1.5}
-                    strokeDasharray="5,4" markerEnd="url(#arrow)" />
+                <g key={l.id} opacity={active ? 1 : 0.1} style={{ color: starColor(l.stars), transition: "opacity 0.2s" }}>
+                  <path d={path} fill="none" stroke={starColor(l.stars)}
+                    strokeWidth={hovered === l.id ? 2.5 : 1.5}
+                    strokeDasharray="7,6" strokeLinecap="round"
+                    filter="url(#line-glow)"
+                    style={{ animation: "dash-flow 1s linear infinite" }}
+                    markerEnd="url(#arrow)" />
                 </g>
               );
             })}
           </svg>
+
+          {/* Hiệu ứng nổ tại điểm đáp của mỗi đòn đánh */}
+          {lines.map(l => {
+            const rightX = containerWidth - COL_X_RIGHT_OFFSET;
+            const x2 = l.fromSide === "left" ? rightX : COL_X_LEFT;
+            const active = hovered === null || hovered === l.id;
+            return (
+              <div key={`fx-${l.id}`} className="absolute rounded-full pointer-events-none"
+                style={{
+                  left: x2 - 9, top: l.toY - 9, width: 18, height: 18,
+                  opacity: active ? 1 : 0.08,
+                  background: `radial-gradient(circle, ${starColor(l.stars)}cc, transparent 70%)`,
+                  boxShadow: `0 0 8px 2px ${starColor(l.stars)}88`,
+                  animation: "explosion-pop 1.6s ease-out infinite",
+                }} />
+            );
+          })}
 
           {/* Cột nhà bên ta */}
           {ourTeam.map((m: any) => {

@@ -76,7 +76,7 @@ async def me(x_member_token: str | None = Header(default=None)):
     if not player_tag:
         raise HTTPException(401, "Chưa đăng nhập")
     sb = get_supabase()
-    res = sb.table("member_accounts").select("player_tag,player_name").eq("player_tag", player_tag).execute()
+    res = sb.table("member_accounts").select("player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").eq("player_tag", player_tag).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy tài khoản")
     return res.data[0]
