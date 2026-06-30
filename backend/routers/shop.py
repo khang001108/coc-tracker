@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException, Request, Header, Depends
 from supabase_client import get_supabase
 from member_auth import verify_member_token
+from auth import require_admin
 
 router = APIRouter()
 
@@ -19,7 +20,7 @@ async def my_inventory(x_member_token: str | None = Header(default=None)):
         raise HTTPException(401, "Cần đăng nhập")
     sb = get_supabase()
     inv = sb.table("member_inventory").select("item_id").eq("player_tag", tag).execute()
-    acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect").eq("player_tag", tag).execute()
+    acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").eq("player_tag", tag).execute()
     if not acc.data:
         raise HTTPException(404, "Không tìm thấy tài khoản")
     return {
@@ -28,7 +29,21 @@ async def my_inventory(x_member_token: str | None = Header(default=None)):
         "equipped_castle": acc.data[0].get("equipped_castle") or "castle_classic",
         "equipped_cannon": acc.data[0].get("equipped_cannon") or "cannon_basic",
         "equipped_effect": acc.data[0].get("equipped_effect"),
+        "equipped_number_effect": acc.data[0].get("equipped_number_effect"),
     }
+
+
+@router.put("/items/{item_id}/price")
+async def update_price(item_id: int, request: Request, _: bool = Depends(require_admin)):
+    body = await request.json()
+    price = body.get("price_coins")
+    if price is None or int(price) < 0:
+        raise HTTPException(400, "Giá không hợp lệ")
+    sb = get_supabase()
+    res = sb.table("shop_items").update({"price_coins": int(price)}).eq("id", item_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Không tìm thấy vật phẩm")
+    return res.data[0]
 
 
 @router.post("/buy/{item_id}")
@@ -66,7 +81,7 @@ async def equip_item(request: Request, x_member_token: str | None = Header(defau
     body = await request.json()
     item_type = body.get("item_type")
     svg_key = body.get("svg_key")
-    if item_type not in ("castle", "cannon", "effect"):
+    if item_type not in ("castle", "cannon", "effect", "number_effect"):
         raise HTTPException(400, "item_type không hợp lệ")
 
     sb = get_supabase()
@@ -81,6 +96,6 @@ async def equip_item(request: Request, x_member_token: str | None = Header(defau
         if not owned.data and not is_free:
             raise HTTPException(403, "Bạn chưa sở hữu vật phẩm này")
 
-    field = {"castle": "equipped_castle", "cannon": "equipped_cannon", "effect": "equipped_effect"}[item_type]
+    field = {"castle": "equipped_castle", "cannon": "equipped_cannon", "effect": "equipped_effect", "number_effect": "equipped_number_effect"}[item_type]
     sb.table("member_accounts").update({field: svg_key}).eq("player_tag", tag).execute()
     return {"ok": True}

@@ -546,6 +546,71 @@ function MemberAccountsSettings() {
   );
 }
 
+function ShopPricingSettings() {
+  const [items, setItems] = useState<any[]>([]);
+  const [edits, setEdits] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [toastMsg, setToastMsg] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try { setItems(await api.getShopItems()); } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function save(item: any) {
+    const val = edits[item.id];
+    if (val === undefined) return;
+    setSavingId(item.id);
+    try {
+      await api.updateShopItemPrice(item.id, Number(val));
+      setToastMsg(`Đã cập nhật giá "${item.name}"`);
+      setTimeout(() => setToastMsg(""), 2000);
+      await load();
+    } catch (e: any) {
+      alert(e.message || "Lỗi cập nhật giá");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  const TYPE_LABEL: Record<string, string> = { castle: "🏰 Lâu đài", cannon: "💣 Pháo", effect: "✨ Hiệu ứng tên" };
+  const grouped = items.reduce((acc: Record<string, any[]>, it) => {
+    (acc[it.item_type] ||= []).push(it);
+    return acc;
+  }, {});
+
+  return (
+    <div className="card space-y-4">
+      <h3 className="font-bold text-white">🏷️ Giá Cửa hàng vật phẩm</h3>
+      <p className="text-xs text-gray-500">Chỉnh giá Coins cho từng vật phẩm trong Cửa hàng. Đặt 0 = miễn phí mặc định.</p>
+      {toastMsg && <p className="text-xs text-green-400">{toastMsg}</p>}
+      {loading ? (
+        <div className="h-24 bg-gray-800 rounded-xl animate-pulse" />
+      ) : (
+        Object.entries(grouped).map(([type, list]) => (
+          <div key={type} className="space-y-1.5">
+            <p className="text-xs text-gray-500 font-medium">{TYPE_LABEL[type] || type}</p>
+            {list.map(item => (
+              <div key={item.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+                <span className="text-sm text-white flex-1 truncate">{item.name}</span>
+                <input type="number" min={0} className="input !w-24 !py-1 text-xs"
+                  defaultValue={item.price_coins}
+                  onChange={e => setEdits({ ...edits, [item.id]: e.target.value })} />
+                <button onClick={() => save(item)} disabled={savingId === item.id}
+                  className="btn-secondary !px-2 !py-1 text-xs">
+                  {savingId === item.id ? "..." : "Lưu"}
+                </button>
+              </div>
+            ))}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <AdminGate>
@@ -553,6 +618,7 @@ export default function SettingsPage() {
         <SettingsPageInner />
         <MusicSettings />
         <MemberAccountsSettings />
+        <ShopPricingSettings />
       </div>
     </AdminGate>
   );

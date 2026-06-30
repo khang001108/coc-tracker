@@ -5,6 +5,7 @@ import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/u
 import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { NumberEffect } from "@/components/ui/NumberEffect";
 
 const ROLE_ORDER = ["leader", "coLeader", "admin", "member"];
 const ROLE_TITLE: Record<string, string> = {
@@ -136,7 +137,7 @@ export default function MembersPage() {
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800/50 transition-colors text-left">
                   <span className="text-gray-600 text-xs w-5 shrink-0 text-right">{i + 1}</span>
                   <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
-                    {m.townHallLevel}
+                    <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.townHallLevel}</NumberEffect>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">

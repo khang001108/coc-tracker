@@ -6,7 +6,6 @@ import { thColor, roleLabel, roleClass } from "@/lib/utils";
 import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { EmberField } from "@/components/ui/EmberField";
-import ShopSection from "./ShopSection";
 
 export default function LoginPage() {
   const [roster, setRoster] = useState<any[]>([]);
@@ -117,7 +116,12 @@ export default function LoginPage() {
         </div>
       )}
 
-      {me && <ShopSection />}
+      {me && (
+        <a href="/shop" className="card flex items-center justify-between gap-3 hover:border-yellow-500/40 transition-colors">
+          <span className="flex items-center gap-2 text-white font-semibold">🏰 Cửa hàng vật phẩm</span>
+          <span className="text-xs text-gray-500">Đổi lâu đài, pháo, hiệu ứng tên →</span>
+        </a>
+      )}
 
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />

@@ -16,10 +16,12 @@ scheduler = AsyncIOScheduler()
 async def start_scheduler():
     scheduler.add_job(poll_clan,      IntervalTrigger(minutes=15), id="poll_clan",      replace_existing=True)
     scheduler.add_job(poll_war,       IntervalTrigger(minutes=5),  id="poll_war",       replace_existing=True)
+    scheduler.add_job(poll_war_stars, IntervalTrigger(minutes=5),  id="poll_war_stars", replace_existing=True)
     scheduler.add_job(poll_raid,      IntervalTrigger(minutes=10), id="poll_raid",      replace_existing=True)
     scheduler.add_job(poll_members,   IntervalTrigger(minutes=10), id="poll_members",   replace_existing=True)
     scheduler.add_job(poll_donations, IntervalTrigger(minutes=10), id="poll_donations", replace_existing=True)
     scheduler.add_job(poll_asset_cleanup, IntervalTrigger(hours=6), id="poll_asset_cleanup", replace_existing=True)
+    scheduler.add_job(poll_global_chat_cleanup, IntervalTrigger(hours=1), id="poll_global_chat_cleanup", replace_existing=True)
     scheduler.start()
     log.info("Scheduler started")
 
@@ -142,6 +144,50 @@ async def poll_members():
     except Exception as e:
         log.error(f"poll_members error: {e}")
 
+async def poll_war_stars():
+    """Mỗi sao đạt được trong war (tính theo từng đòn đánh mới phát hiện) cộng
+    Coins cho người đánh (nếu đã có tài khoản), báo trong chat clan."""
+    try:
+        tag = await get_tag()
+        if not tag: return
+        cur = await get_current_war(tag)
+        if cur.get("state") not in ("inWar", "warEnded"): return
+        war_key = cur.get("endTime") or ""
+        if not war_key: return
+
+        sb = get_supabase()
+        cfg = sb.table("settings").select("value").eq("key", "coins_per_war_star").execute()
+        coins_per_star = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 100
+
+        members = cur.get("clan", {}).get("members", [])
+        for m in members:
+            attacks = m.get("attacks", [])
+            if not attacks:
+                continue
+            tracker = sb.table("war_star_tracker").select("last_order").eq("war_key", war_key).eq("player_tag", m["tag"]).execute()
+            last_order = tracker.data[0]["last_order"] if tracker.data else 0
+            new_attacks = [a for a in attacks if a.get("order", 0) > last_order]
+            if not new_attacks:
+                continue
+            stars_gained = sum(a.get("stars", 0) for a in new_attacks)
+            max_order = max(a.get("order", 0) for a in new_attacks)
+            sb.table("war_star_tracker").upsert({"war_key": war_key, "player_tag": m["tag"], "last_order": max_order}).execute()
+            if stars_gained <= 0:
+                continue
+            acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
+            coins_awarded = stars_gained * coins_per_star
+            if acc.data:
+                new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
+                sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+                sb.table("chat_messages").insert({
+                    "room": "clan", "sender_name": "Hệ thống", "sender_tag": None,
+                    "message": f"⚔️ {m.get('name','?')} đạt {stars_gained}⭐ trong war — +{coins_awarded} Coins!",
+                    "is_system": True,
+                }).execute()
+        log.info("War star coins checked")
+    except Exception as e:
+        log.error(f"poll_war_stars error: {e}")
+
 async def poll_donations():
     """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
     và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng.
@@ -177,6 +223,16 @@ async def poll_donations():
         log.info("Donation deltas checked")
     except Exception as e:
         log.error(f"poll_donations error: {e}")
+
+async def poll_global_chat_cleanup():
+    """Chat Toàn Cầu tự làm mới — xoá tin nhắn cũ hơn 24h (Chat Clan giữ nguyên)."""
+    try:
+        sb = get_supabase()
+        cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        sb.table("chat_messages").delete().eq("room", "global").lt("created_at", cutoff).execute()
+        log.info("Global chat cleaned up (>24h)")
+    except Exception as e:
+        log.error(f"poll_global_chat_cleanup error: {e}")
 
 async def poll_asset_cleanup():
     """Nếu thành viên đã rời clan quá N ngày (cài trong Cài đặt admin), xoá sạch

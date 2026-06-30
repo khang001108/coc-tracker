@@ -267,7 +267,7 @@ export const api = {
     }
     return res.json();
   },
-  equipShopItem: async (item_type: "castle" | "cannon", svg_key: string | null) => {
+  equipShopItem: async (item_type: "castle" | "cannon" | "effect" | "number_effect", svg_key: string | null) => {
     const member = getMemberAuth();
     const res = await fetch(`${API}/api/shop/equip`, {
       method: "POST",
@@ -280,4 +280,6 @@ export const api = {
     }
     return res.json();
   },
+  updateShopItemPrice: (itemId: number, price_coins: number) =>
+    apiFetch(`/api/shop/items/${itemId}/price`, { method: "PUT", body: JSON.stringify({ price_coins }) }),
 };

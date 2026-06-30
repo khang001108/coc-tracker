@@ -175,6 +175,13 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('effect', 'effect_royal',    'Hoàng Gia Lấp Lánh',  9000)
 ON CONFLICT (svg_key) DO NOTHING;
 
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('number_effect', 'num_bounce',  'Số Nảy Pixel',       2500),
+  ('number_effect', 'num_neon',    'Số Neon Sáng',       4000),
+  ('number_effect', 'num_spin',    'Vòng Số Xoay',       5000),
+  ('number_effect', 'num_pop',     'Số Bling Bling',     5500)
+ON CONFLICT (svg_key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS member_inventory (
   id           SERIAL PRIMARY KEY,
   player_tag   TEXT NOT NULL,
@@ -186,6 +193,7 @@ CREATE TABLE IF NOT EXISTS member_inventory (
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_castle TEXT DEFAULT 'castle_classic';
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_cannon TEXT DEFAULT 'cannon_basic';
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_effect TEXT;
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_number_effect TEXT;
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS assets_cleared  BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE shop_items       ENABLE ROW LEVEL SECURITY;
@@ -199,6 +207,19 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
 -- Cài đặt admin: sau bao nhiêu ngày rời clan thì xoá Coins/vật phẩm
 INSERT INTO settings (key, value) VALUES ('asset_cleanup_days', '7')
 ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('coins_per_war_star', '100')
+ON CONFLICT (key) DO NOTHING;
+
+-- Theo dõi sao đã tính Coins theo từng war (war_key = endTime, đổi mỗi war mới)
+CREATE TABLE IF NOT EXISTS war_star_tracker (
+  war_key     TEXT NOT NULL,
+  player_tag  TEXT NOT NULL,
+  last_order  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (war_key, player_tag)
+);
+ALTER TABLE war_star_tracker ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_all" ON war_star_tracker FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_star_tracker TO service_role;
 
 -- ── Member accounts (nhận diện thành viên — mỗi player_tag chỉ 1 người nhận) ──
 CREATE TABLE IF NOT EXISTS member_accounts (

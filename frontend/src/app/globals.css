@@ -202,6 +202,10 @@
 @keyframes name-fire { 0%,100% { text-shadow: 0 0 4px #FF6B00, 0 -2px 6px #FFD700; } 50% { text-shadow: 0 0 8px #FF3D00, 0 -3px 10px #FFAA00; } }
 @keyframes name-ice { 0%,100% { text-shadow: 0 0 4px #7DD3FC, 0 0 8px #38BDF8aa; } 50% { text-shadow: 0 0 10px #BAE6FD, 0 0 16px #38BDF8; } }
 @keyframes name-royal-sparkle { 0%,100% { opacity: 0.3; transform: scale(0.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(180deg); } }
+@keyframes num-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes num-neon { 0%,100% { text-shadow: 0 0 3px #fff, 0 0 6px #0ff, 0 0 10px #0ff; } 50% { text-shadow: 0 0 5px #fff, 0 0 12px #0ff, 0 0 20px #0ff; } }
+@keyframes num-spin-ring { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes num-pop { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 
 .animate-fade-up   { animation: fade-up 0.25s ease forwards; }
 .animate-fade-in   { animation: fade-in 0.2s ease forwards; }
