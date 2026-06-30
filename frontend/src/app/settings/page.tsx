@@ -439,6 +439,22 @@ function SettingsPageInner() {
         </div>
       </div>
 
+      {/* ── Dọn dẹp tài sản thành viên rời clan ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">🧹 Dọn dẹp tài sản người rời clan</h2>
+        <p className="text-xs text-gray-500">
+          Nếu 1 thành viên rời clan quá số ngày này, Coins và vật phẩm cửa hàng (lâu đài/pháo) của họ sẽ tự động bị xoá. Tài khoản đăng nhập (PIN) vẫn giữ nguyên — nếu quay lại clan vẫn đăng nhập được, chỉ là bắt đầu lại từ 0 Coins.
+        </p>
+        <div className="flex items-center gap-2">
+          <input type="number" min={1} max={365} className="input !w-28"
+            value={settings.asset_cleanup_days ?? "7"}
+            onChange={e => set("asset_cleanup_days", e.target.value)} />
+          <span className="text-sm text-gray-400">ngày</span>
+          <button onClick={() => api.saveSetting("asset_cleanup_days", settings.asset_cleanup_days || "7")}
+            className="btn-gold text-sm ml-auto">Lưu</button>
+        </div>
+      </div>
+
       {/* ── Manual notify ── */}
       <div className="card space-y-4">
         <h2 className="font-bold text-white">📢 Gửi thông báo thủ công</h2>

@@ -7,7 +7,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config
 from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave
 from supabase_client import get_supabase
-from datetime import datetime
+from datetime import datetime, timedelta
 import json, logging
 
 log = logging.getLogger("poller")
@@ -19,6 +19,7 @@ async def start_scheduler():
     scheduler.add_job(poll_raid,      IntervalTrigger(minutes=10), id="poll_raid",      replace_existing=True)
     scheduler.add_job(poll_members,   IntervalTrigger(minutes=10), id="poll_members",   replace_existing=True)
     scheduler.add_job(poll_donations, IntervalTrigger(minutes=10), id="poll_donations", replace_existing=True)
+    scheduler.add_job(poll_asset_cleanup, IntervalTrigger(hours=6), id="poll_asset_cleanup", replace_existing=True)
     scheduler.start()
     log.info("Scheduler started")
 
@@ -176,3 +177,32 @@ async def poll_donations():
         log.info("Donation deltas checked")
     except Exception as e:
         log.error(f"poll_donations error: {e}")
+
+async def poll_asset_cleanup():
+    """Nếu thành viên đã rời clan quá N ngày (cài trong Cài đặt admin), xoá sạch
+    Coins và vật phẩm cửa hàng của họ — KHÔNG xoá tài khoản đăng nhập (PIN), chỉ
+    reset tài sản, để nếu họ quay lại clan vẫn đăng nhập được nhưng bắt đầu lại từ 0."""
+    try:
+        sb = get_supabase()
+        cfg = sb.table("settings").select("value").eq("key", "asset_cleanup_days").execute()
+        days = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 7
+
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        left = sb.table("member_log").select("player_tag").eq("status", "left").lt("left_at", cutoff).execute()
+        left_tags = [r["player_tag"] for r in left.data]
+        if not left_tags:
+            return
+
+        accounts = sb.table("member_accounts").select("player_tag,assets_cleared").in_("player_tag", left_tags).execute()
+        for acc in accounts.data:
+            if acc.get("assets_cleared"):
+                continue
+            tag = acc["player_tag"]
+            sb.table("member_inventory").delete().eq("player_tag", tag).execute()
+            sb.table("member_accounts").update({
+                "coins": 0, "equipped_castle": "castle_classic", "equipped_cannon": "cannon_basic",
+                "assets_cleared": True,
+            }).eq("player_tag", tag).execute()
+            log.info(f"Cleared assets for {tag} (left clan > {days} days)")
+    except Exception as e:
+        log.error(f"poll_asset_cleanup error: {e}")

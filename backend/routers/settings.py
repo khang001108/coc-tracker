@@ -11,6 +11,7 @@ ALLOWED_KEYS = [
     "discord_webhook",
     "telegram_bot_token", "telegram_chat_id",
     "notify_war", "notify_raid", "notify_donate", "notify_member",
+    "asset_cleanup_days",
 ]
 
 @router.post("/login")

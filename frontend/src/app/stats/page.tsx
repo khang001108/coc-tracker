@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel } from "@/lib/utils";
-import { BarChart3, TrendingUp } from "lucide-react";
+import { BarChart3, TrendingUp, AlertTriangle, ShieldOff, HeartCrack } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -13,12 +13,17 @@ const COLORS = ["#F4A130","#22c55e","#3b82f6","#a855f7","#ef4444","#ec4899","#14
 
 export default function StatsPage() {
   const [members, setMembers] = useState<any[]>([]);
+  const [war, setWar] = useState<any>(null);
+  const [warLog, setWarLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getClanGames()
-      .then(d => setMembers(d.members || []))
-      .catch(() => {})
+    Promise.allSettled([api.getClanGames(), api.getCurrentWar(), api.getWarLog()])
+      .then(([m, w, wl]) => {
+        if (m.status === "fulfilled") setMembers((m.value as any).members || []);
+        if (w.status === "fulfilled") setWar(w.value);
+        if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -62,6 +67,33 @@ export default function StatsPage() {
       </div>
     );
   };
+
+  // Tổng hợp hiệu suất war: gộp war hiện tại (nếu có dữ liệu đòn đánh) + tối đa 4 war gần nhất trong log
+  const warsForStats: any[] = [];
+  if (war && (war.state === "inWar" || war.state === "warEnded")) warsForStats.push(war);
+  warsForStats.push(...warLog.slice(0, 4));
+
+  const perfMap: Record<string, { name: string; totalStars: number; warsCounted: number; skipped: number; attacksUsed: number }> = {};
+  warsForStats.forEach(w => {
+    (w.clan?.members || []).forEach((m: any) => {
+      if (!perfMap[m.tag]) perfMap[m.tag] = { name: m.name, totalStars: 0, warsCounted: 0, skipped: 0, attacksUsed: 0 };
+      const attacks = m.attacks || [];
+      perfMap[m.tag].totalStars += attacks.reduce((s: number, a: any) => s + a.stars, 0);
+      perfMap[m.tag].warsCounted += 1;
+      perfMap[m.tag].attacksUsed += attacks.length;
+      if (attacks.length === 0) perfMap[m.tag].skipped += 1;
+    });
+  });
+  const perfList = Object.values(perfMap);
+  const weakestWar = [...perfList]
+    .filter(p => p.warsCounted > 0)
+    .sort((a, b) => (a.totalStars / a.warsCounted) - (b.totalStars / b.warsCounted))
+    .slice(0, 8);
+  const mostSkipped = [...perfList]
+    .filter(p => p.skipped > 0)
+    .sort((a, b) => b.skipped - a.skipped)
+    .slice(0, 8);
+  const lowestDonate = [...members].sort((a, b) => a.donations - b.donations).slice(0, 8);
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -166,6 +198,61 @@ export default function StatsPage() {
                 }
               </div>
             </div>
+          </div>
+
+          {/* Hiệu suất kém — cần admin lưu ý */}
+          <div>
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-400" /> Cần lưu ý (dựa trên war hiện tại + tối đa 4 war gần nhất)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="card">
+                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><HeartCrack size={14} className="text-red-400" /> War yếu nhất (TB sao/war)</h4>
+                {weakestWar.length === 0 ? (
+                  <p className="text-xs text-gray-600">Chưa đủ dữ liệu war</p>
+                ) : (
+                  <div className="space-y-2">
+                    {weakestWar.map(p => (
+                      <div key={p.name} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300 truncate">{p.name}</span>
+                        <span className="text-red-400 font-semibold shrink-0">{(p.totalStars / p.warsCounted).toFixed(1)}⭐ TB</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="card">
+                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><ShieldOff size={14} className="text-orange-400" /> Hay bỏ war nhất</h4>
+                {mostSkipped.length === 0 ? (
+                  <p className="text-xs text-gray-600">Chưa có ai bỏ war gần đây</p>
+                ) : (
+                  <div className="space-y-2">
+                    {mostSkipped.map(p => (
+                      <div key={p.name} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300 truncate">{p.name}</span>
+                        <span className="text-orange-400 font-semibold shrink-0">{p.skipped}/{p.warsCounted} war</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="card">
+                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-1.5"><TrendingUp size={14} className="text-gray-400 rotate-180" /> Donate ít nhất</h4>
+                <div className="space-y-2">
+                  {lowestDonate.map(m => (
+                    <div key={m.tag} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300 truncate">{m.name}</span>
+                      <span className="text-gray-400 font-semibold shrink-0">{m.donations}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-600 mt-2">
+              Lưu ý: CoC API không cung cấp dữ liệu "thời gian online cuối" của thành viên, nên không thể thống kê chính xác "ai ít online nhất" — đây là giới hạn từ phía Supercell, không phải thiếu sót của web. "Hay bỏ war" và "Donate ít nhất" là 2 chỉ số gần nhất phản ánh mức độ hoạt động.
+            </p>
           </div>
         </>
       )}

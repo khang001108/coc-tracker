@@ -5,6 +5,7 @@ import { getMemberAuth, setMemberAuth, clearMemberAuth } from "@/lib/api";
 import { thColor, roleLabel, roleClass } from "@/lib/utils";
 import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
+import ShopSection from "./ShopSection";
 
 export default function LoginPage() {
   const [roster, setRoster] = useState<any[]>([]);
@@ -110,6 +111,8 @@ export default function LoginPage() {
           </button>
         </div>
       )}
+
+      {me && <ShopSection />}
 
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />

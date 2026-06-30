@@ -149,6 +149,50 @@ ALTER TABLE soundtracks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "service_all" ON soundtracks FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.soundtracks TO service_role;
 
+-- ── Cửa hàng vật phẩm (lâu đài / pháo trang trí bản đồ chiến trường) ────────
+CREATE TABLE IF NOT EXISTS shop_items (
+  id          SERIAL PRIMARY KEY,
+  item_type   TEXT NOT NULL,           -- 'castle' | 'cannon'
+  svg_key     TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  price_coins INTEGER NOT NULL DEFAULT 2000
+);
+
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('castle', 'castle_classic',  'Lâu Đài Cổ Điển',     0),
+  ('castle', 'castle_round',    'Lâu Đài Tháp Tròn',   3000),
+  ('castle', 'castle_fortress', 'Pháo Đài Đá',         6000),
+  ('castle', 'castle_royal',    'Hoàng Cung Vàng',     10000),
+  ('cannon', 'cannon_basic',    'Pháo Cơ Bản',         0),
+  ('cannon', 'cannon_double',   'Pháo Nòng Đôi',       2000),
+  ('cannon', 'cannon_turret',   'Tháp Pháo Xoay',      5000),
+  ('cannon', 'cannon_mythic',   'Pháo Huyền Thoại',    8000)
+ON CONFLICT (svg_key) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS member_inventory (
+  id           SERIAL PRIMARY KEY,
+  player_tag   TEXT NOT NULL,
+  item_id      INTEGER NOT NULL REFERENCES shop_items(id) ON DELETE CASCADE,
+  purchased_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(player_tag, item_id)
+);
+
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_castle TEXT DEFAULT 'castle_classic';
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_cannon TEXT DEFAULT 'cannon_basic';
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS assets_cleared  BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE shop_items       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_inventory ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_all" ON shop_items       FOR ALL TO service_role USING (true);
+CREATE POLICY "service_all" ON member_inventory FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.shop_items       TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.member_inventory TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- Cài đặt admin: sau bao nhiêu ngày rời clan thì xoá Coins/vật phẩm
+INSERT INTO settings (key, value) VALUES ('asset_cleanup_days', '7')
+ON CONFLICT (key) DO NOTHING;
+
 -- ── Member accounts (nhận diện thành viên — mỗi player_tag chỉ 1 người nhận) ──
 CREATE TABLE IF NOT EXISTS member_accounts (
   player_tag  TEXT PRIMARY KEY,

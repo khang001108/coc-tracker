@@ -246,4 +246,38 @@ export const api = {
     }
     return res.json();
   },
+
+  // Shop (lâu đài / pháo)
+  getShopItems: () => apiFetch("/api/shop/items"),
+  getMyInventory: async () => {
+    const member = getMemberAuth();
+    if (!member) return null;
+    const res = await fetch(`${API}/api/shop/my-inventory`, { headers: { "X-Member-Token": member.token } });
+    if (!res.ok) return null;
+    return res.json();
+  },
+  buyShopItem: async (itemId: number) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/shop/buy/${itemId}`, {
+      method: "POST", headers: member ? { "X-Member-Token": member.token } : {},
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi mua vật phẩm" }));
+      throw new Error(err.detail || "Lỗi mua vật phẩm");
+    }
+    return res.json();
+  },
+  equipShopItem: async (item_type: "castle" | "cannon", svg_key: string | null) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/shop/equip`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(member ? { "X-Member-Token": member.token } : {}) },
+      body: JSON.stringify({ item_type, svg_key }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi trang bị" }));
+      throw new Error(err.detail || "Lỗi trang bị");
+    }
+    return res.json();
+  },
 };

@@ -1,22 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { thColor } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
 
-const ROW_H = 52;
+const ROW_H = 60;
 const PAD_TOP = 20;
 const COL_X_LEFT = 46;
 const COL_X_RIGHT_OFFSET = 46; // tính từ mép phải
-
-function HouseIcon({ th, highlight }: { th: number; highlight?: boolean }) {
-  const color = thColor(th);
-  return (
-    <svg width="34" height="34" viewBox="0 0 34 34">
-      <polygon points="17,3 31,14 31,31 3,31 3,14" fill={color} fillOpacity={0.25} stroke={color} strokeWidth={highlight ? 2.5 : 1.5} />
-      <rect x="13" y="20" width="8" height="11" fill={color} fillOpacity={0.5} stroke={color} strokeWidth="1" />
-      <text x="17" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill={color}>{th}</text>
-    </svg>
-  );
-}
 
 function findDefenderPosition(defenderTag: string, list: any[]): number | null {
   const found = list.find((m: any) => m.tag === defenderTag);
@@ -27,6 +18,15 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(720);
+  const [iconMap, setIconMap] = useState<Record<string, { castle: string; cannon: string }>>({});
+
+  useEffect(() => {
+    api.getRoster().then((roster: any[]) => {
+      const map: Record<string, { castle: string; cannon: string }> = {};
+      roster.forEach(m => { map[m.tag] = { castle: m.equipped_castle, cannon: m.equipped_cannon }; });
+      setIconMap(map);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -129,14 +129,19 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
           {/* Cột nhà bên ta */}
           {ourTeam.map((m: any) => {
-            const attacked = (m.attacks || []).length > 0;
+            const attacks = m.attacks || [];
             return (
               <div key={m.tag}
-                className="absolute flex items-center gap-2"
-                style={{ left: COL_X_LEFT - 17, top: yFor(m.mapPosition) - 17 }}
+                className="absolute flex flex-col items-center gap-0.5"
+                style={{ left: COL_X_LEFT - 17, top: yFor(m.mapPosition) - 23 }}
                 onMouseEnter={() => setHovered(`${m.tag}-hover`)}
                 onMouseLeave={() => setHovered(null)}>
-                <HouseIcon th={m.townHallLevel} highlight={attacked} />
+                <CastleIcon th={m.townHallLevel} svgKey={iconMap[m.tag]?.castle} />
+                <div className="flex gap-0.5">
+                  {[0, 1].map(i => (
+                    <CannonIcon key={i} size={12} svgKey={iconMap[m.tag]?.cannon} fired={!!attacks[i]} />
+                  ))}
+                </div>
               </div>
             );
           })}
@@ -148,11 +153,20 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
           ))}
 
           {/* Cột nhà bên địch */}
-          {theirTeam.map((m: any) => (
-            <div key={m.tag} className="absolute" style={{ right: COL_X_RIGHT_OFFSET - 17, top: yFor(m.mapPosition) - 17 }}>
-              <HouseIcon th={m.townHallLevel} />
-            </div>
-          ))}
+          {theirTeam.map((m: any) => {
+            const attacks = m.attacks || [];
+            return (
+              <div key={m.tag} className="absolute flex flex-col items-center gap-0.5"
+                style={{ right: COL_X_RIGHT_OFFSET - 17, top: yFor(m.mapPosition) - 23 }}>
+                <CastleIcon th={m.townHallLevel} svgKey={iconMap[m.tag]?.castle} />
+                <div className="flex gap-0.5">
+                  {[0, 1].map(i => (
+                    <CannonIcon key={i} size={12} svgKey={iconMap[m.tag]?.cannon} fired={!!attacks[i]} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
           {theirTeam.map((m: any) => (
             <div key={`label-${m.tag}`} className="absolute text-[10px] text-gray-400 truncate text-right"
               style={{ right: COL_X_RIGHT_OFFSET + 22, top: yFor(m.mapPosition) - 6, width: "calc(50% - 80px)" }}>
@@ -163,7 +177,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
       </div>
 
       <p className="text-[10px] text-gray-600 px-4 pb-3 pt-1">
-        Mỗi nhà = 1 thành viên (số trong nhà là cấp Hội Đồng Chiến Tranh). Đường đứt nối từ người tấn công sang nhà bị đánh, màu theo số sao đạt được.
+        Mỗi lâu đài = 1 thành viên (số là cấp Hội Đồng Chiến Tranh), 2 pháo nhỏ bên dưới = 2 lượt đánh. Đường đứt nối người tấn công sang nhà bị đánh, màu theo số sao. Đổi giao diện lâu đài/pháo riêng tại trang Đăng nhập.
       </p>
     </div>
   );
