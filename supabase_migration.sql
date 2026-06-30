@@ -79,11 +79,17 @@ ALTER TABLE member_log    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE war_history   ENABLE ROW LEVEL SECURITY;
 
 -- Allow service role full access (used by FastAPI backend)
+DROP POLICY IF EXISTS "service_all" ON settings;
 CREATE POLICY "service_all" ON settings     FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON snapshot_clan;
 CREATE POLICY "service_all" ON snapshot_clan FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON snapshot_war;
 CREATE POLICY "service_all" ON snapshot_war  FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON snapshot_raid;
 CREATE POLICY "service_all" ON snapshot_raid FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON member_log;
 CREATE POLICY "service_all" ON member_log    FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON war_history;
 CREATE POLICY "service_all" ON war_history   FOR ALL TO service_role USING (true);
 
 -- ── Events (sự kiện trao thưởng) ────────────────────────────────────────────
@@ -130,7 +136,9 @@ CREATE TABLE IF NOT EXISTS event_claims (
 
 ALTER TABLE events       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_claims ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON events;
 CREATE POLICY "service_all" ON events       FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON event_claims;
 CREATE POLICY "service_all" ON event_claims FOR ALL TO service_role USING (true);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.events       TO service_role;
@@ -146,6 +154,7 @@ CREATE TABLE IF NOT EXISTS soundtracks (
 );
 
 ALTER TABLE soundtracks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON soundtracks;
 CREATE POLICY "service_all" ON soundtracks FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.soundtracks TO service_role;
 
@@ -198,7 +207,9 @@ ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS assets_cleared  BOOLEAN NOT
 
 ALTER TABLE shop_items       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE member_inventory ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON shop_items;
 CREATE POLICY "service_all" ON shop_items       FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON member_inventory;
 CREATE POLICY "service_all" ON member_inventory FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.shop_items       TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.member_inventory TO service_role;
@@ -218,6 +229,7 @@ CREATE TABLE IF NOT EXISTS war_star_tracker (
   PRIMARY KEY (war_key, player_tag)
 );
 ALTER TABLE war_star_tracker ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON war_star_tracker;
 CREATE POLICY "service_all" ON war_star_tracker FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_star_tracker TO service_role;
 
@@ -253,8 +265,11 @@ CREATE TABLE IF NOT EXISTS donation_tracker (
 ALTER TABLE member_accounts   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE donation_tracker  ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON member_accounts;
 CREATE POLICY "service_all" ON member_accounts  FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON chat_messages;
 CREATE POLICY "service_all" ON chat_messages    FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON donation_tracker;
 CREATE POLICY "service_all" ON donation_tracker FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.member_accounts  TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_messages    TO service_role;
