@@ -3,7 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { MusicPlayer } from "@/components/ui/MusicPlayer";
+import { MusicProvider } from "@/components/ui/MusicContext";
+import { FloatingMusicWidget } from "@/components/ui/FloatingMusicWidget";
 import { ThemeInitScript } from "@/components/ui/ThemeToggle";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeInitScript />
       </head>
       <body className={inter.className}>
+        <MusicProvider>
         <div className="min-h-screen bg-gray-950 flex">
           {/* Desktop sidebar */}
           <Sidebar />
@@ -47,12 +49,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </div>
 
-          {/* Mobile bottom nav */}
+          {/* Mobile bottom nav (popup "Thêm" có sẵn điều khiển nhạc gọn bên trong) */}
           <MobileNav />
 
-          {/* Nhạc nền — luôn mount, không bị gián đoạn khi chuyển trang */}
-          <MusicPlayer />
+          {/* Nhạc nền dạng bong bóng nổi — chỉ hiện trên desktop */}
+          <FloatingMusicWidget />
         </div>
+        </MusicProvider>
       </body>
     </html>
   );

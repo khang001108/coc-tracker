@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { Portal } from "@/components/ui/Portal";
+import { MusicControls } from "@/components/ui/MusicControls";
 
 const LEFT = [
   { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
@@ -89,8 +91,9 @@ export function MobileNav() {
       </nav>
 
       {open && (
+        <Portal>
         <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)}>
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl p-4 pb-6"
+          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl p-4 pb-6 max-h-[85vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-gray-300">Thêm mục</p>
@@ -116,9 +119,14 @@ export function MobileNav() {
                 );
               })}
             </div>
+
+            {/* Nhạc nền — gộp gọn vào đây thay vì bong bóng nổi riêng */}
+            <div className="mb-3"><MusicControls /></div>
+
             <ThemeToggle />
           </div>
         </div>
+        </Portal>
       )}
     </>
   );
