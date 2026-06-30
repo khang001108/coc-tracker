@@ -55,7 +55,8 @@ export function MobileNav() {
   return (
     <>
       {/* 6 cột bằng nhau: mỗi mục có chỗ riêng, nút "Chơi" cũng là 1 cột — không đè lên mục khác */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {LEFT.map(({ href, label, icon }) => (
           <NavLink key={href} href={href} label={label} icon={icon}
             active={href === "/" ? pathname === "/" : pathname.startsWith(href)} />

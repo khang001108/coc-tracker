@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: "CoC Tracker",
   description: "Theo dõi Clan Clash of Clans",
   manifest: "/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CoC Tracker",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -27,6 +32,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
   themeColor: "#F4A130",
 };
 
