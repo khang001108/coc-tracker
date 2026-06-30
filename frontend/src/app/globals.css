@@ -310,3 +310,20 @@
 }
 .theme-gold .tab-pill { color: #A38844 !important; }
 .theme-gold .tab-pill:hover { color: #5C4517 !important; }
+
+/* Chữ vàng trong giao diện sáng — đổi sang nâu vàng đậm để đỡ chói */
+.theme-gold .text-yellow-400,
+.theme-gold .text-yellow-300 { color: #7C5E10 !important; }
+.theme-gold .text-yellow-500 { color: #6B4F0D !important; }
+.theme-gold .text-yellow-600 { color: #5A4009 !important; }
+.theme-gold .role-leader,
+.theme-gold .role-coLeader   { color: #7C5E10 !important; }
+.theme-gold .role-elder       { color: #6A7C10 !important; }
+.theme-gold .badge-gold       { background: rgba(180,140,30,0.15) !important; color: #7C5E10 !important; border-color: rgba(180,140,30,0.35) !important; }
+.theme-gold .badge-green      { background: rgba(30,130,50,0.12) !important; color: #1A6B30 !important; }
+.theme-gold .badge-red        { background: rgba(180,30,30,0.12) !important; color: #9B1C1C !important; }
+.theme-gold .badge-purple     { background: rgba(100,30,180,0.10) !important; color: #5B21B6 !important; }
+.theme-gold .text-blue-400    { color: #1D4ED8 !important; }
+.theme-gold .text-red-400     { color: #B91C1C !important; }
+.theme-gold .text-green-400   { color: #15803D !important; }
+.theme-gold .text-orange-400  { color: #C2410C !important; }

@@ -107,11 +107,11 @@ export default function WarPage() {
             <>
               {/* War header */}
               <div className="card" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: "#5C1E1E" }}>
-                <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                <div className="grid grid-cols-3 gap-2 md:gap-4 text-center mb-4">
                   <div>
                     <p className="text-xs text-gray-400 mb-1 truncate">{war.clan?.name}</p>
-                    <p className="text-3xl font-bold text-yellow-400">⭐{war.clan?.stars}</p>
-                    <p className="text-sm text-gray-300">{war.clan?.attacks}/{war.teamSize * 2} attack</p>
+                    <p className="text-2xl md:text-3xl font-bold text-yellow-400">⭐{war.clan?.stars}</p>
+                    <p className="text-xs md:text-sm text-gray-300">{war.clan?.attacks}/{war.teamSize * 2} attack</p>
                     <p className="text-xs text-gray-500">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
                   </div>
                   <div className="flex flex-col items-center justify-center">
@@ -126,8 +126,8 @@ export default function WarPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1 truncate">{war.opponent?.name}</p>
-                    <p className="text-3xl font-bold text-red-400">⭐{war.opponent?.stars}</p>
-                    <p className="text-sm text-gray-300">{war.opponent?.attacks}/{war.teamSize * 2} attack</p>
+                    <p className="text-2xl md:text-3xl font-bold text-red-400">⭐{war.opponent?.stars}</p>
+                    <p className="text-xs md:text-sm text-gray-300">{war.opponent?.attacks}/{war.teamSize * 2} attack</p>
                     <p className="text-xs text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
                   </div>
                 </div>
