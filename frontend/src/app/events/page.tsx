@@ -1,14 +1,41 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { getAdminToken } from "@/lib/api";
+import { getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { Portal } from "@/components/ui/Portal";
-import { PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X, Gift, Sparkles, Upload, Image as ImageIcon, Trophy } from "lucide-react";
+import {
+  PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
+  Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
+  ThumbsUp, ThumbsDown, AlertTriangle,
+} from "lucide-react";
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
   war: "War thường", cwl: "CWL / War giải", custom: "Tự viết",
 };
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  pending: { label: "⏳ Chờ duyệt", cls: "badge-purple" },
+  active: { label: "🔥 Đang diễn ra", cls: "badge-green" },
+  pending_delete: { label: "⚠️ Chờ xác nhận xoá", cls: "badge-red" },
+  closed: { label: "Đã đóng", cls: "badge-red" },
+  rejected: { label: "Đã từ chối", cls: "badge-red" },
+};
+
+function fmtDateTime(s?: string) {
+  if (!s) return "";
+  try {
+    return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(s));
+  } catch { return s; }
+}
+
+function toDatetimeLocal(s?: string) {
+  if (!s) return "";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 function Confetti() {
   const pieces = Array.from({ length: 14 });
@@ -17,13 +44,8 @@ function Confetti() {
     <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-2xl">
       {pieces.map((_, i) => (
         <span key={i} className="absolute rounded-sm opacity-30"
-          style={{
-            left: `${(i * 137) % 100}%`,
-            top: `${(i * 53) % 100}%`,
-            width: 6, height: 6,
-            background: colors[i % colors.length],
-            transform: `rotate(${(i * 47) % 360}deg)`,
-          }} />
+          style={{ left: `${(i * 137) % 100}%`, top: `${(i * 53) % 100}%`, width: 6, height: 6,
+            background: colors[i % colors.length], transform: `rotate(${(i * 47) % 360}deg)` }} />
       ))}
     </div>
   );
@@ -51,6 +73,7 @@ function Hero() {
 }
 
 function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
+  const badge = STATUS_BADGE[event.status] || STATUS_BADGE.active;
   return (
     <div onClick={onOpen}
       className="relative card cursor-pointer overflow-hidden group hover:border-yellow-500/40 hover:-translate-y-0.5 transition-all">
@@ -68,11 +91,17 @@ function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold text-white">{event.title}</h3>
-            <span className={`badge text-[10px] ${event.status === "active" ? "badge-green" : "badge-red"}`}>
-              {event.status === "active" ? "🔥 Đang diễn ra" : "Đã đóng"}
-            </span>
+            <span className={`badge text-[10px] ${badge.cls}`}>{badge.label}</span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{EVENT_TYPE_LABEL[event.event_type] || event.event_type}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {EVENT_TYPE_LABEL[event.event_type] || event.event_type}
+            {event.creator_name && <> · Tạo bởi <span className="text-gray-400">{event.creator_name}</span></>}
+          </p>
+          {(event.start_time || event.end_time) && (
+            <p className="text-[11px] text-gray-600 mt-1 flex items-center gap-1">
+              <Clock size={10} /> {fmtDateTime(event.start_time)} {event.end_time && `→ ${fmtDateTime(event.end_time)}`}
+            </p>
+          )}
           {event.description && <p className="text-sm text-gray-400 mt-1.5 line-clamp-2">{event.description}</p>}
           {event.reward_name && (
             <p className="text-sm text-yellow-400 mt-1.5 font-medium flex items-center gap-1">
@@ -85,11 +114,12 @@ function EventCard({ event, onOpen }: { event: any; onOpen: () => void }) {
   );
 }
 
-function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
+function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any) {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [claims, setClaims] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -120,12 +150,43 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
     onChanged?.();
   }
 
-  async function handleDelete() {
-    if (!confirm(`Xoá sự kiện "${event.title}"?`)) return;
-    await api.deleteEvent(event.id);
-    onChanged?.();
-    onClose();
+  async function handleDeleteRequest() {
+    if (!confirm(isAdmin ? `Xoá hẳn sự kiện "${event.title}"?` : `Gửi yêu cầu xoá sự kiện "${event.title}" tới admin?`)) return;
+    setBusy(true);
+    try {
+      await api.deleteEvent(event.id);
+      onChanged?.();
+      onClose();
+    } catch (e: any) {
+      alert(e.message || "Lỗi");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  async function handleApprove() {
+    setBusy(true);
+    try { await api.approveEvent(event.id); onChanged?.(); onClose(); }
+    catch (e: any) { alert(e.message); } finally { setBusy(false); }
+  }
+  async function handleReject() {
+    if (!confirm("Từ chối và xoá sự kiện này?")) return;
+    setBusy(true);
+    try { await api.rejectEvent(event.id); onChanged?.(); onClose(); }
+    catch (e: any) { alert(e.message); } finally { setBusy(false); }
+  }
+  async function handleConfirmDelete() {
+    setBusy(true);
+    try { await api.confirmDeleteEvent(event.id); onChanged?.(); onClose(); }
+    catch (e: any) { alert(e.message); } finally { setBusy(false); }
+  }
+  async function handleCancelDelete() {
+    setBusy(true);
+    try { await api.cancelDeleteEvent(event.id); onChanged?.(); }
+    catch (e: any) { alert(e.message); } finally { setBusy(false); }
+  }
+
+  const badge = STATUS_BADGE[event.status] || STATUS_BADGE.active;
 
   return (
     <Portal>
@@ -141,11 +202,49 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
                 <PartyPopper size={18} className="text-pink-400" /> {event.title}
               </h3>
               <p className="text-xs text-gray-500">{EVENT_TYPE_LABEL[event.event_type]}</p>
+              <span className={`badge text-[10px] mt-1 ${badge.cls}`}>{badge.label}</span>
             </div>
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 shrink-0">
               <X size={18} />
             </button>
           </div>
+
+          {isAdmin && event.status === "pending" && (
+            <div className="card !p-3 border-purple-500/30 bg-purple-500/5 space-y-2">
+              <p className="text-sm text-purple-300 flex items-center gap-1.5"><ShieldCheck size={14} /> Sự kiện này đang chờ bạn duyệt.</p>
+              <div className="flex gap-2">
+                <button onClick={handleReject} disabled={busy} className="btn-danger flex-1 text-sm flex items-center justify-center gap-1.5"><ThumbsDown size={14} /> Từ chối</button>
+                <button onClick={handleApprove} disabled={busy} className="btn-gold flex-1 text-sm flex items-center justify-center gap-1.5"><ThumbsUp size={14} /> Duyệt</button>
+              </div>
+            </div>
+          )}
+          {isAdmin && event.status === "pending_delete" && (
+            <div className="card !p-3 border-red-500/30 bg-red-500/5 space-y-2">
+              <p className="text-sm text-red-300 flex items-center gap-1.5"><AlertTriangle size={14} /> {event.creator_name} đã yêu cầu xoá sự kiện này.</p>
+              <div className="flex gap-2">
+                <button onClick={handleCancelDelete} disabled={busy} className="btn-secondary flex-1 text-sm">Giữ lại</button>
+                <button onClick={handleConfirmDelete} disabled={busy} className="btn-danger flex-1 text-sm">Xác nhận xoá</button>
+              </div>
+            </div>
+          )}
+
+          {event.creator_name && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+              <span>👤 Người tạo: <span className="text-gray-300 font-medium">{event.creator_name}</span></span>
+              {event.creator_zalo && (
+                <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-1 text-blue-400 hover:underline">
+                  <Phone size={11} /> Zalo: {event.creator_zalo}
+                </a>
+              )}
+            </div>
+          )}
+
+          {(event.start_time || event.end_time) && (
+            <p className="text-xs text-gray-500 flex items-center gap-1.5">
+              <Clock size={12} /> {fmtDateTime(event.start_time) || "?"} → {fmtDateTime(event.end_time) || "?"}
+            </p>
+          )}
 
           {event.description && <p className="text-sm text-gray-300">{event.description}</p>}
 
@@ -166,7 +265,7 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
                   {event.reward_shop_link && (
                     <a href={event.reward_shop_link} target="_blank" rel="noreferrer"
                       className="text-xs text-orange-400 hover:underline flex items-center gap-1 mt-1.5 font-medium">
-                      🛒 Xem trên Shopee <ExternalLink size={11} />
+                      🎁 Xem link quà <ExternalLink size={11} />
                     </a>
                   )}
                 </div>
@@ -229,9 +328,9 @@ function EventDetailModal({ event, isAdmin, onClose, onChanged }: any) {
             </div>
           )}
 
-          {isAdmin && (
-            <button onClick={handleDelete} className="text-xs text-red-400 hover:underline flex items-center gap-1">
-              <Trash2 size={12} /> Xoá sự kiện này
+          {(isAdmin || isCreator) && event.status !== "pending_delete" && (
+            <button onClick={handleDeleteRequest} disabled={busy} className="text-xs text-red-400 hover:underline flex items-center gap-1">
+              <Trash2 size={12} /> {isAdmin ? "Xoá sự kiện này" : "Yêu cầu xoá sự kiện này"}
             </button>
           )}
         </div>
@@ -293,22 +392,46 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [form, setForm] = useState({
     title: "", description: "", event_type: "war", condition_type: "total_stars",
     top_n: 3, reward_name: "", reward_image_url: "", reward_shop_link: "",
+    start_time: "", end_time: "", creator_zalo: "",
   });
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [loadingWarTime, setLoadingWarTime] = useState(false);
+  const isAdmin = !!getAdminToken();
 
   useEffect(() => { api.getConditions().then(setConditions).catch(() => {}); }, []);
+
+  async function useCurrentWarTime() {
+    setLoadingWarTime(true);
+    try {
+      const war = await api.getCurrentWar();
+      setForm(f => ({
+        ...f,
+        start_time: toDatetimeLocal(war.startTime) || f.start_time,
+        end_time: toDatetimeLocal(war.endTime) || f.end_time,
+      }));
+    } catch {
+      alert("Không lấy được thời gian war hiện tại");
+    } finally {
+      setLoadingWarTime(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
     setSaving(true);
+    setError("");
     try {
       await api.createEvent(form);
       setForm({ title: "", description: "", event_type: "war", condition_type: "total_stars",
-        top_n: 3, reward_name: "", reward_image_url: "", reward_shop_link: "" });
+        top_n: 3, reward_name: "", reward_image_url: "", reward_shop_link: "",
+        start_time: "", end_time: "", creator_zalo: "" });
       setOpen(false);
       onCreated();
+    } catch (e: any) {
+      setError(e.message || "Lỗi tạo sự kiện");
     } finally {
       setSaving(false);
     }
@@ -332,6 +455,12 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         </h3>
         <button type="button" onClick={() => setOpen(false)} className="text-gray-500"><X size={18} /></button>
       </div>
+
+      {!isAdmin && (
+        <p className="text-[11px] text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-lg px-2.5 py-1.5">
+          ⏳ Sự kiện do bạn tạo sẽ cần admin duyệt trước khi hiện công khai.
+        </p>
+      )}
 
       <input className="input" placeholder="Tên sự kiện (vd: War giải tháng 7)"
         value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
@@ -367,15 +496,35 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         </p>
       </div>
 
+      <div className="pt-2 border-t border-gray-800 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5"><Clock size={13} /> Thời gian sự kiện</p>
+          <button type="button" onClick={useCurrentWarTime} disabled={loadingWarTime}
+            className="text-[11px] text-yellow-500 hover:underline">
+            {loadingWarTime ? "Đang lấy..." : "Dùng thời gian war hiện tại"}
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input type="datetime-local" className="input text-xs" value={form.start_time}
+            onChange={e => setForm({ ...form, start_time: e.target.value })} />
+          <input type="datetime-local" className="input text-xs" value={form.end_time}
+            onChange={e => setForm({ ...form, end_time: e.target.value })} />
+        </div>
+      </div>
+
       <div className="pt-2 border-t border-gray-800 space-y-3">
         <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5"><Gift size={13} /> Phần quà (tuỳ chọn)</p>
         <input className="input" placeholder="Tên quà (vd: Thanh kiếm Barbarian phiên bản giới hạn)"
           value={form.reward_name} onChange={e => setForm({ ...form, reward_name: e.target.value })} />
         <ImageUploadField value={form.reward_image_url}
           onChange={url => setForm({ ...form, reward_image_url: url })} />
-        <input className="input" placeholder="Link Shopee"
+        <input className="input" placeholder="Link quà (Shopee, Lazada, hoặc bất kỳ link nào)"
           value={form.reward_shop_link} onChange={e => setForm({ ...form, reward_shop_link: e.target.value })} />
+        <input className="input" placeholder="Số Zalo liên hệ của bạn (để nhận thưởng)"
+          value={form.creator_zalo} onChange={e => setForm({ ...form, creator_zalo: e.target.value })} />
       </div>
+
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <button type="submit" disabled={saving} className="btn-primary w-full">
         {saving ? "Đang tạo..." : "Tạo sự kiện"}
@@ -384,11 +533,38 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+function CreateEventGate({ children }: { children: React.ReactNode }) {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const isAdmin = !!getAdminToken();
+
+  useEffect(() => {
+    if (isAdmin) { setAllowed(true); return; }
+    const member = getMemberAuth();
+    if (!member) { setAllowed(false); return; }
+    api.getRoster().then((roster: any[]) => {
+      const me = roster.find(m => m.tag === member.player_tag);
+      setAllowed(!!me && (me.role === "leader" || me.role === "coLeader"));
+    }).catch(() => setAllowed(false));
+  }, [isAdmin]);
+
+  if (allowed === null) return null;
+  if (!allowed) {
+    return (
+      <p className="text-xs text-gray-600">
+        Chỉ <span className="text-gray-400">Đồng thủ lĩnh trở lên</span> mới tạo được sự kiện.
+        {!getMemberAuth() && <> Vào <a href="/login" className="text-yellow-500 underline">/login</a> để đăng nhập.</>}
+      </p>
+    );
+  }
+  return <>{children}</>;
+}
+
 function EventsPageInner() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
   const isAdmin = !!getAdminToken();
+  const member = getMemberAuth();
 
   async function load() {
     setLoading(true);
@@ -397,14 +573,20 @@ function EventsPageInner() {
 
   useEffect(() => { load(); }, []);
 
+  const visibleEvents = events.filter(ev => {
+    if (ev.status === "active" || ev.status === "pending_delete" || ev.status === "closed") return true;
+    if (ev.status === "pending") return isAdmin || ev.creator_tag === member?.player_tag;
+    return false;
+  });
+
   return (
     <div className="space-y-5 animate-fade-up">
       <Hero />
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <AdminGate>
+        <CreateEventGate>
           <CreateEventForm onCreated={load} />
-        </AdminGate>
+        </CreateEventGate>
         <button onClick={load} className="btn-secondary flex items-center gap-2 text-sm ml-auto">
           <RefreshCw size={14} /> Làm mới
         </button>
@@ -412,7 +594,7 @@ function EventsPageInner() {
 
       {loading ? (
         <div className="grid gap-3">{[1,2].map(i => <div key={i} className="card h-24 animate-pulse bg-gray-800" />)}</div>
-      ) : events.length === 0 ? (
+      ) : visibleEvents.length === 0 ? (
         <div className="card text-center py-12 relative overflow-hidden">
           <Confetti />
           <PartyPopper size={40} className="mx-auto mb-3 text-yellow-500/50" />
@@ -421,12 +603,13 @@ function EventsPageInner() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {events.map(ev => <EventCard key={ev.id} event={ev} onOpen={() => setSelected(ev)} />)}
+          {visibleEvents.map(ev => <EventCard key={ev.id} event={ev} onOpen={() => setSelected(ev)} />)}
         </div>
       )}
 
       {selected && (
         <EventDetailModal event={selected} isAdmin={isAdmin}
+          isCreator={selected.creator_tag === member?.player_tag}
           onClose={() => setSelected(null)} onChanged={load} />
       )}
     </div>

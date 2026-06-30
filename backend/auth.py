@@ -43,3 +43,13 @@ async def require_admin(x_admin_token: str | None = Header(default=None)):
     if not hmac.compare_digest(sig, _sign(expiry)):
         raise HTTPException(401, "Token không hợp lệ")
     return True
+
+
+def verify_admin_token(token: str | None) -> bool:
+    """Giống require_admin nhưng KHÔNG raise — dùng khi 1 endpoint chấp nhận cả admin lẫn member."""
+    if not SECRET or not token or "." not in token:
+        return False
+    expiry, sig = token.split(".", 1)
+    if not expiry.isdigit() or int(expiry) < time.time():
+        return False
+    return hmac.compare_digest(sig, _sign(expiry))

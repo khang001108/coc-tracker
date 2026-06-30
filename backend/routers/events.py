@@ -14,9 +14,10 @@ qua endpoint currentwar / warlog cho từng thành viên trong 1 trận war:
 CoC API KHÔNG cung cấp: thời gian mỗi lượt đánh, donate theo khoảng thời gian tùy chọn
 (chỉ có tổng hiện tại), lịch sử chi tiết quá khứ ngoài 20 war log gần nhất.
 """
-from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header
 from supabase_client import get_supabase
-from auth import require_admin
+from auth import require_admin, verify_admin_token
+from member_auth import verify_member_token
 from services.coc_api import get_current_war, get_war_log, get_clan_members, get_coc_config
 import uuid
 
@@ -31,6 +32,32 @@ CONDITION_LABELS = {
     "top_donations": "Donate cao nhất hiện tại",
     "manual": "Admin tự chọn thủ công",
 }
+
+# Chỉ Đồng thủ lĩnh trở lên (trong clan, xác minh qua CoC API) mới được tạo sự kiện
+CREATOR_ROLES = {"leader", "coLeader"}
+
+
+async def resolve_creator(x_admin_token: str | None, x_member_token: str | None) -> dict:
+    """Xác định ai đang thao tác: admin web, hoặc thành viên Đồng thủ lĩnh+ đã đăng nhập.
+    Trả về {is_admin, creator_name, creator_tag}. Raise lỗi nếu không đủ quyền."""
+    if verify_admin_token(x_admin_token):
+        return {"is_admin": True, "creator_name": "Admin", "creator_tag": None}
+
+    member_tag = verify_member_token(x_member_token)
+    if not member_tag:
+        raise HTTPException(401, "Cần đăng nhập admin hoặc đăng nhập thành viên (Đồng thủ lĩnh trở lên) để thao tác")
+
+    cfg = await get_coc_config()
+    tag = cfg.get("clan_tag")
+    members = await get_clan_members(tag) if tag else []
+    me = next((m for m in members if m["tag"] == member_tag), None)
+    if not me or me.get("role") not in CREATOR_ROLES:
+        raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên mới được tạo/xoá sự kiện")
+
+    sb = get_supabase()
+    acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
+    name = acc.data[0]["player_name"] if acc.data else me.get("name", "Thành viên")
+    return {"is_admin": False, "creator_name": name, "creator_tag": member_tag}
 
 
 @router.get("/conditions")
@@ -68,7 +95,12 @@ async def list_events():
 
 
 @router.post("/")
-async def create_event(request: Request, _: bool = Depends(require_admin)):
+async def create_event(
+    request: Request,
+    x_admin_token: str | None = Header(default=None),
+    x_member_token: str | None = Header(default=None),
+):
+    creator = await resolve_creator(x_admin_token, x_member_token)
     body = await request.json()
     title = body.get("title", "").strip()
     if not title:
@@ -86,7 +118,13 @@ async def create_event(request: Request, _: bool = Depends(require_admin)):
         "reward_name": body.get("reward_name", ""),
         "reward_image_url": body.get("reward_image_url", ""),
         "reward_shop_link": body.get("reward_shop_link", ""),
-        "status": "active",
+        "start_time": body.get("start_time") or None,
+        "end_time": body.get("end_time") or None,
+        "creator_name": creator["creator_name"],
+        "creator_tag": creator["creator_tag"],
+        "creator_zalo": (body.get("creator_zalo") or "").strip(),
+        # Admin tạo thì hiện ngay; thành viên tạo phải chờ admin duyệt
+        "status": "active" if creator["is_admin"] else "pending",
     }
     res = sb.table("events").insert(row).execute()
     return res.data[0]
@@ -96,7 +134,7 @@ async def create_event(request: Request, _: bool = Depends(require_admin)):
 async def update_event(event_id: int, request: Request, _: bool = Depends(require_admin)):
     body = await request.json()
     allowed = ["title", "description", "reward_name", "reward_image_url",
-               "reward_shop_link", "status", "top_n"]
+               "reward_shop_link", "status", "top_n", "start_time", "end_time", "creator_zalo"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
@@ -108,10 +146,62 @@ async def update_event(event_id: int, request: Request, _: bool = Depends(requir
 
 
 @router.delete("/{event_id}")
-async def delete_event(event_id: int, _: bool = Depends(require_admin)):
+async def delete_event(
+    event_id: int,
+    x_admin_token: str | None = Header(default=None),
+    x_member_token: str | None = Header(default=None),
+):
+    sb = get_supabase()
+    if verify_admin_token(x_admin_token):
+        sb.table("events").delete().eq("id", event_id).execute()
+        return {"ok": True, "deleted": True}
+
+    member_tag = verify_member_token(x_member_token)
+    if not member_tag:
+        raise HTTPException(401, "Cần đăng nhập để yêu cầu xoá")
+    res = sb.table("events").select("creator_tag").eq("id", event_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Không tìm thấy sự kiện")
+    if res.data[0]["creator_tag"] != member_tag:
+        raise HTTPException(403, "Chỉ người tạo sự kiện hoặc admin mới được xoá")
+    sb.table("events").update({"status": "pending_delete"}).eq("id", event_id).execute()
+    return {"ok": True, "pending_delete": True}
+
+
+@router.post("/{event_id}/approve")
+async def approve_event(event_id: int, _: bool = Depends(require_admin)):
+    """Admin duyệt sự kiện do thành viên tạo (status 'pending' -> 'active')."""
+    sb = get_supabase()
+    res = sb.table("events").update({"status": "active"}).eq("id", event_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Không tìm thấy sự kiện")
+    return res.data[0]
+
+
+@router.post("/{event_id}/reject")
+async def reject_event(event_id: int, _: bool = Depends(require_admin)):
+    """Admin từ chối sự kiện đang chờ duyệt — xoá luôn."""
     sb = get_supabase()
     sb.table("events").delete().eq("id", event_id).execute()
     return {"ok": True}
+
+
+@router.post("/{event_id}/confirm-delete")
+async def confirm_delete(event_id: int, _: bool = Depends(require_admin)):
+    """Admin xác nhận yêu cầu xoá (status 'pending_delete') -> xoá thật."""
+    sb = get_supabase()
+    sb.table("events").delete().eq("id", event_id).execute()
+    return {"ok": True}
+
+
+@router.post("/{event_id}/cancel-delete")
+async def cancel_delete_request(event_id: int, _: bool = Depends(require_admin)):
+    """Admin huỷ yêu cầu xoá, trả sự kiện về trạng thái active."""
+    sb = get_supabase()
+    res = sb.table("events").update({"status": "active"}).eq("id", event_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Không tìm thấy sự kiện")
+    return res.data[0]
 
 
 def _compute_war_metric(member: dict, condition_type: str) -> float:

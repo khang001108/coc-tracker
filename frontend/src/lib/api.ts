@@ -121,9 +121,43 @@ export const api = {
   // Events
   getEvents:        () => apiFetch("/api/events/"),
   getConditions:    () => apiFetch("/api/events/conditions"),
-  createEvent:      (data: any) => apiFetch("/api/events/", { method: "POST", body: JSON.stringify(data) }),
+  createEvent:      async (data: any) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/events/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi tạo sự kiện" }));
+      throw new Error(err.detail || "Lỗi tạo sự kiện");
+    }
+    return res.json();
+  },
   updateEvent:      (id: number, data: any) => apiFetch(`/api/events/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteEvent:      (id: number) => apiFetch(`/api/events/${id}`, { method: "DELETE" }),
+  deleteEvent:      async (id: number) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/events/${id}`, {
+      method: "DELETE",
+      headers: {
+        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi xoá sự kiện" }));
+      throw new Error(err.detail || "Lỗi xoá sự kiện");
+    }
+    return res.json();
+  },
+  approveEvent:     (id: number) => apiFetch(`/api/events/${id}/approve`, { method: "POST" }),
+  rejectEvent:      (id: number) => apiFetch(`/api/events/${id}/reject`, { method: "POST" }),
+  confirmDeleteEvent: (id: number) => apiFetch(`/api/events/${id}/confirm-delete`, { method: "POST" }),
+  cancelDeleteEvent: (id: number) => apiFetch(`/api/events/${id}/cancel-delete`, { method: "POST" }),
   getLeaderboard:   (id: number) => apiFetch(`/api/events/${id}/leaderboard`),
   saveClaims:       (id: number, entries: any[]) => apiFetch(`/api/events/${id}/claim`, { method: "POST", body: JSON.stringify({ entries }) }),
   getClaims:        (id: number) => apiFetch(`/api/events/${id}/claims`),

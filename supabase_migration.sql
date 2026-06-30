@@ -98,11 +98,22 @@ CREATE TABLE IF NOT EXISTS events (
   top_n            INTEGER NOT NULL DEFAULT 3,        -- lấy top N người
   reward_name      TEXT DEFAULT '',
   reward_image_url TEXT DEFAULT '',
-  reward_shop_link TEXT DEFAULT '',
+  reward_shop_link TEXT DEFAULT '',                   -- "Link quà"
   war_end_time     TEXT DEFAULT '',                   -- endTime của war dùng để tính (lưu lúc tạo/kết thúc)
-  status           TEXT NOT NULL DEFAULT 'active',     -- 'active' | 'closed'
+  start_time       TIMESTAMPTZ,                       -- thời gian bắt đầu sự kiện (tự chọn hoặc lấy từ war)
+  end_time         TIMESTAMPTZ,                       -- thời gian kết thúc sự kiện
+  creator_name     TEXT DEFAULT '',                   -- tên người tạo (Đồng thủ lĩnh+ hoặc admin)
+  creator_tag      TEXT,                              -- player_tag người tạo (NULL nếu admin web tạo)
+  creator_zalo     TEXT DEFAULT '',                   -- số Zalo liên hệ của người tạo
+  status           TEXT NOT NULL DEFAULT 'active',
+  -- 'pending' (chờ admin duyệt) | 'active' | 'rejected' | 'pending_delete' (chờ admin xác nhận xoá) | 'closed'
   created_at       TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE events ADD COLUMN IF NOT EXISTS start_time   TIMESTAMPTZ;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS end_time     TIMESTAMPTZ;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS creator_name TEXT DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS creator_tag  TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS creator_zalo TEXT DEFAULT '';
 
 -- ── Event claims (người nhận thưởng) ────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS event_claims (
