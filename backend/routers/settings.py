@@ -48,7 +48,7 @@ async def test_clan_connection(request: Request):
         tag_enc = quote(clan_tag, safe="")
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.get(
-                f"https://api.clashofclans.com/v1/clans/{tag_enc}",
+                f"https://proxy.royaleapi.dev/v1/clans/{tag_enc}",
                 headers={"Authorization": f"Bearer {api_key}"}
             )
         if r.status_code == 200:

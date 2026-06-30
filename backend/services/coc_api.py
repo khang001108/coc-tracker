@@ -6,7 +6,7 @@ import httpx
 from supabase_client import get_supabase
 from urllib.parse import quote
 
-COC_BASE = "https://api.clashofclans.com/v1"
+COC_BASE = "https://proxy.royaleapi.dev/v1"
 
 async def get_coc_config() -> dict:
     """Load api_key and clan_tag from DB settings."""
