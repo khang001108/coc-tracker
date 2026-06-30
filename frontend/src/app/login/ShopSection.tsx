@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { CastlePreview, CannonPreview } from "@/lib/gameIcons";
 import { Coins, Lock, CheckCircle2 } from "lucide-react";
+import { EmberField } from "@/components/ui/EmberField";
 
 export default function ShopSection() {
   const [items, setItems] = useState<any[]>([]);
@@ -90,26 +91,27 @@ export default function ShopSection() {
   }
 
   return (
-    <div className="card space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="relative card space-y-4 overflow-hidden">
+      <EmberField count={14} />
+      <div className="relative flex items-center justify-between">
         <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
         <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">
           <Coins size={15} /> {inv.coins.toLocaleString()}
         </span>
       </div>
-      <p className="text-xs text-gray-500">Dùng Coins (kiếm được từ donate, sau này thêm cả từ war) để đổi lâu đài và pháo trang trí riêng — hiện trên Bản đồ chiến trường ở trang War.</p>
+      <p className="relative text-xs text-gray-500">Dùng Coins (kiếm được từ donate, sau này thêm cả từ war) để đổi lâu đài và pháo trang trí riêng — hiện trên Bản đồ chiến trường ở trang War.</p>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="relative text-xs text-red-400">{error}</p>}
 
       {loading ? (
-        <div className="h-32 bg-gray-800 rounded-xl animate-pulse" />
+        <div className="relative h-32 bg-gray-800 rounded-xl animate-pulse" />
       ) : (
         <>
-          <div>
+          <div className="relative">
             <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Lâu đài</p>
             <ItemGrid list={castles} />
           </div>
-          <div>
+          <div className="relative">
             <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Pháo (đại diện 2 lượt đánh)</p>
             <ItemGrid list={cannons} />
           </div>

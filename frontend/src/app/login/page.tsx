@@ -5,6 +5,7 @@ import { getMemberAuth, setMemberAuth, clearMemberAuth } from "@/lib/api";
 import { thColor, roleLabel, roleClass } from "@/lib/utils";
 import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
+import { EmberField } from "@/components/ui/EmberField";
 import ShopSection from "./ShopSection";
 
 export default function LoginPage() {
@@ -82,11 +83,15 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-5 animate-fade-up max-w-2xl">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <UserCheck size={22} className="text-green-400" /> Nhận diện thành viên
-        </h1>
-        <p className="page-subtitle">Chọn đúng tên bạn trong clan để đăng nhập và chat với danh tính thật</p>
+      <div className="relative rounded-2xl overflow-hidden p-5 -m-1"
+        style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
+        <EmberField count={16} />
+        <div className="relative">
+          <h1 className="page-title flex items-center gap-2">
+            <UserCheck size={22} className="text-green-400" /> Nhận diện thành viên
+          </h1>
+          <p className="page-subtitle">Chọn đúng tên bạn trong clan để đăng nhập và chat với danh tính thật</p>
+        </div>
       </div>
 
       {me ? (
