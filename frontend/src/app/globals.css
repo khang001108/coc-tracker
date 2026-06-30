@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --py-card-bg: linear-gradient(180deg, #241640, #1A0F2E);
+  --py-card-border: #3D2A66;
+  --py-card-text: #ffffff;
+  --py-pill-bg: linear-gradient(180deg, #2A1B4A, #1E1138);
+  --py-pill-border: #4A3580;
+}
+.theme-gold {
+  --py-card-bg: linear-gradient(180deg, #FFFBEF, #FFF3D4);
+  --py-card-border: #E2C572;
+  --py-card-text: #3A2A0F;
+  --py-pill-bg: linear-gradient(180deg, #FFFBEF, #F7E8BF);
+  --py-pill-border: #E2C572;
+  --player-bg: linear-gradient(180deg, #FFFBEF, #F7E8BF);
+  --player-border: #C9A24F;
+}
+:root {
+  --player-bg: linear-gradient(180deg, #2a2f3a, #161920);
+  --player-border: #0d0f13;
+}
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   html { height: 100%; -webkit-text-size-adjust: 100%; }

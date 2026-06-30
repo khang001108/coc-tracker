@@ -22,7 +22,7 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
           <div className="flex items-center justify-center gap-2">
             <span className="h-px flex-1 bg-gradient-to-r from-transparent to-yellow-500/30" style={{ maxWidth: 60 }} />
             <span className="text-xs font-bold uppercase tracking-widest text-yellow-400 flex items-center gap-1.5 px-3 py-1 rounded-full"
-              style={{ background: "linear-gradient(180deg, #2A1B4A, #1E1138)", border: "1px solid #4A3580" }}>
+              style={{ background: "var(--py-pill-bg)", border: "1px solid var(--py-pill-border)" }}>
               <Crown size={12} /> {ROLE_TITLE[g.role]} ({g.list.length})
             </span>
             <span className="h-px flex-1 bg-gradient-to-l from-transparent to-yellow-500/30" style={{ maxWidth: 60 }} />
@@ -33,16 +33,16 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
               <button key={m.tag} onClick={() => onSelect(m)}
                 className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl transition-all hover:-translate-y-1"
                 style={{
-                  background: "linear-gradient(180deg, #241640, #1A0F2E)",
-                  border: `1px solid ${gi === 0 ? "#F4A130" : "#3D2A66"}`,
+                  background: "var(--py-card-bg)",
+                  border: `1px solid ${gi === 0 ? "#F4A130" : "var(--py-card-border)"}`,
                   minWidth: gi === 0 ? 110 : 90,
                   boxShadow: gi === 0 ? "0 0 16px rgba(244,161,48,0.25)" : "none",
                 }}>
                 <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
                   {m.townHallLevel}
                 </div>
-                <p className="text-xs font-semibold text-white truncate max-w-[90px]">{m.name}</p>
-                <p className="text-[10px] text-yellow-400 font-medium">🏆 {formatNumber(m.trophies)}</p>
+                <p className="text-xs font-semibold truncate max-w-[90px]" style={{ color: "var(--py-card-text)" }}>{m.name}</p>
+                <p className="text-[10px] text-yellow-500 font-medium">🏆 {formatNumber(m.trophies)}</p>
               </button>
             ))}
           </div>

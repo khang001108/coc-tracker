@@ -148,9 +148,9 @@ export function MusicPlayer() {
         <div ref={boxRef} className="fixed z-40 flex items-center gap-1 rounded-full px-2 py-2 select-none"
           style={{
             ...(pos ? { left: pos.x, top: pos.y, bottom: "auto", right: "auto" } : { bottom: 96, right: 12 }),
-            background: "linear-gradient(180deg, #2a2f3a, #161920)",
-            border: "2px solid #0d0f13",
-            boxShadow: "0 3px 0 #0d0f13, 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+            background: "var(--player-bg)",
+            border: "2px solid var(--player-border)",
+            boxShadow: "0 3px 0 var(--player-border), 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
           }}>
           <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
             className="p-1 -ml-1 cursor-grab active:cursor-grabbing text-gray-600 touch-none">
