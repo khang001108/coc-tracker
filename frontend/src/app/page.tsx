@@ -54,8 +54,14 @@ export default function DashboardPage() {
 
   async function refresh() {
     setRefreshing(true);
-    await api.refreshClan().catch(() => {});
+    let refreshError = "";
+    try {
+      await api.refreshClan();
+    } catch (e: any) {
+      refreshError = e.message || "Lỗi khi làm mới";
+    }
     await load();
+    if (refreshError) setError(refreshError);
     setRefreshing(false);
   }
 
