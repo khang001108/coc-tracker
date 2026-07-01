@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ShieldArt, GoldCoinArt } from "@/components/ui/HeroArt";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
 import { Shield, Users, Trophy, Star, Swords, RefreshCw, AlertCircle, TrendingUp, Crown } from "lucide-react";

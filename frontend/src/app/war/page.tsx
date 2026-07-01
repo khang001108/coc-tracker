@@ -105,6 +105,10 @@ export default function WarPage() {
               {/* War header */}
               <div className="card relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: "#5C1E1E" }}>
                 <EmberField count={22} speed={1.4} />
+                {/* Minh hoạ kiếm ở giữa phía sau */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <SwordsArt size={120} opacity={0.10} />
+                </div>
                 <div className="relative grid grid-cols-3 gap-2 md:gap-4 text-center mb-4">
                   <div>
                     <p className="text-xs text-gray-400 mb-1 truncate">{war.clan?.name}</p>

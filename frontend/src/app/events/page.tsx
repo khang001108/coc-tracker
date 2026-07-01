@@ -1,4 +1,5 @@
 "use client";
+import { TrophyArt } from "@/components/ui/HeroArt";
 import { useEffect, useRef, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
@@ -767,11 +768,14 @@ export default function EventsPage() {
             style={{ background:"linear-gradient(135deg,#F4A130,#ec4899)" }}>
             <Trophy size={26} className="text-white"/>
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">
               Sự kiện & Trao thưởng <Sparkles size={18} className="text-yellow-400"/>
             </h1>
             <p className="page-subtitle">War giải, thử thách, quà từ cửa hàng của clan</p>
+          </div>
+          <div className="shrink-0 hidden sm:block">
+            <TrophyArt size={95} opacity={0.22} />
           </div>
         </div>
       </div>

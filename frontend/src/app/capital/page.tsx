@@ -1,4 +1,5 @@
 "use client";
+import { GoldCoinArt } from "@/components/ui/HeroArt";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
@@ -23,11 +24,19 @@ export default function CapitalPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Castle size={22} className="text-purple-400" /> Clan Capital
-        </h1>
-        <p className="page-subtitle">Raid Weekend — theo dõi đột kích</p>
+      <div className="relative rounded-2xl overflow-hidden p-5"
+        style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(100,50,150,0.08))" }}>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <h1 className="page-title flex items-center gap-2">
+              <Castle size={22} className="text-purple-400" /> Clan Capital
+            </h1>
+            <p className="page-subtitle">Raid Weekend — theo dõi đột kích</p>
+          </div>
+          <div className="shrink-0 hidden sm:block">
+            <GoldCoinArt size={90} opacity={0.25} />
+          </div>
+        </div>
       </div>
 
       {loading ? (
