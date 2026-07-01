@@ -14,54 +14,64 @@ const ROLE_TITLE: Record<string, string> = {
   leader: "Thủ Lĩnh", coLeader: "Đồng Thủ Lĩnh", admin: "Huynh Trưởng", member: "Thành Viên",
 };
 
+/* Màu viền theo cấp bậc */
+const RANK_STYLE: Record<string, { border: string; glow: string; text: string; label: string }> = {
+  leader:   { border: "#F4A130", glow: "rgba(244,161,48,0.45)",  text: "#FFD700", label: "🥇 " },
+  coLeader: { border: "#B0B8C8", glow: "rgba(192,200,216,0.35)", text: "#C8D0E0", label: "🥈 " },
+  admin:    { border: "#C88040", glow: "rgba(200,128,64,0.3)",   text: "#DBA060", label: "🥉 " },
+  member:   { border: "#3B82F6", glow: "rgba(59,130,246,0.25)",  text: "#60A5FA", label: "" },
+};
+
+const CARD_W = 96; // px — cố định để đồng nhất tất cả nhóm
+
 function PyramidGroupSection({ g, gi, onSelect }: {
   g: { role: string; list: any[] };
   gi: number;
   onSelect: (m: any) => void;
 }) {
-  // Leader luôn mở, các nhóm khác mặc định mở nếu ít (<= 6), còn lại thu gọn
-  const defaultOpen = gi === 0; // chỉ THỦ LĨNH mở mặc định
+  const defaultOpen = gi === 0;
   const [open, setOpen] = useState(defaultOpen);
 
-  const isLeader = g.role === "leader";
-  const borderColor = isLeader ? "#F4A130" : gi === 1 ? "#C0A060" : "var(--py-card-border)";
-  const glowColor   = isLeader ? "rgba(244,161,48,0.3)" : gi === 1 ? "rgba(192,160,96,0.15)" : "none";
+  const rs = RANK_STYLE[g.role] || RANK_STYLE.member;
+  const cols = Math.min(3, g.list.length); // tối đa 3 cột, ít hơn nếu ít thành viên
 
   return (
-    <div className="space-y-2">
-      {/* Group header — bấm để thu gọn/mở */}
-      <button onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 group">
-        <span className="h-px flex-1 opacity-40" style={{ background: `linear-gradient(to right, transparent, ${borderColor})` }}/>
-        <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all"
-          style={{ color: isLeader ? "#F4A130" : "var(--py-card-text)", background: "var(--py-pill-bg)", border: `1px solid ${borderColor}` }}>
-          <Crown size={12}/> {ROLE_TITLE[g.role]} ({g.list.length})
-          <span className="text-[10px] opacity-60 ml-1">{open ? "▲" : "▼"}</span>
+    <div className="space-y-3">
+      {/* Header */}
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-2">
+        <span className="h-px flex-1 opacity-30" style={{ background: `linear-gradient(to right, transparent, ${rs.border})` }}/>
+        <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 px-4 py-2 rounded-full transition-all select-none"
+          style={{ color: rs.text, background: "var(--py-pill-bg)", border: `1.5px solid ${rs.border}`, boxShadow: `0 0 10px ${rs.glow}` }}>
+          <Crown size={12}/> {rs.label}{ROLE_TITLE[g.role]} ({g.list.length})
+          <span className="opacity-50 ml-1 text-[10px]">{open ? "▲" : "▼"}</span>
         </span>
-        <span className="h-px flex-1 opacity-40" style={{ background: `linear-gradient(to left, transparent, ${borderColor})` }}/>
+        <span className="h-px flex-1 opacity-30" style={{ background: `linear-gradient(to left, transparent, ${rs.border})` }}/>
       </button>
 
-      {/* Grid các card — thu/mở mượt */}
+      {/* Cards — grid cố định CARD_W, căn giữa */}
       {open && (
-        <div className={g.list.length <= 3 ? "flex flex-wrap justify-center gap-2" : "grid gap-2"}
-          style={g.list.length > 3 ? { gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))" } : {}}>
-          {g.list.map(m => (
-            <button key={m.tag} onClick={() => onSelect(m)}
-              className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl transition-all hover:-translate-y-0.5 w-full"
-              style={{
-                background: "var(--py-card-bg)",
-                border: `1px solid ${borderColor}`,
-                boxShadow: isLeader ? `0 0 14px ${glowColor}` : gi === 1 ? `0 0 8px ${glowColor}` : "none",
-              }}>
-              <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
-                {m.townHallLevel}
-              </div>
-              <p className="text-[11px] font-semibold w-full text-center truncate px-1" style={{ color: "var(--py-card-text)" }}>
-                {m.name}
-              </p>
-              <p className="text-[10px] text-yellow-500 font-medium">🏆 {formatNumber(m.trophies)}</p>
-            </button>
-          ))}
+        <div className="flex justify-center">
+          <div className="grid gap-2.5"
+            style={{ gridTemplateColumns: `repeat(${cols}, ${CARD_W}px)` }}>
+            {g.list.map(m => (
+              <button key={m.tag} onClick={() => onSelect(m)}
+                className="flex flex-col items-center gap-1.5 py-3 px-1.5 rounded-2xl transition-all hover:-translate-y-0.5 hover:scale-105"
+                style={{
+                  width: CARD_W,
+                  background: "var(--py-card-bg)",
+                  border: `1.5px solid ${rs.border}`,
+                  boxShadow: `0 0 10px ${rs.glow}, inset 0 1px 0 rgba(255,255,255,0.05)`,
+                }}>
+                <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
+                  {m.townHallLevel}
+                </div>
+                <p className="text-[11px] font-semibold text-center truncate w-full px-1" style={{ color: "var(--py-card-text)" }}>
+                  {m.name}
+                </p>
+                <p className="text-[10px] font-medium" style={{ color: rs.text }}>🏆 {formatNumber(m.trophies)}</p>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

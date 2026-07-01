@@ -57,7 +57,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
 
         {/* Castle icon */}
         <div className="shrink-0">
-          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.castle} size={28} />
+          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.castle} size={28} animate={false} />
         </div>
 
         {/* Name + stars + cannons */}
@@ -148,7 +148,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
   return (
     <div className="card !p-0 overflow-hidden relative">
-      <EmberField count={30} speed={1.1} distributed />
+      
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">
         <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Bản đồ chiến trường</h3>
