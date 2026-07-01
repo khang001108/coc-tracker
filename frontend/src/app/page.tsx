@@ -121,10 +121,23 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Clan description */}
+      {/* Clan description — viền hoa văn */}
       {clan?.description && (
-        <div className="card border-yellow-500/20 bg-yellow-500/5">
-          <p className="text-sm text-gray-300 italic">"{clan.description}"</p>
+        <div className="relative" style={{ padding: 2, borderRadius: 16, background: "linear-gradient(135deg, #F4A130 0%, #7A3A00 25%, #F4A130 50%, #7A3A00 75%, #F4A130 100%)" }}>
+          {/* Diamond corners */}
+          {(["top-[-4px] left-[-4px]","top-[-4px] right-[-4px]","bottom-[-4px] left-[-4px]","bottom-[-4px] right-[-4px]"] as const).map((pos, i) => (
+            <svg key={i} className={`absolute ${pos} w-3 h-3 pointer-events-none z-10`} viewBox="0 0 12 12">
+              <polygon points="6,0 12,6 6,12 0,6" fill="rgba(244,161,48,0.92)" stroke="rgba(244,161,48,0.4)" strokeWidth="0.5"/>
+            </svg>
+          ))}
+          {/* Inner */}
+          <div className="relative rounded-2xl px-5 py-4 overflow-hidden"
+            style={{ background: "linear-gradient(135deg,rgba(244,161,48,0.08),rgba(139,69,19,0.06))", backgroundImage: "repeating-linear-gradient(45deg,rgba(244,161,48,0.04) 0,rgba(244,161,48,0.04) 1px,transparent 0,transparent 50%)", backgroundSize: "8px 8px" }}>
+            {/* Icon lửa trang trí */}
+            <span className="absolute right-3 top-3 text-lg opacity-30 select-none">🔥</span>
+            <span className="absolute left-3 bottom-3 text-sm opacity-20 select-none">⚔️</span>
+            <p className="relative text-sm text-gray-200 italic leading-relaxed">"{clan.description}"</p>
+          </div>
         </div>
       )}
 

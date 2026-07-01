@@ -1,4 +1,5 @@
 "use client";
+import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
@@ -106,14 +107,9 @@ export default function MembersPage() {
       </div>
 
       {/* Tabs */}
-      <div className="tab-pill-group">
-        {([["pyramid","🔺 Sơ đồ"],["list","👥 Danh sách"],["log","📋 Nhật ký"]] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`${
-              tab === id ? "tab-pill-active" : "tab-pill"
-            }`}>{label}</button>
-        ))}
-      </div>
+      <SlidingTabs
+        tabs={[{id:"pyramid",label:"🔺 Sơ đồ"},{id:"list",label:"👥 Danh sách"},{id:"log",label:"📋 Nhật ký"}]}
+        active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
         <div className="card h-64 animate-pulse bg-gray-800" />

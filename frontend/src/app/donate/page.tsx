@@ -1,4 +1,5 @@
 "use client";
+import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
@@ -64,14 +65,9 @@ export default function DonatePage() {
       </div>
 
       {/* Tabs */}
-      <div className="tab-pill-group">
-        {([["donate","❤️ Donate"],["games","🎮 Clan Games"]] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`${
-              tab === id ? "tab-pill-active" : "tab-pill"
-            }`}>{label}</button>
-        ))}
-      </div>
+      <SlidingTabs
+        tabs={[{id:"donate",label:"❤️ Donate"},{id:"games",label:"🎮 Clan Games"}]}
+        active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
         <div className="card h-64 animate-pulse bg-gray-800" />
