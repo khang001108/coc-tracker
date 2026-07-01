@@ -106,12 +106,12 @@ const CASTLE_COMPONENTS: Record<string, React.FC<{ size?: number }>> = {
 
 function CannonBasic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.65}>
       <circle cx="11" cy="14" r="6" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
-      {/* Nòng xoay */}
-      <g >
-        <rect x="9" y="2" width="4" height="12" rx="1.5" fill={ORANGE}/>
+      <g>
+        <rect x="9" y="2" width="4" height="12" rx="1.5" fill={fired ? ORANGE : "#C87020"}/>
         {fired && <circle cx="11" cy="2.5" r="2.2" fill={GOLD} fillOpacity={0.9}/>}
+        <BarrelAnim cx={11} cy={14} dur={fired ? 2.2 : 3.5}/>
       </g>
     </svg>
   );
@@ -119,40 +119,38 @@ function CannonBasic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
 
 function CannonDouble({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.65}>
       <circle cx="11" cy="15" r="6" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
-      <g >
-        <rect x="6"  y="3" width="3" height="12" rx="1.3" fill={ORANGE}/>
-        <rect x="13" y="3" width="3" height="12" rx="1.3" fill={ORANGE}/>
-        {fired && <>
-          <circle cx="7.5"  cy="3.5" r="2" fill={GOLD} fillOpacity={0.9}/>
-          <circle cx="14.5" cy="3.5" r="2" fill={GOLD} fillOpacity={0.9}/>
-        </>}
+      <g>
+        <rect x="6"  y="3" width="3" height="12" rx="1.3" fill={fired ? ORANGE : "#C87020"}/>
+        <rect x="13" y="3" width="3" height="12" rx="1.3" fill={fired ? ORANGE : "#C87020"}/>
+        {fired && <><circle cx="7.5"  cy="3.5" r="2" fill={GOLD} fillOpacity={0.9}/><circle cx="14.5" cy="3.5" r="2" fill={GOLD} fillOpacity={0.9}/></>}
+        <BarrelAnim cx={11} cy={15} dur={fired ? 2.8 : 4}/>
       </g>
     </svg>
   );
 }
-
 function CannonTurret({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.65}>
       <rect x="3" y="12" width="16" height="7" rx="1.5" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
       <circle cx="11" cy="11" r="5" fill={ORANGE} fillOpacity={0.6} stroke={ORANGE} strokeWidth="1.3"/>
-      <g >
-        <rect x="9.5" y="1" width="3" height="11" rx="1.3" fill={ORANGE}/>
+      <g>
+        <rect x="9.5" y="1" width="3" height="11" rx="1.3" fill={fired ? ORANGE : "#C87020"}/>
         {fired && <circle cx="11" cy="2" r="2.2" fill={GOLD} fillOpacity={0.9}/>}
+        <BarrelAnim cx={11} cy={11} dur={fired ? 1.8 : 3}/>
       </g>
     </svg>
   );
 }
-
 function CannonMythic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.65}>
       <circle cx="11" cy="14" r="6.5" fill={ORANGE} fillOpacity={0.45} stroke={GOLD} strokeWidth="1.5"/>
-      <g >
-        <rect x="9" y="1" width="4" height="13" rx="1.8" fill={ORANGE} stroke={GOLD} strokeWidth="0.8"/>
+      <g>
+        <rect x="9" y="1" width="4" height="13" rx="1.8" fill={fired ? ORANGE : "#C87020"} stroke={GOLD} strokeWidth="0.8"/>
         {fired && <circle cx="11" cy="1.5" r="2.5" fill={GOLD}/>}
+        <BarrelAnim cx={11} cy={14} dur={fired ? 3 : 4.5}/>
       </g>
       <circle cx="11" cy="14" r="2" fill={GOLD}/>
     </svg>

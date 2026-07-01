@@ -7,6 +7,18 @@ import { NumberEffect } from "@/components/ui/NumberEffect";
 import { Coins, Lock, CheckCircle2 } from "lucide-react";
 import { EmberField } from "@/components/ui/EmberField";
 
+function SectionTitle({ emoji, label }: { emoji: string; label: string }) {
+  return (
+    <div className="relative flex items-center gap-2 mb-2.5">
+      <div className="h-px flex-none w-3" style={{ background: "linear-gradient(to right, transparent, #F4A130)" }}/>
+      <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest whitespace-nowrap flex items-center gap-1">
+        {emoji} {label}
+      </span>
+      <div className="h-px flex-1" style={{ background: "linear-gradient(to right, #F4A130, transparent)" }}/>
+    </div>
+  );
+}
+
 export default function ShopSection() {
   const [items, setItems] = useState<any[]>([]);
   const [inv, setInv] = useState<{ owned_item_ids: number[]; coins: number; equipped_castle: string; equipped_cannon: string; equipped_effect: string | null; equipped_number_effect: string | null } | null>(null);
@@ -101,40 +113,12 @@ export default function ShopSection() {
     );
   }
 
-  function SectionTitle({ emoji, label }: { emoji: string; label: string }) {
-    return (
-      <div className="relative flex items-center gap-2 mb-2.5">
-        {/* Đường kẻ trang trí trái */}
-        <div className="h-px flex-none w-3" style={{ background: "linear-gradient(to right, transparent, #F4A130)" }}/>
-        <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest whitespace-nowrap flex items-center gap-1">
-          {emoji} {label}
-        </span>
-        {/* Đường kẻ trang trí phải */}
-        <div className="h-px flex-1" style={{ background: "linear-gradient(to right, #F4A130, transparent)" }}/>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative overflow-hidden"
-      style={{
-        background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))",
-        border: "2px solid transparent",
-        backgroundClip: "padding-box",
-        borderRadius: 16,
-      }}>
-      {/* Gradient border */}
-      <div className="absolute inset-0 rounded-2xl pointer-events-none"
-        style={{ background: "linear-gradient(135deg,#F4A130,#7A3A00,#F4A130,#7A3A00,#F4A130)", zIndex: -1, margin: -2, borderRadius: 18 }}/>
+    <div className="card relative overflow-hidden"
+      style={{ border: "2px solid rgba(244,161,48,0.35)" }}>
       {/* Hoa văn nền */}
-      <div className="absolute inset-0 opacity-[0.035] pointer-events-none rounded-2xl"
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none rounded-2xl"
         style={{ backgroundImage: "repeating-linear-gradient(45deg,#F4A130 0,#F4A130 1px,transparent 0,transparent 50%)", backgroundSize: "8px 8px" }}/>
-      {/* Diamond corners */}
-      {[["top-[-4px] left-[-4px]","tl"],["top-[-4px] right-[-4px]","tr"],["bottom-[-4px] left-[-4px]","bl"],["bottom-[-4px] right-[-4px]","br"]].map(([pos]) => (
-        <svg key={pos} className={`absolute ${pos} w-3 h-3 pointer-events-none z-10`} viewBox="0 0 12 12">
-          <polygon points="6,0 12,6 6,12 0,6" fill="rgba(244,161,48,0.9)" stroke="rgba(244,161,48,0.4)" strokeWidth="0.5"/>
-        </svg>
-      ))}
 
       <div className="relative p-5 space-y-5">
         <EmberField count={14} />

@@ -81,9 +81,7 @@ export default function DashboardPage() {
         <div className="h-8 w-48 bg-gray-800 rounded-xl animate-pulse" />
         <div className="h-9 w-24 bg-gray-800 rounded-xl animate-pulse" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <CocLoader text="Đang tải clan..." minHeight={180} />
-      </div>
+      <CocLoader text="Đang tải clan..." minHeight={180} />
     </div>
   );
 
