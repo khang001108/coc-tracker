@@ -361,3 +361,35 @@
   animation: cannon-barrel-spin 2s ease-in-out infinite;
   will-change: transform;
 }
+
+/* ── Number Effect animations ─────────────────────────────────────────── */
+@keyframes ne-fire-pulse {
+  0%,100% { text-shadow: 0 0 6px #FF4500, 0 0 12px #FF8C00; color: #FFD700; }
+  50%      { text-shadow: 0 0 14px #FF0000, 0 0 28px #FF8C00, 0 0 4px #FFD700; color: #FFF; }
+}
+@keyframes ne-ice-glow {
+  0%,100% { text-shadow: 0 0 6px #00BFFF, 0 0 12px #87CEEB; color: #E0F8FF; }
+  50%      { text-shadow: 0 0 14px #00FFFF, 0 0 28px #87CEEB; color: #fff; }
+}
+@keyframes ne-rainbow-cycle {
+  0%   { color: #FF4444; }
+  14%  { color: #FF8C00; }
+  28%  { color: #FFD700; }
+  42%  { color: #44DD44; }
+  57%  { color: #00BFFF; }
+  71%  { color: #A855F7; }
+  85%  { color: #FF69B4; }
+  100% { color: #FF4444; }
+}
+@keyframes ne-crown-glow {
+  0%,100% { text-shadow: 0 0 4px #FFD700, 0 0 8px #F4A130; color: #FFD700; }
+  50%      { text-shadow: 0 0 12px #FFD700, 0 0 20px #FFF, 0 0 4px #F4A130; color: #FFF; }
+}
+@keyframes ne-fire-bg {
+  0%,100% { background: linear-gradient(135deg, #FF4500, #FF8C00); }
+  50%      { background: linear-gradient(135deg, #FF0000, #FFD700); }
+}
+@keyframes ne-ice-bg {
+  0%,100% { background: linear-gradient(135deg, #0066CC, #00BFFF); }
+  50%      { background: linear-gradient(135deg, #003399, #87CEEB); }
+}
