@@ -33,8 +33,8 @@ export default function CapitalPage() {
             </h1>
             <p className="page-subtitle">Raid Weekend — theo dõi đột kích</p>
           </div>
-          <div className="shrink-0 hidden sm:block">
-            <GoldCoinArt size={90} opacity={0.25} />
+          <div className="shrink-0 opacity-90">
+            <GoldCoinArt size={88} opacity={0.25} />
           </div>
         </div>
       </div>

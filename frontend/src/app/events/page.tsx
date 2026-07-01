@@ -12,6 +12,16 @@ import {
 } from "lucide-react";
 
 /* ─── Constants ───────────────────────────────────────────────────────── */
+const CONDITION_LABELS: Record<string, { label: string; icon: string; desc: string }> = {
+  total_stars:           { label: "Tổng sao war",          icon: "⭐", desc: "Ai đạt nhiều sao nhất trong war" },
+  best_destruction:      { label: "Phá hủy cao nhất",       icon: "💥", desc: "% phá hủy cao nhất trong 1 đòn đánh" },
+  perfect_war:           { label: "War hoàn hảo",           icon: "🏆", desc: "Toàn bộ lượt đánh đều đạt 3 sao" },
+  most_attacks_used:     { label: "Dùng hết lượt",          icon: "⚔️", desc: "Dùng đủ toàn bộ lượt tấn công" },
+  fewest_stars_conceded: { label: "Phòng thủ tốt nhất",     icon: "🛡️", desc: "Bị đánh mất ít sao nhất" },
+  top_donations:         { label: "Donate cao nhất",        icon: "💎", desc: "Donate nhiều nhất hiện tại" },
+  manual:                { label: "Admin tự chọn",          icon: "👑", desc: "Người tổ chức tự quyết định người thắng" },
+};
+
 const EVENT_TYPE_LABEL: Record<string, string> = {
   war: "War thường", cwl: "CWL / War giải", custom: "Tự viết",
 };
@@ -119,6 +129,23 @@ function EventCard({ event, myTag, onOpen }: { event: any; myTag?: string; onOpe
                 <p className="text-[11px] text-gray-600 mt-0.5 flex items-center gap-1">
                   <Clock size={9}/> {fmtDateTime(event.start_time)}{event.end_time && ` → ${fmtDateTime(event.end_time)}`}
                 </p>
+              )}
+              {/* Điều kiện xếp hạng — hiển thị rõ để người chơi hiểu */}
+              {event.condition_type && CONDITION_LABELS[event.condition_type] && (
+                <div className="mt-1.5 flex items-start gap-1.5 rounded-lg px-2 py-1.5"
+                  style={{ background: "rgba(244,161,48,0.08)", border: "1px solid rgba(244,161,48,0.2)" }}>
+                  <span className="text-[13px] leading-none shrink-0 mt-0.5">
+                    {CONDITION_LABELS[event.condition_type].icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-yellow-500 leading-tight">
+                      {CONDITION_LABELS[event.condition_type].label}
+                    </p>
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      {CONDITION_LABELS[event.condition_type].desc}
+                    </p>
+                  </div>
+                </div>
               )}
               <div className="flex items-center gap-3 mt-1 flex-wrap">
                 {event.reward_name && (
@@ -774,8 +801,8 @@ export default function EventsPage() {
             </h1>
             <p className="page-subtitle">War giải, thử thách, quà từ cửa hàng của clan</p>
           </div>
-          <div className="shrink-0 hidden sm:block">
-            <TrophyArt size={95} opacity={0.22} />
+          <div className="shrink-0 opacity-90">
+            <TrophyArt size={88} opacity={0.22} />
           </div>
         </div>
       </div>

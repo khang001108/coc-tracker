@@ -94,8 +94,8 @@ export default function LoginPage() {
             </h1>
             <p className="page-subtitle">Chọn đúng tên bạn trong clan để đăng nhập và chat với danh tính thật</p>
           </div>
-          <div className="shrink-0 hidden sm:block">
-            <ClanBadgeArt size={95} opacity={0.22} />
+          <div className="shrink-0 opacity-90">
+            <ClanBadgeArt size={88} opacity={0.22} />
           </div>
         </div>
       </div>

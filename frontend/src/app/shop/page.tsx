@@ -20,8 +20,8 @@ export default function ShopPage() {
             </h1>
             <p className="page-subtitle">Đổi Coins lấy lâu đài, pháo, hiệu ứng tên — trang trí riêng cho bạn</p>
           </div>
-          <div className="shrink-0 hidden sm:block">
-            <CastleArt size={100} opacity={0.22} />
+          <div className="shrink-0 opacity-90">
+            <CastleArt size={88} opacity={0.22} />
           </div>
         </div>
       </div>

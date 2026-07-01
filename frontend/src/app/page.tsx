@@ -124,15 +124,29 @@ export default function DashboardPage() {
 
       {/* Clan description — viền hoa văn */}
       {clan?.description && (
-        <div className="relative px-5 py-3.5 rounded-2xl overflow-hidden"
-          style={{ border: "1px solid rgba(244,161,48,0.35)" }}>
-          {["top-[-4px] left-[-4px]","top-[-4px] right-[-4px]","bottom-[-4px] left-[-4px]","bottom-[-4px] right-[-4px]"].map((pos, i) => (
-            <svg key={i} className={`absolute ${pos} w-3 h-3 pointer-events-none z-10`} viewBox="0 0 12 12">
-              <polygon points="6,0 12,6 6,12 0,6" fill="rgba(244,161,48,0.85)" strokeWidth="0.5"/>
+        <div className="relative rounded-2xl overflow-hidden"
+          style={{ padding: "2px", background: "linear-gradient(135deg, #F4A130 0%, #B87320 40%, #FFD700 60%, #B87320 80%, #F4A130 100%)" }}>
+          {/* Diamond corners */}
+          {["top-[-5px] left-[-5px]","top-[-5px] right-[-5px]","bottom-[-5px] left-[-5px]","bottom-[-5px] right-[-5px]"].map((pos, i) => (
+            <svg key={i} className={`absolute ${pos} w-[14px] h-[14px] pointer-events-none z-10`} viewBox="0 0 14 14">
+              <polygon points="7,0 14,7 7,14 0,7" fill="#F4A130" stroke="#FFD700" strokeWidth="1"/>
+              <polygon points="7,3 11,7 7,11 3,7" fill="#FFD700" opacity={0.6}/>
             </svg>
           ))}
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base opacity-20 select-none pointer-events-none">🔥</span>
-          <p className="relative text-sm font-medium italic leading-relaxed" style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clan.description}"</p>
+          {/* Inner content */}
+          <div className="relative rounded-[14px] px-5 py-3.5"
+            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
+            {/* Hoa văn nền mờ */}
+            <div className="absolute inset-0 rounded-[14px] pointer-events-none"
+              style={{ backgroundImage: "repeating-linear-gradient(135deg,rgba(244,161,48,0.04) 0,rgba(244,161,48,0.04) 1px,transparent 0,transparent 50%)", backgroundSize: "10px 10px" }}/>
+            {/* Dấu nháy mở trang trí */}
+            <span className="absolute left-2 top-1 text-2xl leading-none font-serif opacity-20 select-none"
+              style={{ color: "#F4A130" }}>"</span>
+            <span className="absolute right-2 bottom-1 text-2xl leading-none font-serif opacity-20 select-none"
+              style={{ color: "#F4A130" }}>"</span>
+            <p className="relative text-sm font-medium italic leading-relaxed px-3"
+              style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clan.description}"</p>
+          </div>
         </div>
       )}
 
@@ -147,7 +161,10 @@ export default function DashboardPage() {
 
       {/* War status */}
       {war?.state && war.state !== "notInWar" && (
-        <div className="card border-red-500/20 bg-red-500/5">
+        <div className="card border-red-500/20 bg-red-500/5 relative overflow-hidden">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-90">
+            <SwordsArt size={80} opacity={0.12} />
+          </div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-white flex items-center gap-2">
               <Swords size={18} className="text-red-400" />
