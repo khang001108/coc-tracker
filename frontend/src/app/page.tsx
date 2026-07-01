@@ -162,8 +162,9 @@ export default function DashboardPage() {
       {/* War status */}
       {war?.state && war.state !== "notInWar" && (
         <div className="card border-red-500/20 bg-red-500/5 relative overflow-hidden">
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-90">
-            <SwordsArt size={80} opacity={0.12} />
+          {/* Kiếm chéo góc phải */}
+          <div className="absolute right-0 top-0 bottom-0 flex items-center pointer-events-none pr-3">
+            <SwordsArt size={90} opacity={0.13} />
           </div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-white flex items-center gap-2">

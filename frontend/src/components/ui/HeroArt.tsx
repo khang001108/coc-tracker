@@ -3,27 +3,35 @@
  * Thiết kế CoC-inspired, dùng màu cam/vàng hoà với theme.
  */
 
-/** Thanh kiếm chéo (War) */
+/** Hai cây kiếm chéo (War) — lưỡi kiếm nhọn, chắn tay chữ thập, cán nắm */
 export function SwordsArt({ size = 120, opacity = 0.18 }: { size?: number; opacity?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ opacity }} aria-hidden>
-      {/* Kiếm trái */}
-      <g transform="rotate(-35 50 50)">
-        <rect x="47" y="8" width="6" height="60" rx="2" fill="#F4A130"/>
-        <polygon points="50,5 54,15 46,15" fill="#FFD700"/>
-        <rect x="40" y="60" width="20" height="5" rx="2" fill="#B8731A"/>
-        <rect x="46" y="65" width="8" height="18" rx="2" fill="#8B5A1E"/>
+      {/* ── Kiếm trái (xoay -38°) ── */}
+      <g transform="rotate(-38 50 50)">
+        {/* Lưỡi kiếm — nhọn ở đầu */}
+        <polygon points="50,4 53,62 50,65 47,62" fill="#F4A130"/>
+        <polygon points="50,4 52,40 50,44 48,40" fill="#FFD700" opacity={0.7}/>
+        {/* Chắn tay chữ thập */}
+        <rect x="38" y="62" width="24" height="5" rx="2.5" fill="#B8731A"/>
+        <rect x="48" y="57" width="4" height="14" rx="2" fill="#B8731A"/>
+        {/* Cán nắm */}
+        <rect x="47" y="67" width="6" height="16" rx="3" fill="#8B5A1E"/>
+        {/* Đầu cán */}
+        <ellipse cx="50" cy="84" rx="5" ry="3.5" fill="#B8731A"/>
       </g>
-      {/* Kiếm phải */}
-      <g transform="rotate(35 50 50)">
-        <rect x="47" y="8" width="6" height="60" rx="2" fill="#F4A130"/>
-        <polygon points="50,5 54,15 46,15" fill="#FFD700"/>
-        <rect x="40" y="60" width="20" height="5" rx="2" fill="#B8731A"/>
-        <rect x="46" y="65" width="8" height="18" rx="2" fill="#8B5A1E"/>
+      {/* ── Kiếm phải (xoay +38°) ── */}
+      <g transform="rotate(38 50 50)">
+        <polygon points="50,4 53,62 50,65 47,62" fill="#F4A130"/>
+        <polygon points="50,4 52,40 50,44 48,40" fill="#FFD700" opacity={0.7}/>
+        <rect x="38" y="62" width="24" height="5" rx="2.5" fill="#B8731A"/>
+        <rect x="48" y="57" width="4" height="14" rx="2" fill="#B8731A"/>
+        <rect x="47" y="67" width="6" height="16" rx="3" fill="#8B5A1E"/>
+        <ellipse cx="50" cy="84" rx="5" ry="3.5" fill="#B8731A"/>
       </g>
-      {/* Sao trung tâm */}
-      <polygon points="50,38 52,44 58,44 53,48 55,54 50,50 45,54 47,48 42,44 48,44"
-        fill="#FFD700" opacity={0.9}/>
+      {/* Sao vàng trung tâm */}
+      <polygon points="50,39 51.8,44.5 57.5,44.5 53,48 54.8,53.5 50,50 45.2,53.5 47,48 42.5,44.5 48.2,44.5"
+        fill="#FFD700" opacity={0.95}/>
     </svg>
   );
 }
