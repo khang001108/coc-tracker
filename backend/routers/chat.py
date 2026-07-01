@@ -18,22 +18,15 @@ MAX_MSG_LEN = 1000
 
 
 @router.get("/messages")
-async def get_messages(room: str = "global", after_id: int = 0, limit: int = 50, clan_id: int = 1):
+async def get_messages(room: str = "global", after_id: int = 0, limit: int = 50):
     if room not in ("clan", "global"):
         raise HTTPException(400, "room không hợp lệ")
     sb = get_supabase()
-    # Filter theo clan: clan chat (clan_id), global chat (tất cả clan)
     if after_id:
-        q = sb.table("chat_messages").select("*").eq("room", room)
-        if room == "clan":
-            q = q.eq("clan_id", clan_id)
-        q = q.gt("id", after_id).order("id").limit(limit)
+        q = sb.table("chat_messages").select("*").eq("room", room).gt("id", after_id).order("id").limit(limit)
         res = q.execute()
     else:
-        q = sb.table("chat_messages").select("*").eq("room", room)
-        if room == "clan":
-            q = q.eq("clan_id", clan_id)
-        q = q.order("id", desc=True).limit(limit)
+        q = sb.table("chat_messages").select("*").eq("room", room).order("id", desc=True).limit(limit)
         res = q.execute()
         res.data = list(reversed(res.data or []))
     return res.data
