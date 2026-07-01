@@ -343,3 +343,19 @@
   0%,100% { transform: translateY(0); }
   50%      { transform: translateY(-2px); }
 }
+
+/* ── Cannon barrel rotation (SVG <g> via fill-box) ──────────────────── */
+@keyframes cannon-barrel-spin {
+  0%,100% { transform: rotate(-13deg); }
+  50%      { transform: rotate(13deg); }
+}
+.cannon-spin {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: cannon-barrel-spin 3s ease-in-out infinite;
+}
+.cannon-spin-fast {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: cannon-barrel-spin 2s ease-in-out infinite;
+}

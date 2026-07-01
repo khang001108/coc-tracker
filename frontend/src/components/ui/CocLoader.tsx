@@ -59,26 +59,18 @@ function LoaderCastle() {
       <line x1="32" y1="6" x2="32" y2="-4" stroke="#8B5A1E" strokeWidth="1.5"/>
       <polygon points="32,-4 40,0 32,4" fill="#F4A130"/>
 
-      {/* Pháo trái */}
+      {/* Pháo trái - CSS spin */}
       <g>
         <circle cx="13" cy="52" r="5" fill="#B8731A" fillOpacity={0.7} stroke="#F4A130" strokeWidth="1"/>
-        <g>
+        <g className="cannon-spin">
           <rect x="11.5" y="43" width="3" height="9" rx="1.5" fill="#F4A130"/>
-          <animateTransform attributeName="transform" type="rotate"
-            values="-12 13 52;12 13 52;-12 13 52"
-            keyTimes="0;0.5;1" dur="2.8s" repeatCount="indefinite"
-            calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
         </g>
       </g>
-      {/* Pháo phải */}
+      {/* Pháo phải - CSS spin (style ngược) */}
       <g>
         <circle cx="51" cy="52" r="5" fill="#B8731A" fillOpacity={0.7} stroke="#F4A130" strokeWidth="1"/>
-        <g>
+        <g className="cannon-spin" style={{ animationDirection: "reverse" }}>
           <rect x="49.5" y="43" width="3" height="9" rx="1.5" fill="#F4A130"/>
-          <animateTransform attributeName="transform" type="rotate"
-            values="12 51 52;-12 51 52;12 51 52"
-            keyTimes="0;0.5;1" dur="2.8s" repeatCount="indefinite"
-            calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
         </g>
       </g>
 
