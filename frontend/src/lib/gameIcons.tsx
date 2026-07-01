@@ -20,12 +20,17 @@ const ANIM_CSS = `
   50%      { transform: translateY(-3px); filter: drop-shadow(0 6px 10px rgba(180,100,0,0.4)); }
 }
 @keyframes cannon-aim {
-  0%,100% { transform: rotate(-14deg); transform-origin: center bottom; }
-  50%      { transform: rotate(14deg); transform-origin: center bottom; }
+  0%,100% { transform: rotate(-14deg); }
+  50%      { transform: rotate(14deg); }
 }
 @keyframes cannon-glow {
   0%,100% { filter: drop-shadow(0 0 3px #F4A130); }
   50%      { filter: drop-shadow(0 0 9px #F4A130); }
+}
+/* Barrel class: transform-box+origin cần tách ra khỏi keyframe */
+.cannon-barrel {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
 }
 `;
 let injected = false;
@@ -108,7 +113,7 @@ function CannonBasic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
       <circle cx="11" cy="14" r="6" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
       {/* Nòng xoay */}
-      <g style={{ transformOrigin: "11px 14px", transformBox: "fill-box", animation: fired ? "cannon-aim 2.5s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 2.5s ease-in-out infinite" : undefined }}>
         <rect x="9" y="2" width="4" height="12" rx="1.5" fill={ORANGE}/>
         {fired && <circle cx="11" cy="2.5" r="2.2" fill={GOLD} fillOpacity={0.9}/>}
       </g>
@@ -120,7 +125,7 @@ function CannonDouble({ fired, size = 22 }: { fired?: boolean; size?: number }) 
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
       <circle cx="11" cy="15" r="6" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
-      <g style={{ transformOrigin: "11px 15px", transformBox: "fill-box", animation: fired ? "cannon-aim 3s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 3s ease-in-out infinite" : undefined }}>
         <rect x="6"  y="3" width="3" height="12" rx="1.3" fill={ORANGE}/>
         <rect x="13" y="3" width="3" height="12" rx="1.3" fill={ORANGE}/>
         {fired && <>
@@ -137,7 +142,7 @@ function CannonTurret({ fired, size = 22 }: { fired?: boolean; size?: number }) 
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
       <rect x="3" y="12" width="16" height="7" rx="1.5" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
       <circle cx="11" cy="11" r="5" fill={ORANGE} fillOpacity={0.6} stroke={ORANGE} strokeWidth="1.3"/>
-      <g style={{ transformOrigin: "11px 11px", transformBox: "fill-box", animation: fired ? "cannon-aim 2s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 2s ease-in-out infinite" : undefined }}>
         <rect x="9.5" y="1" width="3" height="11" rx="1.3" fill={ORANGE}/>
         {fired && <circle cx="11" cy="2" r="2.2" fill={GOLD} fillOpacity={0.9}/>}
       </g>
@@ -149,7 +154,7 @@ function CannonMythic({ fired, size = 22 }: { fired?: boolean; size?: number }) 
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.55}>
       <circle cx="11" cy="14" r="6.5" fill={ORANGE} fillOpacity={0.45} stroke={GOLD} strokeWidth="1.5"/>
-      <g style={{ transformOrigin: "11px 14px", transformBox: "fill-box", animation: fired ? "cannon-aim 3.5s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 3.5s ease-in-out infinite" : undefined }}>
         <rect x="9" y="1" width="4" height="13" rx="1.8" fill={ORANGE} stroke={GOLD} strokeWidth="0.8"/>
         {fired && <circle cx="11" cy="1.5" r="2.5" fill={GOLD}/>}
       </g>
@@ -230,7 +235,7 @@ function CannonLaser({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.6}>
       <circle cx="11" cy="14" r="6" fill="#00BFFF" fillOpacity={0.5} stroke="#00BFFF" strokeWidth="1.3"/>
-      <g style={{ transformOrigin: "11px 14px", transformBox: "fill-box", animation: fired ? "cannon-aim 2s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 2s ease-in-out infinite" : undefined }}>
         <rect x="10" y="1" width="2" height="13" rx="1" fill="#00BFFF"/>
         <rect x="9.5" y="1" width="3" height="8" rx="0.5" fill="white" fillOpacity={0.4}/>
         {fired && <circle cx="11" cy="1.5" r="2.5" fill="#00FFFF" opacity={0.9}/>}
@@ -243,7 +248,7 @@ function CannonStorm({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.6}>
       <circle cx="11" cy="14" r="6.5" fill="#6B21A8" fillOpacity={0.5} stroke="#A855F7" strokeWidth="1.3"/>
-      <g style={{ transformOrigin: "11px 14px", transformBox: "fill-box", animation: fired ? "cannon-aim 2.8s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 2.8s ease-in-out infinite" : undefined }}>
         <rect x="9.5" y="1" width="3" height="13" rx="1.5" fill="#A855F7"/>
         {fired && <ellipse cx="11" cy="1" rx="3" ry="2" fill="#FFD700"/>}
       </g>
@@ -257,7 +262,7 @@ function CannonDragon({ fired, size = 22 }: { fired?: boolean; size?: number }) 
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.6}>
       <circle cx="11" cy="14" r="6.5" fill="#FF6B35" fillOpacity={0.5} stroke="#FF8C35" strokeWidth="1.3"/>
-      <g style={{ transformOrigin: "11px 14px", transformBox: "fill-box", animation: fired ? "cannon-aim 2.5s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 2.5s ease-in-out infinite" : undefined }}>
         <polygon points="11,1 14,13 11,14 8,13" fill="#FF6B35"/>
         <polygon points="11,1 13,8 11,10 9,8" fill="#FFD700" opacity={0.7}/>
         {fired && <circle cx="11" cy="1" r="3" fill="#FFD700"/>}
@@ -270,7 +275,7 @@ function CannonCelestial({ fired, size = 22 }: { fired?: boolean; size?: number 
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 1 : 0.6}>
       <circle cx="11" cy="14" r="7" fill="#F4A130" fillOpacity={0.45} stroke="#FFD700" strokeWidth="2"/>
-      <g style={{ transformOrigin: "11px 14px", transformBox: "fill-box", animation: fired ? "cannon-aim 3s ease-in-out infinite" : undefined }}>
+      <g className={fired ? "cannon-barrel" : undefined} style={{ animation: fired ? "cannon-aim 3s ease-in-out infinite" : undefined }}>
         <rect x="9.5" y="1" width="3" height="13" rx="1.5" fill="#FFD700" stroke="#F4A130" strokeWidth="0.8"/>
         {fired && <polygon points="11,0 13,4 11,3 9,4" fill="#fff"/>}
       </g>

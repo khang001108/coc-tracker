@@ -13,6 +13,59 @@ const ROLE_TITLE: Record<string, string> = {
   leader: "Thủ Lĩnh", coLeader: "Đồng Thủ Lĩnh", admin: "Huynh Trưởng", member: "Thành Viên",
 };
 
+function PyramidGroupSection({ g, gi, onSelect }: {
+  g: { role: string; list: any[] };
+  gi: number;
+  onSelect: (m: any) => void;
+}) {
+  // Leader luôn mở, các nhóm khác mặc định mở nếu ít (<= 6), còn lại thu gọn
+  const defaultOpen = gi === 0 || g.list.length <= 6;
+  const [open, setOpen] = useState(defaultOpen);
+
+  const isLeader = g.role === "leader";
+  const borderColor = isLeader ? "#F4A130" : gi === 1 ? "#C0A060" : "var(--py-card-border)";
+  const glowColor   = isLeader ? "rgba(244,161,48,0.3)" : gi === 1 ? "rgba(192,160,96,0.15)" : "none";
+
+  return (
+    <div className="space-y-2">
+      {/* Group header — bấm để thu gọn/mở */}
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 group">
+        <span className="h-px flex-1 opacity-40" style={{ background: `linear-gradient(to right, transparent, ${borderColor})` }}/>
+        <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all"
+          style={{ color: isLeader ? "#F4A130" : "var(--py-card-text)", background: "var(--py-pill-bg)", border: `1px solid ${borderColor}` }}>
+          <Crown size={12}/> {ROLE_TITLE[g.role]} ({g.list.length})
+          <span className="text-[10px] opacity-60 ml-1">{open ? "▲" : "▼"}</span>
+        </span>
+        <span className="h-px flex-1 opacity-40" style={{ background: `linear-gradient(to left, transparent, ${borderColor})` }}/>
+      </button>
+
+      {/* Grid các card — thu/mở mượt */}
+      {open && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))" }}>
+          {g.list.map(m => (
+            <button key={m.tag} onClick={() => onSelect(m)}
+              className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl transition-all hover:-translate-y-0.5 w-full"
+              style={{
+                background: "var(--py-card-bg)",
+                border: `1px solid ${borderColor}`,
+                boxShadow: isLeader ? `0 0 14px ${glowColor}` : gi === 1 ? `0 0 8px ${glowColor}` : "none",
+              }}>
+              <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
+                {m.townHallLevel}
+              </div>
+              <p className="text-[11px] font-semibold w-full text-center truncate px-1" style={{ color: "var(--py-card-text)" }}>
+                {m.name}
+              </p>
+              <p className="text-[10px] text-yellow-500 font-medium">🏆 {formatNumber(m.trophies)}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any) => void }) {
   const groups = ROLE_ORDER.map(role => ({
     role,
@@ -20,37 +73,9 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
   })).filter(g => g.list.length > 0);
 
   return (
-    <div className="space-y-6 py-2">
+    <div className="space-y-5 py-2">
       {groups.map((g, gi) => (
-        <div key={g.role} className="space-y-3">
-          <div className="flex items-center justify-center gap-2">
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-yellow-500/30" style={{ maxWidth: 60 }} />
-            <span className="text-xs font-bold uppercase tracking-widest text-yellow-400 flex items-center gap-1.5 px-3 py-1 rounded-full"
-              style={{ background: "var(--py-pill-bg)", border: "1px solid var(--py-pill-border)" }}>
-              <Crown size={12} /> {ROLE_TITLE[g.role]} ({g.list.length})
-            </span>
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-yellow-500/30" style={{ maxWidth: 60 }} />
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3">
-            {g.list.map(m => (
-              <button key={m.tag} onClick={() => onSelect(m)}
-                className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl transition-all hover:-translate-y-1"
-                style={{
-                  background: "var(--py-card-bg)",
-                  border: `1px solid ${gi === 0 ? "#F4A130" : "var(--py-card-border)"}`,
-                  minWidth: gi === 0 ? 110 : 90,
-                  boxShadow: gi === 0 ? "0 0 16px rgba(244,161,48,0.25)" : "none",
-                }}>
-                <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
-                  {m.townHallLevel}
-                </div>
-                <p className="text-xs font-semibold truncate max-w-[90px]" style={{ color: "var(--py-card-text)" }}>{m.name}</p>
-                <p className="text-[10px] text-yellow-500 font-medium">🏆 {formatNumber(m.trophies)}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+        <PyramidGroupSection key={g.role} g={g} gi={gi} onSelect={onSelect} />
       ))}
     </div>
   );
