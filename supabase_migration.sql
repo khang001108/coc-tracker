@@ -295,3 +295,19 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 -- ── Thêm cột reward_coins vào events (thưởng coins từ người tổ chức) ──────
 ALTER TABLE events ADD COLUMN IF NOT EXISTS reward_coins INTEGER DEFAULT 0;
+
+-- ── Thêm lâu đài và pháo mới ─────────────────────────────────────────────
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('castle', 'castle_dragon',   'Lâu Đài Rồng Lửa',    15000),
+  ('castle', 'castle_ice',      'Băng Cung Tuyết',      18000),
+  ('castle', 'castle_shadow',   'Lâu Đài Bóng Tối',    22000),
+  ('castle', 'castle_celestial','Thiên Cung Vàng',      30000),
+  ('cannon', 'cannon_laser',    'Pháo Laser',           12000),
+  ('cannon', 'cannon_storm',    'Pháo Bão Tố',         15000),
+  ('cannon', 'cannon_dragon',   'Pháo Rồng',           20000),
+  ('cannon', 'cannon_celestial','Pháo Thiên Thần',     28000)
+ON CONFLICT (svg_key) DO NOTHING;
+
+-- ── Cài đặt xoá lịch sử chat tự động ────────────────────────────────────
+INSERT INTO settings (key, value) VALUES ('chat_retention_days', '30')
+ON CONFLICT (key) DO NOTHING;

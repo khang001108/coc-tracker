@@ -5,11 +5,15 @@ import { getMemberAuth, getGuestName, setGuestName } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { MessageCircle, Send, Image as ImageIcon, Smile, Lock, Users, Globe } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
 
 const EMOJIS = ["😀","😂","😍","😎","🤔","👍","👎","🔥","❤️","🎉","😢","😡","🏆","⚔️","🛡️","💪","🙏","👏","😴","🤝"];
 const POLL_MS = 4000;
 
-function MessageBubble({ msg, isMine, effectKey }: { msg: any; isMine: boolean; effectKey?: string | null }) {
+function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey }: {
+  msg: any; isMine: boolean; effectKey?: string | null;
+  castleKey?: string | null; cannonKey?: string | null;
+}) {
   if (msg.is_system) {
     return (
       <div className="flex justify-center">
@@ -22,7 +26,17 @@ function MessageBubble({ msg, isMine, effectKey }: { msg: any; isMine: boolean; 
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[78%] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
-        {!isMine && <span className="text-[11px] text-gray-500 px-1"><NameEffect effectKey={effectKey}>{msg.sender_name}</NameEffect></span>}
+        {!isMine && (
+          <span className="flex items-center gap-1 px-1">
+            {(castleKey || cannonKey) && (
+              <span className="flex items-center gap-0.5 opacity-80">
+                {castleKey && <CastleIcon svgKey={castleKey} th={0} size={16} animate={false} showTh={false}/>}
+                {cannonKey && <CannonIcon svgKey={cannonKey} size={13}/>}
+              </span>
+            )}
+            <span className="text-[11px] text-gray-500"><NameEffect effectKey={effectKey}>{msg.sender_name}</NameEffect></span>
+          </span>
+        )}
         <div className={`rounded-2xl px-3.5 py-2 ${isMine ? "bg-yellow-500 text-gray-900" : "card !p-0 !border-0"}`}
           style={!isMine ? { padding: "8px 14px" } : {}}>
           {msg.image_url && (
@@ -46,6 +60,8 @@ export default function ChatPage() {
   const [guestNameInput, setGuestNameInput] = useState("");
   const [member, setMember] = useState<{ token: string; player_tag: string; player_name: string } | null>(null);
   const [effectMap, setEffectMap] = useState<Record<string, string | null>>({});
+  const [castleMap, setCastleMap] = useState<Record<string, string>>({});
+  const [cannonMap, setCannonMap] = useState<Record<string, string>>({});
   const lastIdRef = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,9 +71,17 @@ export default function ChatPage() {
     setMember(getMemberAuth());
     setGuestNameInput(getGuestName());
     api.getRoster().then((roster: any[]) => {
-      const map: Record<string, string | null> = {};
-      roster.forEach(r => { map[r.tag] = r.equipped_effect; });
-      setEffectMap(map);
+      const effMap: Record<string, string | null> = {};
+      const castMap: Record<string, string> = {};
+      const canoMap: Record<string, string> = {};
+      roster.forEach(r => {
+        effMap[r.tag]  = r.equipped_effect;
+        castMap[r.tag] = r.equipped_castle || "castle_classic";
+        canoMap[r.tag] = r.equipped_cannon || "cannon_basic";
+      });
+      setEffectMap(effMap);
+      setCastleMap(castMap);
+      setCannonMap(canoMap);
     }).catch(() => {});
   }, []);
 
@@ -161,7 +185,9 @@ export default function ChatPage() {
             messages.map(m => (
               <MessageBubble key={m.id} msg={m}
                 isMine={room === "clan" ? m.sender_tag === member?.player_tag : false}
-                effectKey={m.sender_tag ? effectMap[m.sender_tag] : null} />
+                effectKey={m.sender_tag ? effectMap[m.sender_tag] : null}
+                castleKey={m.sender_tag ? castleMap[m.sender_tag] : null}
+                cannonKey={m.sender_tag ? cannonMap[m.sender_tag] : null} />
             ))
           )}
         </div>

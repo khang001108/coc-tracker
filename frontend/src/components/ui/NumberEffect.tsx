@@ -8,10 +8,10 @@ export function NumberEffect({ effectKey, children }: { effectKey?: string | nul
 
   switch (effectKey) {
     case "num_bounce":
-      return <span className="inline-block" style={{ animation: "num-bounce 0.7s ease-in-out infinite", imageRendering: "pixelated" }}>{children}</span>;
+      return <span className="inline-block" style={{ animation: "num-bounce 0.7s ease-in-out infinite", imageRendering: "pixelated", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4))" }}>{children}</span>;
 
     case "num_neon":
-      return <span className="inline-block" style={{ animation: "num-neon 1.5s ease-in-out infinite", color: "#fff" }}>{children}</span>;
+      return <span className="inline-block" style={{ animation: "num-neon 1.5s ease-in-out infinite", filter: "drop-shadow(0 0 4px #00BFFF) drop-shadow(0 0 8px #60B8FF)", color: "var(--py-card-text,#fff)" }}>{children}</span>;
 
     case "num_spin":
       return (
@@ -23,7 +23,7 @@ export function NumberEffect({ effectKey, children }: { effectKey?: string | nul
       );
 
     case "num_pop":
-      return <span className="inline-block" style={{ animation: "num-pop 0.9s ease-in-out infinite", color: "#FFD700" }}>{children}</span>;
+      return <span className="inline-block" style={{ animation: "num-pop 0.9s ease-in-out infinite", color: "#F4A130", textShadow: "0 0 3px rgba(0,0,0,0.5), 0 1px 0 rgba(0,0,0,0.3)" }}>{children}</span>;
 
     default:
       return <>{children}</>;

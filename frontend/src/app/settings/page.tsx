@@ -443,6 +443,21 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
       </div>
 
+      {/* ── Xoá lịch sử chat tự động ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">💬 Lịch sử Chat</h2>
+        <p className="text-xs text-gray-500">Tin nhắn cũ hơn số ngày dưới đây sẽ tự động bị xoá mỗi ngày.</p>
+        <div className="flex items-center gap-2">
+          <input type="number" min={1} max={365} className="input !w-28"
+            value={settings.chat_retention_days ?? "30"}
+            onChange={e => set("chat_retention_days", e.target.value)} />
+          <span className="text-sm text-gray-400">ngày</span>
+          <button onClick={() => api.saveSetting("chat_retention_days", settings.chat_retention_days || "30")}
+            className="btn-gold text-sm ml-auto">Lưu</button>
+        </div>
+        <p className="text-[11px] text-gray-600">Đặt 0 để không tự xoá.</p>
+      </div>
+
       {/* ── Dọn dẹp tài sản thành viên rời clan ── */}
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🧹 Dọn dẹp tài sản người rời clan</h2>
