@@ -121,7 +121,7 @@ export default function LoginPage() {
         <Link href="/shop" className="card flex items-center justify-between gap-3 hover:border-yellow-500/40 transition-colors">
           <span className="flex items-center gap-2 text-white font-semibold">🏰 Cửa hàng vật phẩm</span>
           <span className="text-xs text-gray-500">Đổi lâu đài, pháo, hiệu ứng tên →</span>
-        </a>
+        </Link>
       )}
 
       <div className="relative">
