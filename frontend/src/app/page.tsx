@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
 import { Shield, Users, Trophy, Star, Swords, RefreshCw, AlertCircle, TrendingUp, Crown } from "lucide-react";
@@ -25,7 +26,7 @@ function EmptyState({ message }: { message: string }) {
       <AlertCircle size={40} className="mx-auto mb-3 text-gray-700" />
       <p className="text-gray-400 font-medium">{message}</p>
       <p className="text-sm text-gray-600 mt-1">
-        Vào <a href="/settings" className="text-yellow-500 hover:underline">Cài đặt</a> để thêm API key và clan tag
+        Vào <Link href="/settings" className="text-yellow-500 hover:underline">Cài đặt</Link> để thêm API key và clan tag
       </p>
     </div>
   );
@@ -174,7 +175,7 @@ export default function DashboardPage() {
             <Crown size={18} className="text-yellow-400" />
             Thành viên
           </h2>
-          <a href="/members" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</a>
+          <Link href="/members" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
         </div>
 
         {members.length === 0 ? (

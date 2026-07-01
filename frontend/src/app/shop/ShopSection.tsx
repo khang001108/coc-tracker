@@ -101,41 +101,76 @@ export default function ShopSection() {
     );
   }
 
-  return (
-    <div className="relative card space-y-4 overflow-hidden">
-      <EmberField count={14} />
-      <div className="relative flex items-center justify-between">
-        <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
-        <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">
-          <Coins size={15} /> {inv.coins.toLocaleString()}
+  function SectionTitle({ emoji, label }: { emoji: string; label: string }) {
+    return (
+      <div className="relative flex items-center gap-2 mb-2.5">
+        {/* Đường kẻ trang trí trái */}
+        <div className="h-px flex-none w-3" style={{ background: "linear-gradient(to right, transparent, #F4A130)" }}/>
+        <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest whitespace-nowrap flex items-center gap-1">
+          {emoji} {label}
         </span>
+        {/* Đường kẻ trang trí phải */}
+        <div className="h-px flex-1" style={{ background: "linear-gradient(to right, #F4A130, transparent)" }}/>
       </div>
-      <p className="relative text-xs text-gray-500">Dùng Coins (kiếm được từ donate, sau này thêm cả từ war) để đổi lâu đài và pháo trang trí riêng — hiện trên Bản đồ chiến trường ở trang War.</p>
+    );
+  }
 
-      {error && <p className="relative text-xs text-red-400">{error}</p>}
+  return (
+    <div className="relative overflow-hidden"
+      style={{
+        background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))",
+        border: "2px solid transparent",
+        backgroundClip: "padding-box",
+        borderRadius: 16,
+      }}>
+      {/* Gradient border */}
+      <div className="absolute inset-0 rounded-2xl pointer-events-none"
+        style={{ background: "linear-gradient(135deg,#F4A130,#7A3A00,#F4A130,#7A3A00,#F4A130)", zIndex: -1, margin: -2, borderRadius: 18 }}/>
+      {/* Hoa văn nền */}
+      <div className="absolute inset-0 opacity-[0.035] pointer-events-none rounded-2xl"
+        style={{ backgroundImage: "repeating-linear-gradient(45deg,#F4A130 0,#F4A130 1px,transparent 0,transparent 50%)", backgroundSize: "8px 8px" }}/>
+      {/* Diamond corners */}
+      {[["top-[-4px] left-[-4px]","tl"],["top-[-4px] right-[-4px]","tr"],["bottom-[-4px] left-[-4px]","bl"],["bottom-[-4px] right-[-4px]","br"]].map(([pos]) => (
+        <svg key={pos} className={`absolute ${pos} w-3 h-3 pointer-events-none z-10`} viewBox="0 0 12 12">
+          <polygon points="6,0 12,6 6,12 0,6" fill="rgba(244,161,48,0.9)" stroke="rgba(244,161,48,0.4)" strokeWidth="0.5"/>
+        </svg>
+      ))}
 
-      {loading ? (
-        <div className="relative h-32 bg-gray-800 rounded-xl animate-pulse" />
-      ) : (
-        <>
-          <div className="relative">
-            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Lâu đài</p>
-            <ItemGrid list={castles} />
-          </div>
-          <div className="relative">
-            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Pháo (đại diện 2 lượt đánh)</p>
-            <ItemGrid list={cannons} />
-          </div>
-          <div className="relative">
-            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Hiệu ứng tên (hiện ở Chat, Thành viên...)</p>
-            <ItemGrid list={effects} />
-          </div>
-          <div className="relative">
-            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Hiệu ứng số TH (pixel/cute)</p>
-            <ItemGrid list={numberEffects} />
-          </div>
-        </>
-      )}
+      <div className="relative p-5 space-y-5">
+        <EmberField count={14} />
+        <div className="relative flex items-center justify-between">
+          <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
+          <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">
+            <Coins size={15} /> {inv.coins.toLocaleString()}
+          </span>
+        </div>
+        <p className="relative text-xs text-gray-500">Dùng Coins (kiếm được từ donate, sau này thêm cả từ war) để đổi lâu đài và pháo trang trí riêng — hiện trên Bản đồ chiến trường ở trang War.</p>
+
+        {error && <p className="relative text-xs text-red-400">{error}</p>}
+
+        {loading ? (
+          <div className="relative h-32 bg-gray-800 rounded-xl animate-pulse" />
+        ) : (
+          <>
+            <div className="relative">
+              <SectionTitle emoji="🏰" label="Lâu đài"/>
+              <ItemGrid list={castles} />
+            </div>
+            <div className="relative">
+              <SectionTitle emoji="🔫" label="Pháo (đại diện 2 lượt đánh)"/>
+              <ItemGrid list={cannons} />
+            </div>
+            <div className="relative">
+              <SectionTitle emoji="✨" label="Hiệu ứng tên (Chat, Thành viên...)"/>
+              <ItemGrid list={effects} />
+            </div>
+            <div className="relative">
+              <SectionTitle emoji="🔢" label="Hiệu ứng số TH (pixel/cute)"/>
+              <ItemGrid list={numberEffects} />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

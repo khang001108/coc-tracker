@@ -61,7 +61,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
 
         {/* Name + stars + cannons */}
         <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
-          <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: thColor(member.townHallLevel) }}>
+          <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: "var(--py-card-text, #e5e7eb)" }}>
             {member.name}
           </p>
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>

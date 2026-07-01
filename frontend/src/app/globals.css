@@ -15,8 +15,8 @@
   --py-card-text: #3A2A0F;
   --py-pill-bg: linear-gradient(180deg, #FFFBEF, #F7E8BF);
   --py-pill-border: #E2C572;
-  --player-bg: linear-gradient(180deg, #FFFBEF, #F7E8BF);
-  --player-border: #C9A24F;
+  --player-bg: linear-gradient(180deg, #3D2B0F, #2A1C08);
+  --player-border: #7A5520;
 }
 :root {
   --player-bg: linear-gradient(180deg, #2a2f3a, #161920);
