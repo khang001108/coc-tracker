@@ -18,13 +18,12 @@ import { useNotifications } from "@/components/ui/NotificationContext";
 const LEFT = [
   { href: "/",        label: "Tổng quan", icon: LayoutDashboard },
   { href: "/members", label: "Thành viên", icon: Users },
-  { href: "/war",     label: "War",        icon: Swords,         notif: "war" as const },
+  { href: "/war",     label: "War",        icon: Swords,         notif: "war"    as const },
 ];
 const RIGHT = [
-  { href: "/chat",   label: "Chat",    icon: MessageCircle, notif: "chat" as const },
+  { href: "/chat",   label: "Chat",    icon: MessageCircle, notif: "chat"   as const },
   { href: "/events", label: "Sự kiện", icon: PartyPopper,   notif: "events" as const },
 ];
-
 const MORE = [
   { href: "/login",    label: "Đăng nhập",    icon: UserCheck },
   { href: "/shop",     label: "Cửa hàng",     icon: Store },
@@ -35,7 +34,6 @@ const MORE = [
   { href: "/settings", label: "Cài đặt",      icon: Settings },
 ];
 
-/** Chấm đỏ thông báo */
 function RedDot() {
   return (
     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-gray-900 animate-pulse" />
@@ -44,11 +42,13 @@ function RedDot() {
 
 function NavLink({ href, label, icon: Icon, active, hasNotif }: any) {
   return (
-    <Link href={href}
+    <Link
+      href={href}
       className={cn(
         "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-w-0 transition-colors",
         active ? "text-yellow-400" : "text-gray-500"
-      )}>
+      )}
+    >
       <span className={cn("relative w-7 h-7 rounded-full flex items-center justify-center shrink-0", active && "icon-btn-game")}>
         <Icon size={active ? 14 : 17} className={active ? "text-gray-900" : ""} />
         {hasNotif && !active && <RedDot />}
@@ -59,10 +59,11 @@ function NavLink({ href, label, icon: Icon, active, hasNotif }: any) {
 }
 
 export function MobileNav() {
-  const pathname = usePathname();
+  const pathname   = usePathname();
+  const notif      = useNotifications();
   const [open, setOpen] = useState(false);
   const [memberName, setMemberName] = useState<string | null>(null);
-  const notif = useNotifications();
+  const [pressing, setPressing] = useState(false);
   const moreActive = MORE.some(({ href }) => pathname.startsWith(href));
 
   useEffect(() => {
@@ -77,35 +78,64 @@ export function MobileNav() {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {LEFT.map(({ href, label, icon, notif: nk }) => (
           <NavLink key={href} href={href} label={label} icon={icon}
             active={href === "/" ? pathname === "/" : pathname.startsWith(href)}
             hasNotif={nk ? notif[nk] : false} />
         ))}
 
-        {/* Nút Chơi */}
+        {/* ── Nút CHƠI — tất cả visual ở đây, GamePlayButton chỉ handle click ── */}
         <GamePlayButton className="flex-1 flex flex-col items-center justify-center min-w-0">
-          <span className="relative -mt-6 shrink-0">
-            <span className="absolute inset-0 rounded-full animate-glow-pulse"
-              style={{ background: "radial-gradient(circle, rgba(244,161,48,0.6), transparent 70%)" }} />
-            <span className="relative flex items-center justify-center w-[52px] h-[52px] rounded-full"
+          {/* Container dịch lên cao */}
+          <span className="relative flex items-center justify-center -mt-6 shrink-0"
+            style={{ width: 52, height: 52 }}>
+
+            {/* Sóng pulse lan ra */}
+            <span className="absolute inset-0 rounded-full border-2 border-yellow-400/60 pointer-events-none"
+              style={{ animation: "play-ring-pulse 2s ease-out infinite" }} />
+            <span className="absolute inset-0 rounded-full border-2 border-yellow-400/35 pointer-events-none"
+              style={{ animation: "play-ring-pulse 2s ease-out infinite 0.7s" }} />
+
+            {/* Vòng ngoài xoay */}
+            <span className="absolute inset-[-3px] rounded-full pointer-events-none"
+              style={{
+                background: "conic-gradient(from 0deg, #FFE8B8, #F4A130, #B8731A, #F4A130, #FFE8B8)",
+                animation: "play-border-spin 5s linear infinite",
+                borderRadius: "50%",
+              }} />
+
+            {/* Thân nút chính */}
+            <span
+              className={`relative flex items-center justify-center w-[52px] h-[52px] rounded-full transition-all duration-100 ${pressing ? "scale-90" : "scale-100"}`}
+              onPointerDown={() => setPressing(true)}
+              onPointerUp={() => setPressing(false)}
+              onPointerLeave={() => setPressing(false)}
               style={{
                 background: "conic-gradient(from 200deg, #FFE8B8, #F4A130, #B8731A, #F4A130, #FFE8B8)",
                 padding: 3,
-                boxShadow: "0 4px 0 #6B4115, 0 10px 20px rgba(0,0,0,0.55)",
-              }}>
-              <span className="flex items-center justify-center w-full h-full rounded-full"
+                boxShadow: pressing
+                  ? "0 1px 0 #6B4115, 0 3px 10px rgba(0,0,0,0.55)"
+                  : "0 4px 0 #6B4115, 0 10px 20px rgba(0,0,0,0.55)",
+              }}
+            >
+              <span
+                className="flex items-center justify-center w-full h-full rounded-full"
                 style={{
                   background: "radial-gradient(circle at 35% 30%, #FFE8B8, #F4A130 55%, #B8731A 100%)",
                   border: "2px solid #160d24",
-                }}>
-                <Shield size={20} className="text-gray-900 drop-shadow" />
+                }}
+              >
+                <Shield size={20} className="text-gray-900 drop-shadow"
+                  style={{ animation: "play-shield-bob 2s ease-in-out infinite" }} />
               </span>
             </span>
           </span>
+
+          {/* Label CHƠI */}
           <span className="text-[9px] font-extrabold tracking-wide mt-1 px-1.5 py-0.5 rounded-full"
             style={{ color: "#1A0F05", background: "linear-gradient(180deg, #FFE8B8, #F4A130)" }}>
             CHƠI
@@ -118,11 +148,13 @@ export function MobileNav() {
             hasNotif={nk ? notif[nk] : false} />
         ))}
 
-        <button onClick={() => setOpen(true)}
+        <button
+          onClick={() => setOpen(true)}
           className={cn(
             "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-w-0 transition-colors",
             moreActive ? "text-yellow-400" : "text-gray-500"
-          )}>
+          )}
+        >
           <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", moreActive && "icon-btn-game")}>
             <MoreHorizontal size={moreActive ? 14 : 17} className={moreActive ? "text-gray-900" : ""} />
           </span>
@@ -132,39 +164,47 @@ export function MobileNav() {
 
       {open && (
         <Portal>
-        <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)}>
-          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl p-4 pb-6 max-h-[85vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-gray-300">Thêm mục</p>
-              <button onClick={() => setOpen(false)} className="p-1 text-gray-500"><X size={18} /></button>
+          <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)}>
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl p-4 pb-6 max-h-[85vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-300">Thêm mục</p>
+                <button onClick={() => setOpen(false)} className="p-1 text-gray-500"><X size={18} /></button>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                {moreItems.map(({ href, label, icon: Icon }) => {
+                  const active = pathname.startsWith(href);
+                  const isMe   = href === "/login" && memberName;
+                  return (
+                    <Link key={href} href={href} onClick={() => setOpen(false)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 py-4 rounded-xl border transition-colors",
+                        active ? "border-yellow-500/30 bg-yellow-500/10"
+                          : isMe  ? "border-green-500/30 bg-green-500/10"
+                          : "border-gray-800 bg-gray-800/40"
+                      )}>
+                      <span className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center",
+                        active ? "icon-btn-game"
+                          : isMe  ? "bg-green-500/15 border border-green-500/30"
+                          : "bg-gray-800 border border-gray-700"
+                      )}>
+                        <Icon size={16} className={active ? "text-gray-900" : isMe ? "text-green-400" : "text-gray-400"} />
+                      </span>
+                      <span className={cn("text-[11px] font-medium text-center truncate w-full px-1",
+                        active ? "text-yellow-400" : isMe ? "text-green-400" : "text-gray-300")}>
+                        {label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="mb-3"><MusicControls /></div>
+              <ThemeToggle />
             </div>
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              {moreItems.map(({ href, label, icon: Icon }) => {
-                const active = pathname.startsWith(href);
-                const isMe = href === "/login" && memberName;
-                return (
-                  <Link key={href} href={href} onClick={() => setOpen(false)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-2 py-4 rounded-xl border transition-colors",
-                      active ? "border-yellow-500/30 bg-yellow-500/10" : isMe ? "border-green-500/30 bg-green-500/10" : "border-gray-800 bg-gray-800/40"
-                    )}>
-                    <span className={cn(
-                      "w-9 h-9 rounded-full flex items-center justify-center",
-                      active ? "icon-btn-game" : isMe ? "bg-green-500/15 border border-green-500/30" : "bg-gray-800 border border-gray-700"
-                    )}>
-                      <Icon size={16} className={active ? "text-gray-900" : isMe ? "text-green-400" : "text-gray-400"} />
-                    </span>
-                    <span className={cn("text-[11px] font-medium text-center truncate w-full px-1",
-                      active ? "text-yellow-400" : isMe ? "text-green-400" : "text-gray-300")}>{label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="mb-3"><MusicControls /></div>
-            <ThemeToggle />
           </div>
-        </div>
         </Portal>
       )}
     </>

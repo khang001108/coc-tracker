@@ -15,8 +15,8 @@
   --py-card-text: #3A2A0F;
   --py-pill-bg: linear-gradient(180deg, #FFFBEF, #F7E8BF);
   --py-pill-border: #E2C572;
-  --player-bg: linear-gradient(180deg, #3D2B0F, #2A1C08);
-  --player-border: #7A5520;
+  --player-bg: linear-gradient(180deg, #F5D86A, #D4A018);
+  --player-border: #A07010;
 }
 :root {
   --player-bg: linear-gradient(180deg, #2a2f3a, #161920);
@@ -327,3 +327,18 @@
 .theme-gold .text-red-400     { color: #B91C1C !important; }
 .theme-gold .text-green-400   { color: #15803D !important; }
 .theme-gold .text-orange-400  { color: #C2410C !important; }
+
+/* ── Nút Chơi animations ─────────────────────────────────── */
+@keyframes play-ring-pulse {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  70%  { transform: scale(1.5);  opacity: 0;   }
+  100% { transform: scale(1.5);  opacity: 0;   }
+}
+@keyframes play-border-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes play-shield-bob {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
