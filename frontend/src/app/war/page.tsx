@@ -1,5 +1,6 @@
 "use client";
 import { EmberField } from "@/components/ui/EmberField";
+import { SwordsArt } from "@/components/ui/HeroArt";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
