@@ -22,10 +22,15 @@ async def get_messages(room: str = "global", after_id: int = 0, limit: int = 50)
     if room not in ("clan", "global"):
         raise HTTPException(400, "room không hợp lệ")
     sb = get_supabase()
-    q = sb.table("chat_messages").select("*").eq("room", room).order("id")
     if after_id:
-        q = q.gt("id", after_id)
-    res = q.limit(limit).execute()
+        # Poll: lấy tin mới hơn after_id, thứ tự tăng dần
+        q = sb.table("chat_messages").select("*").eq("room", room).gt("id", after_id).order("id").limit(limit)
+        res = q.execute()
+    else:
+        # Initial load: lấy 50 tin MỚI NHẤT rồi đảo thứ tự tăng dần để hiển thị
+        q = sb.table("chat_messages").select("*").eq("room", room).order("id", desc=True).limit(limit)
+        res = q.execute()
+        res.data = list(reversed(res.data or []))
     return res.data
 
 
