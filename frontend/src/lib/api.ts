@@ -245,6 +245,14 @@ export const api = {
     return res.json();
   },
 
+  // Clans (multi-clan management)
+  listClans:   () => apiFetch("/api/clans/"),
+  getClan:     (id: number) => apiFetch(`/api/clans/${id}`),
+  createClan:  (data: any) => apiFetch("/api/clans/", { method: "POST", body: JSON.stringify(data) }),
+  updateClan:  (id: number, data: any) => apiFetch(`/api/clans/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteClan:  (id: number) => apiFetch(`/api/clans/${id}`, { method: "DELETE" }),
+  regenToken:  (id: number) => apiFetch(`/api/clans/${id}/regen-token`, { method: "POST" }),
+
   // Chat
   getMessages: (room: "clan" | "global", afterId = 0) =>
     apiFetch(`/api/chat/messages?room=${room}&after_id=${afterId}&limit=50`),

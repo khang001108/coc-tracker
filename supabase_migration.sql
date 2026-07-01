@@ -338,3 +338,65 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('number_effect', 'ne_rainbow_num','Số Cầu Vồng',        8000),
   ('number_effect', 'ne_crown_num', 'Số Vương Miện',      10000)
 ON CONFLICT (svg_key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MULTI-CLAN MIGRATION
+-- Chạy sau khi đã có data clan đầu tiên (backward compatible)
+-- ════════════════════════════════════════════════════════════════
+
+-- 1. Bảng clans — mỗi clan là 1 workspace riêng
+CREATE TABLE IF NOT EXISTS clans (
+  id                SERIAL PRIMARY KEY,
+  clan_tag          TEXT NOT NULL,
+  clan_name         TEXT DEFAULT 'Clan mới',
+  admin_token       TEXT NOT NULL DEFAULT gen_random_uuid()::text,
+  coc_api_key       TEXT DEFAULT '',
+  discord_webhook   TEXT DEFAULT '',
+  telegram_bot_token TEXT DEFAULT '',
+  telegram_chat_id  TEXT DEFAULT '',
+  notify_war        BOOLEAN DEFAULT true,
+  notify_raid       BOOLEAN DEFAULT true,
+  notify_join_leave BOOLEAN DEFAULT true,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_tag)
+);
+ALTER TABLE clans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON clans;
+CREATE POLICY "service_all" ON clans FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clans TO service_role;
+
+-- 2. Migrate clan hiện tại vào bảng clans (id=1)
+-- Lấy clan_tag và api_key từ settings hiện có
+INSERT INTO clans (id, clan_tag, clan_name, coc_api_key, discord_webhook, telegram_bot_token, telegram_chat_id)
+SELECT
+  1,
+  COALESCE((SELECT value FROM settings WHERE key = 'clan_tag'), '#UNKNOWN'),
+  'Clan chính',
+  COALESCE((SELECT value FROM settings WHERE key = 'coc_api_key'), ''),
+  COALESCE((SELECT value FROM settings WHERE key = 'discord_webhook'), ''),
+  COALESCE((SELECT value FROM settings WHERE key = 'telegram_bot_token'), ''),
+  COALESCE((SELECT value FROM settings WHERE key = 'telegram_chat_id'), '')
+ON CONFLICT (id) DO NOTHING;
+
+-- Reset sequence để id tiếp theo bắt đầu từ 2
+SELECT setval('clans_id_seq', GREATEST(1, (SELECT MAX(id) FROM clans)));
+
+-- 3. Thêm clan_id vào các bảng chính (DEFAULT 1 = backward compatible)
+ALTER TABLE events              ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+ALTER TABLE event_participants  ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+ALTER TABLE event_claims        ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+ALTER TABLE chat_messages       ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+ALTER TABLE member_accounts     ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+
+-- 4. Backfill clan_id=1 cho data cũ
+UPDATE events             SET clan_id = 1 WHERE clan_id IS NULL;
+UPDATE event_participants SET clan_id = 1 WHERE clan_id IS NULL;
+UPDATE event_claims       SET clan_id = 1 WHERE clan_id IS NULL;
+UPDATE chat_messages      SET clan_id = 1 WHERE clan_id IS NULL;
+UPDATE member_accounts    SET clan_id = 1 WHERE clan_id IS NULL;
+
+-- 5. Index để query nhanh
+CREATE INDEX IF NOT EXISTS idx_events_clan             ON events(clan_id);
+CREATE INDEX IF NOT EXISTS idx_event_participants_clan ON event_participants(clan_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_clan      ON chat_messages(clan_id);
+CREATE INDEX IF NOT EXISTS idx_member_accounts_clan    ON member_accounts(clan_id);

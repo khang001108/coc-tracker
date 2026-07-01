@@ -96,7 +96,9 @@ async def upload_image(file: UploadFile = File(...), _: bool = Depends(require_a
 @router.get("/")
 async def list_events():
     sb = get_supabase()
-    res = sb.table("events").select("*").order("created_at", desc=True).execute()
+    # clan_id từ query param (default=1)
+    clan_id = 1  # TODO: lấy từ request khi có context
+    res = sb.table("events").select("*").eq("clan_id", clan_id).order("created_at", desc=True).execute()
     events = res.data or []
 
     # Gắn participant_count vào từng event
