@@ -311,3 +311,30 @@ ON CONFLICT (svg_key) DO NOTHING;
 -- ── Cài đặt xoá lịch sử chat tự động ────────────────────────────────────
 INSERT INTO settings (key, value) VALUES ('chat_retention_days', '30')
 ON CONFLICT (key) DO NOTHING;
+
+-- ── Lâu đài thú cưng ──────────────────────────────────────────────────────
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('castle', 'castle_cat',        'Lâu Đài Mèo Chúa',   8000),
+  ('castle', 'castle_tiger',      'Lâu Đài Hổ Dữ',     12000),
+  ('castle', 'castle_panda',      'Lâu Đài Gấu Trúc',  16000),
+  ('cannon', 'cannon_cat',        'Pháo Mèo Ú',          5000),
+  ('cannon', 'cannon_tiger',      'Pháo Hổ Gầm',         8000),
+  ('cannon', 'cannon_panda',      'Pháo Gấu Trúc',      10000),
+  ('cannon', 'cannon_dragon_face','Pháo Rồng Mặt',      14000)
+ON CONFLICT (svg_key) DO NOTHING;
+
+-- ── Hiệu ứng tên thêm ─────────────────────────────────────────────────────
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('name_effect', 'ne_rainbow',   'Cầu Vồng Lấp Lánh',  8000),
+  ('name_effect', 'ne_electric',  'Điện Xẹt',            7000),
+  ('name_effect', 'ne_shadow',    'Bóng Tối Huyền Bí',   6000),
+  ('name_effect', 'ne_crystal',   'Pha Lê Trong Suốt',  10000)
+ON CONFLICT (svg_key) DO NOTHING;
+
+-- ── Hiệu ứng số TH thêm ───────────────────────────────────────────────────
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('number_effect', 'ne_fire_num',  'Số Lửa',              6000),
+  ('number_effect', 'ne_ice_num',   'Số Băng',             6000),
+  ('number_effect', 'ne_rainbow_num','Số Cầu Vồng',        8000),
+  ('number_effect', 'ne_crown_num', 'Số Vương Miện',      10000)
+ON CONFLICT (svg_key) DO NOTHING;

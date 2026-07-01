@@ -6,13 +6,14 @@ import { formatDate } from "@/lib/utils";
 import { MessageCircle, Send, Image as ImageIcon, Smile, Lock, Users, Globe } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
+import { thColor } from "@/lib/utils";
 
 const EMOJIS = ["😀","😂","😍","😎","🤔","👍","👎","🔥","❤️","🎉","😢","😡","🏆","⚔️","🛡️","💪","🙏","👏","😴","🤝"];
 const POLL_MS = 4000;
 
-function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey }: {
+function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }: {
   msg: any; isMine: boolean; effectKey?: string | null;
-  castleKey?: string | null; cannonKey?: string | null;
+  castleKey?: string | null; cannonKey?: string | null; thLevel?: number;
 }) {
   if (msg.is_system) {
     return (
@@ -28,10 +29,18 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey }: {
       <div className={`max-w-[78%] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
         {!isMine && (
           <span className="flex items-center gap-1 px-1">
+            {/* TH badge */}
+            {thLevel && thLevel > 0 ? (
+              <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
+                style={{ color: thColor(thLevel), background: thColor(thLevel) + "22", border: `1px solid ${thColor(thLevel)}55` }}>
+                TH{thLevel}
+              </span>
+            ) : null}
+            {/* Castle + cannon icons */}
             {(castleKey || cannonKey) && (
-              <span className="flex items-center gap-0.5 opacity-80">
-                {castleKey && <CastleIcon svgKey={castleKey} th={0} size={16} animate={false} showTh={false}/>}
-                {cannonKey && <CannonIcon svgKey={cannonKey} size={13}/>}
+              <span className="flex items-center gap-0.5 opacity-80 shrink-0">
+                {castleKey && <CastleIcon svgKey={castleKey} th={thLevel||0} size={14} animate={false} showTh={false}/>}
+                {cannonKey && <CannonIcon svgKey={cannonKey} size={12}/>}
               </span>
             )}
             <span className="text-[11px] text-gray-500"><NameEffect effectKey={effectKey}>{msg.sender_name}</NameEffect></span>
@@ -62,6 +71,7 @@ export default function ChatPage() {
   const [effectMap, setEffectMap] = useState<Record<string, string | null>>({});
   const [castleMap, setCastleMap] = useState<Record<string, string>>({});
   const [cannonMap, setCannonMap] = useState<Record<string, string>>({});
+  const [thMap, setThMap] = useState<Record<string, number>>({});
   const lastIdRef = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -79,9 +89,12 @@ export default function ChatPage() {
         castMap[r.tag] = r.equipped_castle || "castle_classic";
         canoMap[r.tag] = r.equipped_cannon || "cannon_basic";
       });
+      const thM: Record<string, number> = {};
+      roster.forEach((r: any) => { thM[r.tag] = r.townHallLevel || 0; });
       setEffectMap(effMap);
       setCastleMap(castMap);
       setCannonMap(canoMap);
+      setThMap(thM);
     }).catch(() => {});
   }, []);
 
@@ -187,7 +200,8 @@ export default function ChatPage() {
                 isMine={room === "clan" ? m.sender_tag === member?.player_tag : false}
                 effectKey={m.sender_tag ? effectMap[m.sender_tag] : null}
                 castleKey={m.sender_tag ? castleMap[m.sender_tag] : null}
-                cannonKey={m.sender_tag ? cannonMap[m.sender_tag] : null} />
+                cannonKey={m.sender_tag ? cannonMap[m.sender_tag] : null}
+                thLevel={m.sender_tag ? thMap[m.sender_tag] : 0} />
             ))
           )}
         </div>
