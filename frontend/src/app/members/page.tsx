@@ -19,7 +19,7 @@ function PyramidGroupSection({ g, gi, onSelect }: {
   onSelect: (m: any) => void;
 }) {
   // Leader luôn mở, các nhóm khác mặc định mở nếu ít (<= 6), còn lại thu gọn
-  const defaultOpen = gi === 0 || g.list.length <= 6;
+  const defaultOpen = gi === 0; // chỉ THỦ LĨNH mở mặc định
   const [open, setOpen] = useState(defaultOpen);
 
   const isLeader = g.role === "leader";
@@ -255,8 +255,8 @@ export default function MembersPage() {
                     {[
                       { label: "Donate", value: playerDetail.donations },
                       { label: "Nhận", value: playerDetail.donationsReceived },
-                      { label: "Attack Win", value: playerDetail.attackWins },
-                      { label: "Defense Win", value: playerDetail.defenseWins },
+                      { label: "Thắng tấn công", value: playerDetail.attackWins ?? "—" },
+                      { label: "Thắng phòng thủ", value: playerDetail.defenseWins ?? "—" },
                     ].map(({ label, value }) => (
                       <div key={label} className="bg-gray-800 rounded-xl p-3">
                         <p className="text-white font-semibold">{formatNumber(value || 0)}</p>
