@@ -136,6 +136,7 @@ async def create_event(
         "reward_name": body.get("reward_name", ""),
         "reward_image_url": body.get("reward_image_url", ""),
         "reward_shop_link": body.get("reward_shop_link", ""),
+        "reward_coins": max(0, int(body.get("reward_coins") or 0)),
         "start_time": body.get("start_time") or None,
         "end_time": body.get("end_time") or None,
         "creator_name": creator["creator_name"],
@@ -464,4 +465,29 @@ async def mark_claimed(event_id: int, claim_id: int, request: Request, _: bool =
     res = sb.table("event_claims").update(update).eq("id", claim_id).eq("event_id", event_id).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy")
+
+    # Tự động chuyển coins từ người tổ chức sang người thắng khi xác nhận trao thưởng
+    if claimed:
+        try:
+            ev = sb.table("events").select("creator_tag, reward_coins").eq("id", event_id).single().execute()
+            claim_data = res.data[0]
+            winner_tag = claim_data.get("player_tag")
+            if (ev.data and ev.data.get("reward_coins", 0) > 0
+                    and ev.data.get("creator_tag") and winner_tag
+                    and ev.data["creator_tag"] != winner_tag):
+                coins = ev.data["reward_coins"]
+                creator_tag = ev.data["creator_tag"]
+                # Trừ coins của người tổ chức
+                creator_acc = sb.table("member_accounts").select("coins").eq("player_tag", creator_tag).execute()
+                if creator_acc.data:
+                    cur = creator_acc.data[0].get("coins") or 0
+                    sb.table("member_accounts").update({"coins": max(0, cur - coins)}).eq("player_tag", creator_tag).execute()
+                # Cộng coins cho người thắng
+                winner_acc = sb.table("member_accounts").select("coins").eq("player_tag", winner_tag).execute()
+                if winner_acc.data:
+                    cur = winner_acc.data[0].get("coins") or 0
+                    sb.table("member_accounts").update({"coins": cur + coins}).eq("player_tag", winner_tag).execute()
+        except Exception:
+            pass  # Lỗi chuyển coins không nên block việc mark claimed
+
     return res.data[0]

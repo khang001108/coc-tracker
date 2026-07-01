@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { getMemberAuth, setMemberAuth, clearMemberAuth } from "@/lib/api";
 import { thColor, roleLabel, roleClass } from "@/lib/utils";
@@ -117,7 +118,7 @@ export default function LoginPage() {
       )}
 
       {me && (
-        <a href="/shop" className="card flex items-center justify-between gap-3 hover:border-yellow-500/40 transition-colors">
+        <Link href="/shop" className="card flex items-center justify-between gap-3 hover:border-yellow-500/40 transition-colors">
           <span className="flex items-center gap-2 text-white font-semibold">🏰 Cửa hàng vật phẩm</span>
           <span className="text-xs text-gray-500">Đổi lâu đài, pháo, hiệu ứng tên →</span>
         </a>

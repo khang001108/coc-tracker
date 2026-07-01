@@ -70,7 +70,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
           {/* 2 pháo = 2 lượt đánh */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {[0, 1].map(i => (
-              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} />
+              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} thColor={thColor(member.townHallLevel)} />
             ))}
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
     <div className="card !p-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">
-        <h3 className="font-bold text-white text-sm">🗺️ Bản đồ chiến trường</h3>
+        <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Bản đồ chiến trường</h3>
         <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
           <span>⚔ #X = vị trí tấn công</span>
           <span>🔫🔫 = 2 lượt đánh</span>

@@ -163,15 +163,26 @@ export default function StatsPage() {
             {/* Role distribution pie */}
             <div className="card">
               <h3 className="font-bold text-white mb-4">Phân bổ Role</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart margin={{ top: 20, right: 30, bottom: 10, left: 30 }}>
                   <Pie data={roleData} dataKey="value" nameKey="name"
-                    cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}
-                    labelLine={false}>
+                    cx="50%" cy="52%" outerRadius={75}
+                    label={({ cx, cy, midAngle, outerRadius, name, value }) => {
+                      const RADIAN = Math.PI / 180;
+                      const r = outerRadius + 28;
+                      const x = cx + r * Math.cos(-midAngle * RADIAN);
+                      const y = cy + r * Math.sin(-midAngle * RADIAN);
+                      return (
+                        <text x={x} y={y} fill="#9ca3af" textAnchor={x > cx ? "start" : "end"}
+                          dominantBaseline="central" fontSize={11} fontWeight={500}>
+                          {`${name}: ${value}`}
+                        </text>
+                      );
+                    }}
+                    labelLine={{ stroke: "#4b5563", strokeWidth: 1 }}>
                     {roleData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

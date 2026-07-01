@@ -13,15 +13,16 @@ import { Portal } from "@/components/ui/Portal";
 import { MusicControls } from "@/components/ui/MusicControls";
 import { GamePlayButton } from "@/components/ui/GamePlayButton";
 import { getMemberAuth } from "@/lib/api";
+import { useNotifications } from "@/components/ui/NotificationContext";
 
 const LEFT = [
-  { href: "/",         label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/members",  label: "Thành viên",icon: Users },
-  { href: "/war",      label: "War",       icon: Swords },
+  { href: "/",        label: "Tổng quan", icon: LayoutDashboard },
+  { href: "/members", label: "Thành viên", icon: Users },
+  { href: "/war",     label: "War",        icon: Swords,         notif: "war" as const },
 ];
 const RIGHT = [
-  { href: "/chat",     label: "Chat",      icon: MessageCircle },
-  { href: "/events",   label: "Sự kiện",   icon: PartyPopper },
+  { href: "/chat",   label: "Chat",    icon: MessageCircle, notif: "chat" as const },
+  { href: "/events", label: "Sự kiện", icon: PartyPopper,   notif: "events" as const },
 ];
 
 const MORE = [
@@ -34,15 +35,23 @@ const MORE = [
   { href: "/settings", label: "Cài đặt",      icon: Settings },
 ];
 
-function NavLink({ href, label, icon: Icon, active }: any) {
+/** Chấm đỏ thông báo */
+function RedDot() {
+  return (
+    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-gray-900 animate-pulse" />
+  );
+}
+
+function NavLink({ href, label, icon: Icon, active, hasNotif }: any) {
   return (
     <Link href={href}
       className={cn(
         "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-w-0 transition-colors",
         active ? "text-yellow-400" : "text-gray-500"
       )}>
-      <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", active && "icon-btn-game")}>
+      <span className={cn("relative w-7 h-7 rounded-full flex items-center justify-center shrink-0", active && "icon-btn-game")}>
         <Icon size={active ? 14 : 17} className={active ? "text-gray-900" : ""} />
+        {hasNotif && !active && <RedDot />}
       </span>
       <span className="text-[9px] font-medium truncate">{label}</span>
     </Link>
@@ -53,6 +62,7 @@ export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [memberName, setMemberName] = useState<string | null>(null);
+  const notif = useNotifications();
   const moreActive = MORE.some(({ href }) => pathname.startsWith(href));
 
   useEffect(() => {
@@ -67,15 +77,16 @@ export function MobileNav() {
 
   return (
     <>
-      {/* 6 cột bằng nhau: mỗi mục có chỗ riêng, nút "Chơi" cũng là 1 cột — không đè lên mục khác */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-gray-900 border-t border-gray-800 flex items-stretch"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {LEFT.map(({ href, label, icon }) => (
+
+        {LEFT.map(({ href, label, icon, notif: nk }) => (
           <NavLink key={href} href={href} label={label} icon={icon}
-            active={href === "/" ? pathname === "/" : pathname.startsWith(href)} />
+            active={href === "/" ? pathname === "/" : pathname.startsWith(href)}
+            hasNotif={nk ? notif[nk] : false} />
         ))}
 
-        {/* Cột giữa — nút Chơi, có không gian riêng, chỉ nổi lên cao hơn 1 chút */}
+        {/* Nút Chơi */}
         <GamePlayButton className="flex-1 flex flex-col items-center justify-center min-w-0">
           <span className="relative -mt-6 shrink-0">
             <span className="absolute inset-0 rounded-full animate-glow-pulse"
@@ -101,9 +112,10 @@ export function MobileNav() {
           </span>
         </GamePlayButton>
 
-
-        {RIGHT.map(({ href, label, icon }) => (
-          <NavLink key={href} href={href} label={label} icon={icon} active={pathname.startsWith(href)} />
+        {RIGHT.map(({ href, label, icon, notif: nk }) => (
+          <NavLink key={href} href={href} label={label} icon={icon}
+            active={pathname.startsWith(href)}
+            hasNotif={nk ? notif[nk] : false} />
         ))}
 
         <button onClick={() => setOpen(true)}
@@ -143,15 +155,13 @@ export function MobileNav() {
                     )}>
                       <Icon size={16} className={active ? "text-gray-900" : isMe ? "text-green-400" : "text-gray-400"} />
                     </span>
-                    <span className={cn("text-[11px] font-medium text-center truncate w-full", active ? "text-yellow-400" : isMe ? "text-green-400" : "text-gray-300")}>{label}</span>
+                    <span className={cn("text-[11px] font-medium text-center truncate w-full px-1",
+                      active ? "text-yellow-400" : isMe ? "text-green-400" : "text-gray-300")}>{label}</span>
                   </Link>
                 );
               })}
             </div>
-
-            {/* Nhạc nền — gộp gọn vào đây thay vì bong bóng nổi riêng */}
             <div className="mb-3"><MusicControls /></div>
-
             <ThemeToggle />
           </div>
         </div>

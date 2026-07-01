@@ -292,3 +292,6 @@ DROP POLICY IF EXISTS "service_all" ON event_participants;
 CREATE POLICY "service_all" ON event_participants FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_participants TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- ── Thêm cột reward_coins vào events (thưởng coins từ người tổ chức) ──────
+ALTER TABLE events ADD COLUMN IF NOT EXISTS reward_coins INTEGER DEFAULT 0;

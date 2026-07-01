@@ -6,6 +6,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { MusicProvider } from "@/components/ui/MusicContext";
 import { FloatingMusicWidget } from "@/components/ui/FloatingMusicWidget";
 import { ThemeInitScript } from "@/components/ui/ThemeToggle";
+import { NotificationProvider } from "@/components/ui/NotificationContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -44,23 +45,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={inter.className}>
         <MusicProvider>
+        <NotificationProvider>
         <div className="min-h-screen bg-gray-950 flex">
-          {/* Desktop sidebar */}
           <Sidebar />
-
-          {/* Main */}
           <div className="flex-1 md:ml-60 flex flex-col min-h-screen min-w-0">
             <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-x-hidden w-full">
               {children}
             </main>
           </div>
-
-          {/* Mobile bottom nav (popup "Thêm" có sẵn điều khiển nhạc gọn bên trong) */}
           <MobileNav />
-
-          {/* Nhạc nền dạng bong bóng nổi — chỉ hiện trên desktop */}
           <FloatingMusicWidget />
         </div>
+        </NotificationProvider>
         </MusicProvider>
       </body>
     </html>
