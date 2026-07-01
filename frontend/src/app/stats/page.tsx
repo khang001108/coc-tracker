@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel } from "@/lib/utils";
@@ -106,7 +107,7 @@ export default function StatsPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="card h-64 animate-pulse bg-gray-800" />)}
+          <CocLoader text="Đang tải thống kê..." minHeight={200} />
         </div>
       ) : (
         <>

@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ClanBadgeArt } from "@/components/ui/HeroArt";
@@ -137,7 +138,7 @@ export default function LoginPage() {
       </div>
 
       {loading ? (
-        <div className="card h-64 animate-pulse bg-gray-800" />
+        <CocLoader text="Đang tải thành viên clan..." minHeight={200} />
       ) : (
         <div className="card !p-0 overflow-hidden">
           <div className="divide-y divide-gray-800">

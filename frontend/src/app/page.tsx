@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShieldArt, GoldCoinArt, SwordsArt } from "@/components/ui/HeroArt";
@@ -81,7 +82,7 @@ export default function DashboardPage() {
         <div className="h-9 w-24 bg-gray-800 rounded-xl animate-pulse" />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => <div key={i} className="card h-28 animate-pulse bg-gray-800" />)}
+        <CocLoader text="Đang tải clan..." minHeight={180} />
       </div>
     </div>
   );

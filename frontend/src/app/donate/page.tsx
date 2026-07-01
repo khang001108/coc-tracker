@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -70,7 +71,7 @@ export default function DonatePage() {
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
-        <div className="card h-64 animate-pulse bg-gray-800" />
+        <CocLoader text="Đang tải donate..." minHeight={180} />
       ) : tab === "donate" ? (
         <>
           {/* Summary */}

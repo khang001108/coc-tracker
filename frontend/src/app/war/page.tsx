@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { EmberField } from "@/components/ui/EmberField";
 import { SwordsArt } from "@/components/ui/HeroArt";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
@@ -104,7 +105,7 @@ export default function WarPage() {
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
-        <div className="card h-64 animate-pulse bg-gray-800" />
+        <CocLoader text="Đang tải dữ liệu War..." minHeight={220} />
       ) : tab === "current" ? (
         <>
           {!war || war.state === "notInWar" ? (

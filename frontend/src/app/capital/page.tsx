@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { GoldCoinArt } from "@/components/ui/HeroArt";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -41,7 +42,7 @@ export default function CapitalPage() {
 
       {loading ? (
         <div className="grid grid-cols-2 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="card h-24 animate-pulse bg-gray-800" />)}
+          <CocLoader text="Đang tải Clan Capital..." minHeight={180} />
         </div>
       ) : !raid || !raid.startTime ? (
         <div className="card text-center py-12">

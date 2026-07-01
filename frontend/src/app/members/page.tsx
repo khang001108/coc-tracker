@@ -1,4 +1,5 @@
 "use client";
+import { CocLoader } from "@/components/ui/CocLoader";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -42,7 +43,8 @@ function PyramidGroupSection({ g, gi, onSelect }: {
 
       {/* Grid các card — thu/mở mượt */}
       {open && (
-        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))" }}>
+        <div className={g.list.length <= 3 ? "flex flex-wrap justify-center gap-2" : "grid gap-2"}
+          style={g.list.length > 3 ? { gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))" } : {}}>
           {g.list.map(m => (
             <button key={m.tag} onClick={() => onSelect(m)}
               className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl transition-all hover:-translate-y-0.5 w-full"
@@ -137,7 +139,7 @@ export default function MembersPage() {
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
-        <div className="card h-64 animate-pulse bg-gray-800" />
+        <CocLoader text="Đang tải thành viên..." minHeight={220} />
       ) : tab === "pyramid" ? (
         <div className="card">
           <PyramidView members={members} onSelect={openPlayer} />
