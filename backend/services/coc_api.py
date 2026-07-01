@@ -45,6 +45,10 @@ async def get_war_log(tag: str) -> list:
     data = await coc_get(f"/clans/{encode_tag(tag)}/warlog?limit=20")
     return data.get("items", [])
 
+async def get_cwl_war(war_tag: str) -> dict:
+    """Lấy chi tiết 1 war trong CWL theo warTag."""
+    return await coc_get(f"/clanwarleagues/wars/{encode_tag(war_tag)}")
+
 async def get_cwl_group(tag: str) -> dict:
     return await coc_get(f"/clans/{encode_tag(tag)}/currentwar/leaguegroup")
 

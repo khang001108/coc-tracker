@@ -66,10 +66,21 @@ export default function WarPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [w, wl, c] = await Promise.allSettled([
-        api.getCurrentWar(), api.getWarLog(), api.getCWL()
+      const [w, wl, c, cwlWar] = await Promise.allSettled([
+        api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar()
       ]);
-      if (w.status === "fulfilled") setWar(w.value);
+      let warData = w.status === "fulfilled" ? w.value : null;
+      // Nếu không có war thường, kiểm tra CWL war
+      if ((!warData || warData.state === "notInWar") && cwlWar.status === "fulfilled") {
+        const cw = cwlWar.value;
+        if (cw && cw.state && cw.state !== "notInWar") warData = cw;
+      }
+      // Gắn badge từ war thường nếu chưa có
+      if (warData && !warData.isCWL) {
+        if (warData.clan?.badgeUrls?.medium) warData.clan.badgeUrl = warData.clan.badgeUrls.medium;
+        if (warData.opponent?.badgeUrls?.medium) warData.opponent.badgeUrl = warData.opponent.badgeUrls.medium;
+      }
+      setWar(warData);
       if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
       if (c.status === "fulfilled") setCwl(c.value);
       setLoading(false);
@@ -104,34 +115,82 @@ export default function WarPage() {
           ) : (
             <>
               {/* War header */}
-              <div className="card relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: "#5C1E1E" }}>
+              <div className="card relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: war.isCWL ? "#5C2A00" : "#5C1E1E" }}>
                 <EmberField count={22} speed={1.4} />
-                {/* Minh hoạ kiếm ở giữa phía sau */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <SwordsArt size={120} opacity={0.10} />
+                  <SwordsArt size={120} opacity={0.08} />
                 </div>
-                <div className="relative grid grid-cols-3 gap-2 md:gap-4 text-center mb-4">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1 truncate">{war.clan?.name}</p>
-                    <p className="text-2xl md:text-3xl font-bold text-yellow-400">⭐ {war.clan?.stars}</p>
-                    <p className="text-xs md:text-sm text-gray-300">{war.clan?.attacks}/{war.teamSize * 2} attack</p>
-                    <p className="text-xs text-gray-500">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
+
+                {/* CWL badge */}
+                {war.isCWL && (
+                  <div className="relative flex justify-center mb-2">
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5"
+                      style={{ background: "rgba(244,161,48,0.15)", border: "1px solid rgba(244,161,48,0.35)", color: "#F4A130" }}>
+                      🏆 Clan War League {war.season ? `· ${war.season}` : ""}
+                    </span>
                   </div>
-                  <div className="flex flex-col items-center justify-center">
-                    <span className="text-gray-500 font-bold">VS</span>
-                    <span className={`text-xs mt-1 font-semibold ${
-                      war.state === "inWar" ? "text-green-400" :
-                      war.state === "preparation" ? "text-yellow-400" : "text-blue-400"
+                )}
+
+                <div className="relative grid grid-cols-3 gap-2 md:gap-4 text-center mb-2">
+                  {/* Our clan */}
+                  <div className="flex flex-col items-center gap-1">
+                    {war.clan?.badgeUrl && (
+                      <img src={war.clan.badgeUrl} alt="" className="w-10 h-10 object-contain drop-shadow-lg"/>
+                    )}
+                    <p className="text-xs text-gray-300 font-semibold truncate max-w-[90px]">{war.clan?.name}</p>
+                    {war.state !== "preparation" ? (
+                      <>
+                        <p className="text-2xl font-bold text-yellow-400">⭐ {war.clan?.stars}</p>
+                        <p className="text-[11px] text-gray-400">{war.clan?.attacks}/{war.teamSize * 2} atk</p>
+                        <p className="text-[11px] text-gray-500">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-yellow-500 mt-1">⚔️ Đang chuẩn bị</p>
+                    )}
+                  </div>
+
+                  {/* VS center */}
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="text-gray-500 font-bold text-lg">VS</span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      war.state === "inWar" ? "bg-green-500/20 text-green-400" :
+                      war.state === "preparation" ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-blue-500/20 text-blue-400"
                     }`}>
                       {{ inWar: "Đang đánh", preparation: "Chuẩn bị", warEnded: "Kết thúc" }[war.state as string] || war.state}
                     </span>
-                    {war.endTime && <p className="text-[10px] text-gray-600 mt-0.5">{formatDate(war.endTime)}</p>}
+                    {war.startTime && war.state === "preparation" && (
+                      <p className="text-[10px] text-gray-600">Bắt đầu: {formatDate(war.startTime)}</p>
+                    )}
+                    {war.endTime && (
+                      <p className="text-[10px] text-gray-600">{war.state === "preparation" ? "Kết thúc:" : ""}  {formatDate(war.endTime)}</p>
+                    )}
+                    <p className="text-[10px] text-gray-700">{war.teamSize}v{war.teamSize}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1 truncate">{war.opponent?.name}</p>
-                    <p className="text-2xl md:text-3xl font-bold text-red-400">⭐ {war.opponent?.stars}</p>
-                    <p className="text-xs md:text-sm text-gray-300">{war.opponent?.attacks}/{war.teamSize * 2} attack</p>
-                    <p className="text-xs text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
+
+                  {/* Opponent */}
+                  <div className="flex flex-col items-center gap-1">
+                    {war.state === "preparation" ? (
+                      /* Che địch trong chuẩn bị */
+                      <>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                          style={{ background: "rgba(100,100,100,0.2)", border: "1px solid rgba(255,255,255,0.1)" }}>❓</div>
+                        <p className="text-xs text-gray-600 italic">Bí ẩn</p>
+                        <p className="text-xs text-gray-700">???</p>
+                      </>
+                    ) : (
+                      <>
+                        {war.opponent?.badgeUrl ? (
+                          <img src={war.opponent.badgeUrl} alt="" className="w-10 h-10 object-contain drop-shadow-lg"/>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">🏰</div>
+                        )}
+                        <p className="text-xs text-gray-300 font-semibold truncate max-w-[90px]">{war.opponent?.name}</p>
+                        <p className="text-2xl font-bold text-red-400">⭐ {war.opponent?.stars}</p>
+                        <p className="text-[11px] text-gray-400">{war.opponent?.attacks}/{war.teamSize * 2} atk</p>
+                        <p className="text-[11px] text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

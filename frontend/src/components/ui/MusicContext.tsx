@@ -81,6 +81,26 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
     if (audioRef.current) audioRef.current.volume = v;
   }
 
+  // Tắt nhạc khi chuyển tab / thoát trang
+  useEffect(() => {
+    function onHide() {
+      if (document.hidden && audioRef.current) {
+        audioRef.current.pause();
+        setPlaying(false);
+      }
+    }
+    function onUnload() { audioRef.current?.pause(); }
+
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", onUnload);
+    window.addEventListener("pagehide", onUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("beforeunload", onUnload);
+      window.removeEventListener("pagehide", onUnload);
+    };
+  }, []);
+
   return (
     <Ctx.Provider value={{ tracks, config, playing, needsUnlock, volume, currentTrack, playlist, togglePlay, skip, setVolume }}>
       <audio ref={audioRef} onEnded={handleEnded} />

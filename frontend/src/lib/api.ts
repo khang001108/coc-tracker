@@ -66,6 +66,7 @@ export const api = {
   getCurrentWar:  () => apiFetch("/api/war/current"),
   getWarLog:      () => apiFetch("/api/war/log"),
   getCWL:         () => apiFetch("/api/war/cwl"),
+  getCWLCurrentWar: () => apiFetch("/api/war/cwl/current"),
 
   // Capital
   getRaidSeasons: () => apiFetch("/api/capital/raids"),
