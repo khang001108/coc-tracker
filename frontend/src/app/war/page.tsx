@@ -162,30 +162,27 @@ export default function WarPage() {
                     {war.startTime && war.state === "preparation" && (
                       <p className="text-[10px] text-gray-600">Bắt đầu: {formatDate(war.startTime)}</p>
                     )}
+                    {war.state === "preparation" && (
+                      <p className="text-[9px] text-gray-700 mt-0.5">📡 Supercell API</p>
+                    )}
                     {war.endTime && (
                       <p className="text-[10px] text-gray-600">{war.state === "preparation" ? "Kết thúc:" : ""}  {formatDate(war.endTime)}</p>
                     )}
                     <p className="text-[10px] text-gray-700">{war.teamSize}v{war.teamSize}</p>
                   </div>
 
-                  {/* Opponent */}
+                  {/* Opponent — luôn hiện (API Supercell cung cấp data cả 2 bên kể cả ngày chuẩn bị) */}
                   <div className="flex flex-col items-center gap-1">
+                    {war.opponent?.badgeUrl ? (
+                      <img src={war.opponent.badgeUrl} alt="" className="w-10 h-10 object-contain drop-shadow-lg"/>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">🏰</div>
+                    )}
+                    <p className="text-xs text-gray-300 font-semibold truncate max-w-[90px]">{war.opponent?.name}</p>
                     {war.state === "preparation" ? (
-                      /* Che địch trong chuẩn bị */
-                      <>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
-                          style={{ background: "rgba(100,100,100,0.2)", border: "1px solid rgba(255,255,255,0.1)" }}>❓</div>
-                        <p className="text-xs text-gray-600 italic">Bí ẩn</p>
-                        <p className="text-xs text-gray-700">???</p>
-                      </>
+                      <p className="text-[10px] text-yellow-600 mt-0.5 italic">⚔️ Chờ đánh</p>
                     ) : (
                       <>
-                        {war.opponent?.badgeUrl ? (
-                          <img src={war.opponent.badgeUrl} alt="" className="w-10 h-10 object-contain drop-shadow-lg"/>
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">🏰</div>
-                        )}
-                        <p className="text-xs text-gray-300 font-semibold truncate max-w-[90px]">{war.opponent?.name}</p>
                         <p className="text-2xl font-bold text-red-400">⭐ {war.opponent?.stars}</p>
                         <p className="text-[11px] text-gray-400">{war.opponent?.attacks}/{war.teamSize * 2} atk</p>
                         <p className="text-[11px] text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
