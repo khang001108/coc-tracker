@@ -71,7 +71,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
           {/* 2 pháo = 2 lượt đánh */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {[0, 1].map(i => (
-              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} thColor={thColor(member.townHallLevel)} />
+              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} />
             ))}
           </div>
         </div>
