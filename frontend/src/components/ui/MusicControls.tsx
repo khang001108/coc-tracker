@@ -12,7 +12,7 @@ export function MusicControls() {
       style={{ background: "var(--player-bg)", border: "1px solid var(--player-border)" }}>
       <div className="flex items-center gap-2">
         <Music2 size={14} className="text-yellow-400 shrink-0" />
-        <span className="text-xs text-gray-300 truncate flex-1">{currentTrack?.title || "Nhạc nền"}</span>
+        <span className="text-xs truncate flex-1 font-medium" style={{ color: "#fff" }}>{currentTrack?.title || "Nhạc nền"}</span>
       </div>
 
       {needsUnlock ? (
@@ -23,14 +23,14 @@ export function MusicControls() {
             {playing ? <Pause size={15} /> : <Play size={15} />}
           </button>
           {playlist.length > 1 && (
-            <button onClick={skip} className="p-2 rounded-full hover:bg-black/20 text-gray-300 shrink-0">
+            <button onClick={skip} className="p-2 rounded-full hover:bg-black/20 shrink-0" style={{ color: "#fff" }}>
               <SkipForward size={15} />
             </button>
           )}
           <Volume2 size={14} className="text-gray-400 shrink-0" />
           <input type="range" min={0} max={1} step={0.05} value={volume}
             onChange={e => setVolume(Number(e.target.value))}
-            className="flex-1 accent-yellow-500" />
+            className="flex-1 accent-yellow-400" />
         </div>
       )}
     </div>

@@ -1,19 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
+import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
 const STAR_FILL = (s: number) =>
-  s === 3 ? "#B8860B" : s === 2 ? "#606060" : s === 1 ? "#7B4513" : "#888";
-const STAR_FILL_EMPTY = "#CCCCCC44";
+  s === 3 ? "#FFD700" : s === 2 ? "#C0C0C0" : s === 1 ? "#CD853F" : "#888";
+const STAR_FILL_EMPTY = "rgba(200,200,200,0.25)";
 
 function Stars({ stars }: { stars: number }) {
   return (
     <div className="flex gap-0.5">
       {[0, 1, 2].map(i => (
-        <svg key={i} width={9} height={9} viewBox="0 0 10 10">
+        <svg key={i} width={11} height={11} viewBox="0 0 10 10">
           <polygon points="5,1 6.2,3.8 9.5,3.8 7,5.8 7.9,9 5,7.2 2.1,9 3,5.8 0.5,3.8 3.8,3.8"
             fill={i < stars ? STAR_FILL(stars) : STAR_FILL_EMPTY} />
         </svg>
@@ -32,7 +33,7 @@ function AttackBadge({ attack }: { attack: any }) {
       style={{ background: bg, color: text, border: `1px solid ${text}33` }}>
       ⚔ #{attack.defenderPos}
       {[0,1,2].map(i => (
-        <svg key={i} width={7} height={7} viewBox="0 0 10 10">
+        <svg key={i} width={8} height={8} viewBox="0 0 10 10">
           <polygon points="5,1 6.2,3.8 9.5,3.8 7,5.8 7.9,9 5,7.2 2.1,9 3,5.8 0.5,3.8 3.8,3.8"
             fill={i < s ? STAR_FILL(s) : STAR_FILL_EMPTY} />
         </svg>
@@ -146,7 +147,8 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
   const rows = Math.max(ourTeam.length, theirTeam.length);
 
   return (
-    <div className="card !p-0 overflow-hidden">
+    <div className="card !p-0 overflow-hidden relative">
+      <EmberField count={32} speed={1.6} />
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">
         <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Bản đồ chiến trường</h3>
