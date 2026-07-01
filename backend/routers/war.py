@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from supabase_client import get_supabase
+from clan_context import get_clan_id
 from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war, get_coc_config
 import json
 

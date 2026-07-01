@@ -17,6 +17,7 @@ Quy tắc tham gia:
 """
 from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header
 from supabase_client import get_supabase
+from clan_context import get_clan_id
 from auth import require_admin, verify_admin_token
 from member_auth import verify_member_token
 from services.coc_api import get_current_war, get_war_log, get_clan_members, get_coc_config
@@ -94,9 +95,10 @@ async def upload_image(file: UploadFile = File(...), _: bool = Depends(require_a
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/")
-async def list_events():
+async def list_events(request: Request):
     sb = get_supabase()
-    res = sb.table("events").select("*").order("created_at", desc=True).execute()
+    clan_id = get_clan_id(request)
+    res = sb.table("events").select("*").eq("clan_id", clan_id).order("created_at", desc=True).execute()
     events = res.data or []
 
     # Gắn participant_count vào từng event

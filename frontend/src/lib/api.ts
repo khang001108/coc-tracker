@@ -37,11 +37,18 @@ async function apiFetch(path: string, opts?: RequestInit, retries = 1) {
   for (let i = 0; i <= retries; i++) {
     try {
       const token = getAdminToken();
+      // Auto-inject clan ID cho multi-clan
+      const clanId = typeof window !== "undefined"
+        ? parseInt(localStorage.getItem("current_clan_id") || "1", 10)
+        : 1;
+      const clanHeader = (!isNaN(clanId) && clanId !== 1) ? { "X-Clan-ID": String(clanId) } : {};
+
       const res = await fetch(`${API}${path}`, {
         ...opts,
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "X-Admin-Token": token } : {}),
+          ...clanHeader,
           ...opts?.headers,
         },
       });

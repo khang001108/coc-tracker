@@ -15,11 +15,19 @@ async def get_coc_config() -> dict:
     config = {row["key"]: row["value"] for row in res.data}
     return config
 
-async def coc_get(path: str) -> dict:
-    config = await get_coc_config()
-    api_key = config.get("coc_api_key", "")
+async def coc_get(path: str, clan_id: int = 1) -> dict:
+    """Gọi CoC API. Nếu clan_id khác 1, dùng API key của clan đó từ bảng clans."""
+    if clan_id != 1:
+        # Multi-clan: lấy API key từ bảng clans
+        from supabase_client import get_supabase
+        sb = get_supabase()
+        res = sb.table("clans").select("coc_api_key").eq("id", clan_id).execute()
+        api_key = (res.data[0].get("coc_api_key") or "") if res.data else ""
+    else:
+        config = await get_coc_config()
+        api_key = config.get("coc_api_key", "")
     if not api_key:
-        raise ValueError("CoC API key chưa được cấu hình. Vào Settings để thêm.")
+        raise ValueError("CoC API key chưa được cấu hình.")
     headers = {"Authorization": f"Bearer {api_key}"}
     async with httpx.AsyncClient(timeout=15) as client:
         r = await client.get(f"{COC_BASE}{path}", headers=headers)
