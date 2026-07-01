@@ -30,21 +30,26 @@ async def stop_scheduler():
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def get_tag() -> str | None:
+async def get_all_clans() -> list:
+    """Lấy tất cả clan từ bảng clans để poll."""
     sb = get_supabase()
-    clans_res = sb.table("clans").select("id, clan_tag, coc_api_key, discord_webhook, telegram_bot_token, telegram_chat_id, notify_war, notify_raid, notify_join_leave").execute()
-    all_clans = clans_res.data or []
-    
-    for cfg_clan in all_clans:
-        try:
-            await _poll_single_clan(cfg_clan)
-        except Exception as e:
-            print(f"[poller] clan {cfg_clan.get('clan_tag')} error: {e}")
+    try:
+        res = sb.table("clans").select(
+            "id, clan_tag, coc_api_key, discord_webhook, "
+            "telegram_bot_token, telegram_chat_id, "
+            "notify_war, notify_raid, notify_join_leave"
+        ).execute()
+        return res.data or []
+    except Exception:
+        # Fallback về settings table nếu clans table chưa có
+        from services.coc_api import get_coc_config
+        cfg = await get_coc_config()
+        return [{"id": 1, "clan_tag": cfg.get("clan_tag", ""), "coc_api_key": cfg.get("coc_api_key", "")}]
 
-async def _poll_single_clan(cfg: dict):
-    """Poll cho 1 clan cụ thể."""
-    cfg_alias = cfg  # alias cho backward compat
-    return cfg.get("clan_tag")
+async def get_tag() -> str | None:
+    """Lấy tag của clan chính (id=1) — backward compat."""
+    clans = await get_all_clans()
+    return clans[0].get("clan_tag") if clans else None
 
 def upsert_snapshot(table: str, data: dict):
     sb = get_supabase()
