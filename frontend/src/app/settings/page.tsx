@@ -646,120 +646,211 @@ function ShopPricingSettings() {
 function ClanManagement() {
   const [clans, setClans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ clan_tag: "", clan_name: "Clan mới", coc_api_key: "", discord_webhook: "" });
+  const [form, setForm] = useState({ clan_tag: "", coc_api_key: "" });
+  const [preview, setPreview] = useState<{ name: string; badge: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok"|"err"; text: string } | null>(null);
 
-  const flash = (type: "ok"|"err", text: string) => { setMsg({type,text}); setTimeout(()=>setMsg(null),3000); };
+  const flash = (type: "ok"|"err", text: string) => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg(null), 4000);
+  };
 
   async function load() {
     setLoading(true);
-    try { setClans(await api.listClans()); } catch { flash("err","Lỗi tải danh sách"); }
+    try {
+      const data = await api.listClans();
+      setClans(data);
+    } catch {
+      // Backend chưa deploy hoặc chưa có clan → hiện empty state
+      setClans([]);
+    }
     setLoading(false);
   }
-  useEffect(()=>{ load(); },[]);
+  useEffect(() => { load(); }, []);
 
-  function startAdd() { setForm({clan_tag:"",clan_name:"Clan mới",coc_api_key:"",discord_webhook:""}); setAdding(true); setEditId(null); }
-  function startEdit(cl: any) { setForm({clan_tag:cl.clan_tag,clan_name:cl.clan_name,coc_api_key:cl.coc_api_key||"",discord_webhook:cl.discord_webhook||""}); setEditId(cl.id); setAdding(false); }
+  function startAdd() {
+    setForm({ clan_tag: "", coc_api_key: "" });
+    setPreview(null);
+    setEditId(null);
+    setShowForm(true);
+  }
+
+  function startEdit(cl: any) {
+    setForm({ clan_tag: cl.clan_tag, coc_api_key: cl.coc_api_key || "" });
+    setPreview({ name: cl.clan_name, badge: "" });
+    setEditId(cl.id);
+    setShowForm(true);
+  }
+
+  // Kiểm tra clan tag + API key → hiện tên clan nếu thành công
+  async function kiemTra() {
+    const tag = form.clan_tag.trim();
+    const key = form.coc_api_key.trim();
+    if (!tag || !key) { flash("err", "Nhập đủ Clan Tag và API Key"); return; }
+    setTesting(true);
+    setPreview(null);
+    try {
+      const res = await api.testClan(key, tag);
+      if (res?.name) {
+        setPreview({ name: res.name, badge: res.badgeUrls?.medium || "" });
+        flash("ok", `✅ Tìm thấy: ${res.name}`);
+      } else {
+        flash("err", "Không tìm thấy clan. Kiểm tra tag và API key.");
+      }
+    } catch (e: any) {
+      flash("err", e?.message || "Kết nối thất bại");
+    }
+    setTesting(false);
+  }
 
   async function save() {
+    if (!preview) { flash("err", "Kiểm tra kết nối trước khi lưu"); return; }
+    setSaving(true);
     try {
-      if (adding) await api.createClan(form);
-      else if (editId) await api.updateClan(editId, form);
-      flash("ok", adding?"Thêm thành công!":"Đã cập nhật!");
-      setAdding(false); setEditId(null); load();
-    } catch(e:any){ flash("err", e?.message||"Lỗi"); }
+      const payload = {
+        clan_tag: form.clan_tag.trim(),
+        clan_name: preview.name,
+        coc_api_key: form.coc_api_key.trim(),
+      };
+      if (editId) await api.updateClan(editId, payload);
+      else await api.createClan(payload);
+      flash("ok", editId ? "Đã cập nhật!" : "Thêm clan thành công!");
+      setShowForm(false);
+      setEditId(null);
+      setPreview(null);
+      load();
+    } catch (e: any) { flash("err", e?.message || "Lỗi lưu"); }
+    setSaving(false);
   }
 
   async function del(id: number, name: string) {
-    if (!confirm(`Xoá clan "${name}"?`)) return;
-    try { await api.deleteClan(id); flash("ok","Đã xoá"); load(); }
-    catch(e:any){ flash("err", e?.message||"Không thể xoá clan chính"); }
+    if (!confirm(`Xoá clan "${name}"? Dữ liệu sự kiện và chat sẽ bị xoá.`)) return;
+    try { await api.deleteClan(id); flash("ok", "Đã xoá"); load(); }
+    catch (e: any) { flash("err", e?.message || "Không thể xoá clan chính"); }
   }
 
   async function regen(id: number) {
-    if (!confirm("Tạo lại admin token?")) return;
+    if (!confirm("Tạo lại admin token? Token cũ sẽ hết hiệu lực.")) return;
     const res = await api.regenToken(id);
-    prompt("Admin token mới (copy ngay):", res.admin_token);
+    prompt("Copy token mới:", res.admin_token);
   }
-
-  const showForm = adding || editId!==null;
 
   return (
     <div className="space-y-3">
-      {msg && <div className={`text-xs p-2.5 rounded-lg flex items-center gap-2 ${msg.type==="ok"?"bg-green-500/10 text-green-400":"bg-red-500/10 text-red-400"}`}>
-        {msg.type==="ok"?<CheckCircle size={14}/>:<AlertCircle size={14}/>} {msg.text}
-      </div>}
+      {/* Flash message */}
+      {msg && (
+        <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm ${msg.type === "ok" ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
+          {msg.type === "ok" ? <CheckCircle size={15}/> : <AlertCircle size={15}/>} {msg.text}
+        </div>
+      )}
 
-      {loading ? <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-yellow-400"/></div> : (
+      {/* Danh sách clan hiện có */}
+      {loading ? (
+        <div className="flex justify-center py-3"><Loader2 size={18} className="animate-spin text-yellow-400"/></div>
+      ) : clans.length > 0 ? (
         <div className="space-y-2">
           {clans.map(cl => (
             <div key={cl.id} className="flex items-center gap-3 p-3 rounded-xl"
-              style={{ background:"var(--py-card-bg)", border:`1px solid ${cl.id===1?"rgba(244,161,48,0.4)":"var(--py-card-border)"}` }}>
+              style={{ background: "var(--py-card-bg)", border: `1px solid ${cl.id === 1 ? "rgba(244,161,48,0.4)" : "var(--py-card-border)"}` }}>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs"
-                style={{ background:"linear-gradient(135deg,#F4A130,#B8731A)", color:"#1A0A00" }}>#{cl.id}</div>
+                style={{ background: "linear-gradient(135deg,#F4A130,#B8731A)", color: "#1A0A00" }}>
+                #{cl.id}
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{color:"var(--py-card-text)"}}>{cl.clan_name}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: "var(--py-card-text)" }}>{cl.clan_name}</p>
                 <p className="text-xs text-gray-500">{cl.clan_tag}</p>
               </div>
               <div className="flex gap-1">
-                <button onClick={()=>regen(cl.id)} title="Reset token"
+                <button onClick={() => regen(cl.id)} title="Reset token"
                   className="p-1.5 rounded-lg text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors">
                   <RefreshCw size={13}/>
                 </button>
-                <button onClick={()=>startEdit(cl)}
+                <button onClick={() => startEdit(cl)}
                   className="p-1.5 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 transition-colors">
                   <Edit3 size={13}/>
                 </button>
-                {cl.id!==1 && <button onClick={()=>del(cl.id,cl.clan_name)}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors">
-                  <Trash2 size={13}/>
-                </button>}
+                {cl.id !== 1 && (
+                  <button onClick={() => del(cl.id, cl.clan_name)}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                    <Trash2 size={13}/>
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <p className="text-xs text-gray-500 text-center py-2">Chưa có clan nào. Bấm thêm bên dưới.</p>
       )}
 
+      {/* Nút thêm */}
       {!showForm && (
         <button onClick={startAdd}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all hover:border-yellow-400/50 hover:text-yellow-400"
-          style={{ border:"1.5px dashed rgba(244,161,48,0.3)", color:"var(--py-card-text)" }}>
+          style={{ border: "1.5px dashed rgba(244,161,48,0.3)", color: "var(--py-card-text)" }}>
           <Plus size={15}/> Thêm clan mới
         </button>
       )}
 
+      {/* Form thêm/sửa — chỉ cần Tag + Key */}
       {showForm && (
-        <div className="space-y-2.5 p-3 rounded-xl" style={{border:"1px solid rgba(244,161,48,0.3)",background:"var(--py-card-bg)"}}>
-          <p className="text-xs font-bold text-yellow-400">{adding?"➕ Thêm clan mới":"✏️ Sửa clan"}</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-[10px] text-gray-500">Clan Tag *</label>
-              <input className="input mt-0.5" placeholder="#2ABC..." value={form.clan_tag}
-                onChange={e=>setForm({...form,clan_tag:e.target.value})} disabled={!!editId}/></div>
-            <div><label className="text-[10px] text-gray-500">Tên clan</label>
-              <input className="input mt-0.5" placeholder="Tên..." value={form.clan_name}
-                onChange={e=>setForm({...form,clan_name:e.target.value})}/></div>
+        <div className="space-y-3 p-3 rounded-xl" style={{ border: "1px solid rgba(244,161,48,0.3)", background: "var(--py-card-bg)" }}>
+          <p className="text-xs font-bold text-yellow-400">{editId ? "✏️ Sửa clan" : "➕ Thêm clan mới"}</p>
+
+          <div>
+            <label className="text-[10px] text-gray-500 mb-1 block">Clan Tag *</label>
+            <input className="input" placeholder="#2JRLPQ2UP" value={form.clan_tag}
+              onChange={e => { setForm({ ...form, clan_tag: e.target.value }); setPreview(null); }}
+              disabled={!!editId}/>
           </div>
-          <div><label className="text-[10px] text-gray-500">CoC API Key *</label>
-            <input className="input mt-0.5 text-xs" placeholder="eyJ..." value={form.coc_api_key}
-              onChange={e=>setForm({...form,coc_api_key:e.target.value})}/>
-            <p className="text-[10px] text-gray-600 mt-0.5">Tạo key riêng tại developer.clashofclans.com với IP của Render</p>
+
+          <div>
+            <label className="text-[10px] text-gray-500 mb-1 block">CoC API Key *</label>
+            <input className="input text-xs font-mono" placeholder="eyJ0eXAiOiJKV1QiLC..."
+              value={form.coc_api_key}
+              onChange={e => { setForm({ ...form, coc_api_key: e.target.value }); setPreview(null); }}/>
+            <p className="text-[10px] text-gray-600 mt-0.5">Tạo key tại developer.clashofclans.com với IP của Render</p>
           </div>
-          <div><label className="text-[10px] text-gray-500">Discord Webhook (tuỳ chọn)</label>
-            <input className="input mt-0.5 text-xs" placeholder="https://discord.com/api/webhooks/..." value={form.discord_webhook}
-              onChange={e=>setForm({...form,discord_webhook:e.target.value})}/></div>
-          <div className="flex gap-2 pt-1">
-            <button onClick={save} className="btn-gold flex-1 text-sm">💾 Lưu</button>
-            <button onClick={()=>{setAdding(false);setEditId(null);}}
+
+          {/* Nút Kiểm tra */}
+          <button onClick={kiemTra} disabled={testing}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ background: "rgba(244,161,48,0.12)", border: "1px solid rgba(244,161,48,0.35)", color: "#F4A130" }}>
+            {testing ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
+            {testing ? "Đang kiểm tra..." : "🔍 Kiểm tra kết nối"}
+          </button>
+
+          {/* Preview kết quả */}
+          {preview && (
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
+              {preview.badge && <img src={preview.badge} alt="" className="w-10 h-10 object-contain"/>}
+              <div>
+                <p className="text-sm font-bold text-green-400">{preview.name}</p>
+                <p className="text-[10px] text-green-600">Kết nối thành công ✓</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button onClick={save} disabled={saving || !preview}
+              className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+              style={{ background: preview ? "linear-gradient(135deg,#F4A130,#B8731A)" : "rgba(100,100,100,0.2)", color: preview ? "#1A0A00" : "#666", cursor: preview ? "pointer" : "not-allowed" }}>
+              {saving ? "Đang lưu..." : "💾 Lưu"}
+            </button>
+            <button onClick={() => { setShowForm(false); setEditId(null); setPreview(null); }}
               className="flex-1 py-2 rounded-xl text-sm border text-gray-400 hover:text-white transition-colors"
-              style={{borderColor:"var(--py-card-border)"}}>Huỷ</button>
+              style={{ borderColor: "var(--py-card-border)" }}>Huỷ</button>
           </div>
         </div>
       )}
     </div>
   );
 }
+
 
 export default function SettingsPage() {
   return (
