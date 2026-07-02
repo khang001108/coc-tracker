@@ -100,25 +100,24 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      {/* Clan switcher — chỉ hiện trên mobile (desktop đã có trong Sidebar) */}
-      <div className="md:hidden"><ClanSwitcher /></div>
-
-      {/* Header */}
+      {/* Header — bấm vào huy hiệu/tên hội để đổi clan (nếu có quyền) */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {clan?.badgeUrls?.medium && (
-            <img src={clan.badgeUrls.medium} alt="badge" className="w-14 h-14 rounded-xl" />
-          )}
-          <div>
-            <h1 className="page-title flex items-center gap-2">
-              {clan?.name || "Clan"}
-              {clan?.warLeague?.name && (
-                <span className="badge-gold text-xs">{clan.warLeague.name}</span>
-              )}
-            </h1>
-            <p className="page-subtitle">#{clan?.tag?.replace("#", "") || "—"}</p>
+        <ClanSwitcher>
+          <div className="flex items-center gap-4">
+            {clan?.badgeUrls?.medium && (
+              <img src={clan.badgeUrls.medium} alt="badge" className="w-14 h-14 rounded-xl" />
+            )}
+            <div>
+              <h1 className="page-title flex items-center gap-2">
+                {clan?.name || "Clan"}
+                {clan?.warLeague?.name && (
+                  <span className="badge-gold text-xs">{clan.warLeague.name}</span>
+                )}
+              </h1>
+              <p className="page-subtitle">#{clan?.tag?.replace("#", "") || "—"}</p>
+            </div>
           </div>
-        </div>
+        </ClanSwitcher>
         <button onClick={refresh} disabled={refreshing} title="Làm mới"
           className="icon-btn-game w-10 h-10 text-gray-900 shrink-0 disabled:opacity-60">
           <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />

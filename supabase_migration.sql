@@ -400,3 +400,34 @@ CREATE INDEX IF NOT EXISTS idx_events_clan             ON events(clan_id);
 CREATE INDEX IF NOT EXISTS idx_event_participants_clan ON event_participants(clan_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_clan      ON chat_messages(clan_id);
 CREATE INDEX IF NOT EXISTS idx_member_accounts_clan    ON member_accounts(clan_id);
+
+-- ════════════════════════════════════════════════════════════════
+-- MULTI-CLAN MIGRATION — PART 2
+-- Backend code (routers/events.py, routers/chat.py, schedulers/poller.py,
+-- routers/members.py) đã hỗ trợ các tính năng dưới đây — chạy phần này để
+-- CSDL có đủ cột thì tính năng mới thật sự hoạt động (nếu chưa chạy, code
+-- vẫn không lỗi vì có fallback, nhưng sẽ luôn rơi về hành vi clan #1 cũ).
+-- ════════════════════════════════════════════════════════════════
+
+-- 1. Nhật ký thành viên (member_log) — tách riêng theo từng clan
+ALTER TABLE member_log ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+UPDATE member_log SET clan_id = 1 WHERE clan_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_member_log_clan ON member_log(clan_id);
+
+-- 2. Chat Toàn Cầu liên clan — lưu kèm huy hiệu hội/TH/lâu đài/pháo của
+--    người gửi tại thời điểm gửi tin (để tin nhắn cũ vẫn hiển thị đúng dù
+--    sau này họ đổi trang bị hoặc đổi clan).
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_clan_id   INTEGER REFERENCES clans(id) ON DELETE SET NULL;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_clan_name TEXT;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_th        INTEGER;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_castle    TEXT;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_cannon    TEXT;
+
+-- 3. Sự kiện — phạm vi riêng clan (private) hoặc liên clan (public), với
+--    danh sách clan được phép tham gia (rỗng/NULL = tất cả clan).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS visibility       TEXT NOT NULL DEFAULT 'private'; -- 'private' | 'public'
+ALTER TABLE events ADD COLUMN IF NOT EXISTS allowed_clan_ids INTEGER[];
+UPDATE events SET visibility = 'private' WHERE visibility IS NULL;
+
+-- event_participants đã có clan_id ở PART 1 phía trên (dùng để biết mỗi
+-- người tham gia sự kiện liên clan thuộc clan nào khi tính bảng xếp hạng).

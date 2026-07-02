@@ -20,8 +20,18 @@ export function setCurrentClan(clan: ClanInfo) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, String(clan.id));
   localStorage.setItem("current_clan_info", JSON.stringify(clan));
-  // Reload để áp dụng clan mới
-  window.location.reload();
+  // Không reload cả trang nữa (gây nháy trắng/đen + tắt nhạc đang phát).
+  // Thay vào đó bắn 1 sự kiện nội bộ — PageScope sẽ remount lại nội dung
+  // trang (main) để tải đúng dữ liệu clan mới, còn Sidebar/nhạc nền/theme
+  // (ở ngoài vùng remount) giữ nguyên không bị ảnh hưởng.
+  window.dispatchEvent(new CustomEvent("clan-changed", { detail: clan }));
+}
+
+export function onClanChanged(cb: (clan: ClanInfo | null) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  function handler(e: Event) { cb((e as CustomEvent).detail ?? getCurrentClanInfo()); }
+  window.addEventListener("clan-changed", handler);
+  return () => window.removeEventListener("clan-changed", handler);
 }
 
 export function getCurrentClanInfo(): ClanInfo | null {

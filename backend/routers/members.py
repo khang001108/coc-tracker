@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from supabase_client import get_supabase
-from clan_context import get_tag_for_request
+from clan_context import get_tag_for_request, get_clan_id
 from services.coc_api import get_clan_members, get_player
 
 router = APIRouter()
@@ -12,12 +12,16 @@ async def members_list(request: Request):
     return {"items": items, "count": len(items)}
 
 @router.get("/log")
-async def member_log(limit: int = Query(50, le=200)):
-    # Lưu ý: bảng member_log hiện chưa có cột clan_id (chỉ theo dõi clan chính),
-    # nên nhật ký vào/rời clan chỉ áp dụng cho clan #1.
+async def member_log(request: Request, limit: int = Query(50, le=200)):
+    clan_id = get_clan_id(request)
     sb = get_supabase()
-    res = sb.table("member_log").select("*").order("joined_at", desc=True).limit(limit).execute()
-    return res.data
+    try:
+        res = sb.table("member_log").select("*").eq("clan_id", clan_id).order("joined_at", desc=True).limit(limit).execute()
+        return res.data
+    except Exception:
+        # Bảng chưa có cột clan_id (chưa chạy migration multi-clan) — chỉ hỗ trợ clan #1
+        res = sb.table("member_log").select("*").order("joined_at", desc=True).limit(limit).execute()
+        return res.data
 
 @router.get("/{player_tag}")
 async def profile(player_tag: str, request: Request):

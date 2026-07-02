@@ -1,20 +1,19 @@
 from fastapi import APIRouter, HTTPException, Request, Header, Depends
 from supabase_client import get_supabase
 from member_auth import hash_pin, create_member_token, verify_member_token
-from services.coc_api import get_clan_members, get_coc_config
+from services.coc_api import get_clan_members
+from clan_context import get_tag_for_request, get_clan_id
 from auth import require_admin
 
 router = APIRouter()
 
 
 @router.get("/roster")
-async def roster():
-    """Danh sách thành viên trong clan kèm trạng thái đã có người nhận hay chưa,
-    và icon lâu đài/pháo họ đang trang bị (để bản đồ chiến trường hiển thị)."""
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag:
-        raise HTTPException(400, "Chưa cấu hình clan tag")
+async def roster(request: Request):
+    """Danh sách thành viên trong clan (đúng clan đang chọn) kèm trạng thái đã có
+    người nhận hay chưa, và icon lâu đài/pháo họ đang trang bị (để bản đồ chiến
+    trường và chat hiển thị)."""
+    _, tag = await get_tag_for_request(request)
     members = await get_clan_members(tag)
     sb = get_supabase()
     res = sb.table("member_accounts").select("player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").execute()
@@ -43,15 +42,20 @@ async def claim(request: Request):
         raise HTTPException(400, "Thiếu thông tin người chơi")
     if not pin.isdigit() or not (4 <= len(pin) <= 8):
         raise HTTPException(400, "PIN phải là 4-8 chữ số")
+    clan_id = get_clan_id(request)
     sb = get_supabase()
     existing = sb.table("member_accounts").select("player_tag").eq("player_tag", player_tag).execute()
     if existing.data:
         raise HTTPException(409, "Người chơi này đã có người khác nhận rồi")
-    sb.table("member_accounts").insert({
+    row = {
         "player_tag": player_tag,
         "player_name": player_name,
         "pin_hash": hash_pin(pin, player_tag),
-    }).execute()
+    }
+    try:
+        sb.table("member_accounts").insert({**row, "clan_id": clan_id}).execute()
+    except Exception:
+        sb.table("member_accounts").insert(row).execute()
     return {"token": create_member_token(player_tag), "player_tag": player_tag, "player_name": player_name}
 
 

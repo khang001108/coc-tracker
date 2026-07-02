@@ -6,6 +6,11 @@ Quy tắc tham gia:
   - Leaderboard và điều kiện nhận thưởng chỉ xét những người đã tham gia (event_participants).
   - Admin có thể xem tất cả, nhưng không cần join.
 
+Phạm vi (visibility):
+  - 'private' (mặc định): chỉ thành viên của CLAN TẠO sự kiện được thấy/tham gia/nhận thưởng.
+  - 'public' : liên clan — chọn allowed_clan_ids = 1 hoặc nhiều clan (rỗng/NULL = TẤT CẢ clan)
+               cùng được thấy, tham gia và cùng nhận thưởng chung 1 bảng xếp hạng.
+
 Điều kiện (condition_type) hỗ trợ:
   - total_stars            : tổng số sao đạt được trong war
   - best_destruction       : % phá hủy cao nhất trong 1 đòn đánh
@@ -17,10 +22,10 @@ Quy tắc tham gia:
 """
 from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header
 from supabase_client import get_supabase
-from clan_context import get_clan_id
+from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin, verify_admin_token
 from member_auth import verify_member_token
-from services.coc_api import get_current_war, get_war_log, get_clan_members, get_coc_config
+from services.coc_api import get_current_war, get_war_log, get_clan_members
 import uuid
 
 router = APIRouter()
@@ -39,7 +44,7 @@ CONDITION_LABELS = {
 CREATOR_ROLES = {"leader", "coLeader"}
 
 
-async def resolve_creator(x_admin_token: str | None, x_member_token: str | None) -> dict:
+async def resolve_creator(clan_id: int, x_admin_token: str | None, x_member_token: str | None) -> dict:
     """Xác định ai đang thao tác: admin web, hoặc thành viên Đồng thủ lĩnh+.
     Trả về {is_admin, creator_name, creator_tag}. Raise lỗi nếu không đủ quyền."""
     if verify_admin_token(x_admin_token):
@@ -49,9 +54,8 @@ async def resolve_creator(x_admin_token: str | None, x_member_token: str | None)
     if not member_tag:
         raise HTTPException(401, "Cần đăng nhập admin hoặc đăng nhập thành viên (Đồng thủ lĩnh trở lên) để thao tác")
 
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    members = await get_clan_members(tag) if tag else []
+    tag = await get_tag_by_clan_id(clan_id)
+    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
     me = next((m for m in members if m["tag"] == member_tag), None)
     if not me or me.get("role") not in CREATOR_ROLES:
         raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên mới được tạo/xoá sự kiện")
@@ -60,6 +64,24 @@ async def resolve_creator(x_admin_token: str | None, x_member_token: str | None)
     acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
     name = acc.data[0]["player_name"] if acc.data else me.get("name", "Thành viên")
     return {"is_admin": False, "creator_name": name, "creator_tag": member_tag}
+
+
+def _member_clan_id(sb, player_tag: str | None) -> int | None:
+    if not player_tag:
+        return None
+    res = sb.table("member_accounts").select("clan_id").eq("player_tag", player_tag).execute()
+    if res.data:
+        return res.data[0].get("clan_id") or 1
+    return None
+
+
+def _event_visible_to(event: dict, clan_id: int) -> bool:
+    if event.get("clan_id") == clan_id:
+        return True
+    if event.get("visibility") == "public":
+        allowed = event.get("allowed_clan_ids")
+        return not allowed or clan_id in allowed
+    return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -98,8 +120,21 @@ async def upload_image(file: UploadFile = File(...), _: bool = Depends(require_a
 async def list_events(request: Request):
     sb = get_supabase()
     clan_id = get_clan_id(request)
-    res = sb.table("events").select("*").eq("clan_id", clan_id).order("created_at", desc=True).execute()
-    events = res.data or []
+
+    own = sb.table("events").select("*").eq("clan_id", clan_id).order("created_at", desc=True).execute().data or []
+    try:
+        public_others = sb.table("events").select("*") \
+            .eq("visibility", "public").neq("clan_id", clan_id) \
+            .order("created_at", desc=True).execute().data or []
+    except Exception:
+        # Cột visibility chưa tồn tại (chưa chạy migration) — bỏ qua liên clan
+        public_others = []
+
+    public_others = [e for e in public_others if not e.get("allowed_clan_ids") or clan_id in e["allowed_clan_ids"]]
+
+    seen = {e["id"] for e in own}
+    events = own + [e for e in public_others if e["id"] not in seen]
+    events.sort(key=lambda e: e.get("created_at") or "", reverse=True)
 
     # Gắn participant_count vào từng event
     if events:
@@ -120,7 +155,8 @@ async def create_event(
     x_admin_token: str | None = Header(default=None),
     x_member_token: str | None = Header(default=None),
 ):
-    creator = await resolve_creator(x_admin_token, x_member_token)
+    clan_id = get_clan_id(request)
+    creator = await resolve_creator(clan_id, x_admin_token, x_member_token)
     body = await request.json()
     title = body.get("title", "").strip()
     if not title:
@@ -128,8 +164,22 @@ async def create_event(
     condition_type = body.get("condition_type", "total_stars")
     if condition_type not in CONDITION_LABELS:
         raise HTTPException(400, "Điều kiện không hợp lệ")
+
+    visibility = body.get("visibility", "private")
+    if visibility not in ("private", "public"):
+        raise HTTPException(400, "visibility không hợp lệ")
+    allowed_clan_ids = body.get("allowed_clan_ids") or None
+    if visibility == "private":
+        allowed_clan_ids = None
+    elif allowed_clan_ids is not None:
+        try:
+            allowed_clan_ids = [int(x) for x in allowed_clan_ids] or None
+        except (ValueError, TypeError):
+            raise HTTPException(400, "allowed_clan_ids không hợp lệ")
+
     sb = get_supabase()
     row = {
+        "clan_id": clan_id,
         "title": title,
         "description": body.get("description", ""),
         "event_type": body.get("event_type", "war"),
@@ -146,7 +196,11 @@ async def create_event(
         "creator_zalo": (body.get("creator_zalo") or "").strip(),
         "status": "active" if creator["is_admin"] else "pending",
     }
-    res = sb.table("events").insert(row).execute()
+    try:
+        res = sb.table("events").insert({**row, "visibility": visibility, "allowed_clan_ids": allowed_clan_ids}).execute()
+    except Exception:
+        # Cột visibility/allowed_clan_ids chưa tồn tại (chưa chạy migration)
+        res = sb.table("events").insert(row).execute()
     return res.data[0]
 
 
@@ -154,12 +208,18 @@ async def create_event(
 async def update_event(event_id: int, request: Request, _: bool = Depends(require_admin)):
     body = await request.json()
     allowed = ["title", "description", "reward_name", "reward_image_url",
-               "reward_shop_link", "status", "top_n", "start_time", "end_time", "creator_zalo"]
+               "reward_shop_link", "status", "top_n", "start_time", "end_time", "creator_zalo",
+               "visibility", "allowed_clan_ids"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
     sb = get_supabase()
-    res = sb.table("events").update(update).eq("id", event_id).execute()
+    try:
+        res = sb.table("events").update(update).eq("id", event_id).execute()
+    except Exception:
+        update.pop("visibility", None)
+        update.pop("allowed_clan_ids", None)
+        res = sb.table("events").update(update).eq("id", event_id).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy sự kiện")
     return res.data[0]
@@ -226,7 +286,9 @@ async def cancel_delete_request(event_id: int, _: bool = Depends(require_admin))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tham gia sự kiện (JOIN / LEAVE / LIST)
-# Chỉ thành viên đã đăng nhập web (member_accounts) mới được tham gia
+# Chỉ thành viên đã đăng nhập web (member_accounts) mới được tham gia.
+# Sự kiện 'private' chỉ nhận thành viên đúng clan đã tạo; 'public' nhận thành
+# viên của các clan trong allowed_clan_ids (rỗng = tất cả clan).
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.post("/{event_id}/join")
@@ -242,25 +304,33 @@ async def join_event(
     sb = get_supabase()
 
     # Kiểm tra tài khoản thành viên tồn tại
-    acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
+    acc = sb.table("member_accounts").select("player_name,clan_id").eq("player_tag", member_tag).execute()
     if not acc.data:
         raise HTTPException(403, "Tài khoản thành viên không tồn tại — hãy đăng ký trước")
+    member_clan_id = acc.data[0].get("clan_id") or 1
 
-    # Kiểm tra sự kiện đang active
-    ev = sb.table("events").select("status, title").eq("id", event_id).execute()
+    # Kiểm tra sự kiện đang active + có quyền tham gia (đúng clan / public cho phép)
+    ev = sb.table("events").select("*").eq("id", event_id).execute()
     if not ev.data:
         raise HTTPException(404, "Không tìm thấy sự kiện")
-    if ev.data[0]["status"] not in ("active", "pending_delete"):
+    event = ev.data[0]
+    if event["status"] not in ("active", "pending_delete"):
         raise HTTPException(400, "Sự kiện này không còn mở để tham gia")
+    if not _event_visible_to(event, member_clan_id):
+        raise HTTPException(403, "Sự kiện này chỉ dành cho thành viên clan khác — bạn không đủ điều kiện tham gia")
 
     player_name = acc.data[0]["player_name"]
+    participant_row = {"event_id": event_id, "player_tag": member_tag, "player_name": player_name}
     try:
         sb.table("event_participants").upsert(
-            {"event_id": event_id, "player_tag": member_tag, "player_name": player_name},
+            {**participant_row, "clan_id": member_clan_id},
             on_conflict="event_id,player_tag",
         ).execute()
     except Exception as e:
-        raise HTTPException(500, f"Lỗi đăng ký tham gia: {str(e)}")
+        try:
+            sb.table("event_participants").upsert(participant_row, on_conflict="event_id,player_tag").execute()
+        except Exception as e2:
+            raise HTTPException(500, f"Lỗi đăng ký tham gia: {str(e2)}")
 
     return {"ok": True, "player_tag": member_tag, "player_name": player_name}
 
@@ -290,6 +360,8 @@ async def get_participants(event_id: int):
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Leaderboard (chỉ xét thành viên đã tham gia)
+# Với sự kiện public liên clan, participants có thể thuộc nhiều clan khác nhau
+# — leaderboard sẽ gộp dữ liệu war/donate từ TỪNG clan tương ứng của họ.
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _compute_war_metric(member: dict, condition_type: str) -> float:
@@ -320,6 +392,33 @@ def _fmt_metric(condition_type: str, score: float) -> str:
     return str(score)
 
 
+async def _war_members_for_clan(clan_id: int) -> list:
+    """Lấy danh sách member trong war hiện tại/gần nhất của 1 clan cụ thể."""
+    tag = await get_tag_by_clan_id(clan_id)
+    if not tag:
+        return []
+    war = None
+    try:
+        cur = await get_current_war(tag, clan_id=clan_id)
+        if cur.get("state") in ("inWar", "warEnded"):
+            war = cur
+    except Exception:
+        pass
+    if war is None:
+        log = await get_war_log(tag, clan_id=clan_id)
+        war = log[0] if log else None
+    if war is None:
+        return []
+    return war.get("clan", {}).get("members", [])
+
+
+async def _donation_members_for_clan(clan_id: int) -> list:
+    tag = await get_tag_by_clan_id(clan_id)
+    if not tag:
+        return []
+    return await get_clan_members(tag, clan_id=clan_id)
+
+
 @router.get("/{event_id}/leaderboard")
 async def get_leaderboard(event_id: int):
     sb = get_supabase()
@@ -331,11 +430,15 @@ async def get_leaderboard(event_id: int):
     event = res.data
     condition_type = event["condition_type"]
     top_n = event.get("top_n", 3)
+    default_clan_id = event.get("clan_id") or 1
 
-    # Lấy danh sách người đã tham gia
-    part_res = sb.table("event_participants").select("player_tag, player_name").eq("event_id", event_id).execute()
+    # Lấy danh sách người đã tham gia (kèm clan_id của từng người nếu có)
+    part_res = sb.table("event_participants").select("player_tag, player_name, clan_id").eq("event_id", event_id).execute()
     participants = part_res.data or []
     participant_tags = {p["player_tag"] for p in participants}
+    # clan_id của từng participant — mặc định về clan tạo event nếu thiếu (event cũ trước migration)
+    participant_clan: dict[str, int] = {p["player_tag"]: (p.get("clan_id") or default_clan_id) for p in participants}
+    clan_ids_involved = sorted(set(participant_clan.values())) or [default_clan_id]
 
     if condition_type == "manual":
         return {
@@ -353,16 +456,15 @@ async def get_leaderboard(event_id: int):
             "participant_count": 0,
         }
 
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag:
-        raise HTTPException(400, "Chưa cấu hình clan tag")
-
-    # Điều kiện donate: lấy từ danh sách clan members
+    # Điều kiện donate: lấy từ danh sách clan members — gộp từ tất cả clan liên quan
     if condition_type == "top_donations":
-        members = await get_clan_members(tag)
-        # Chỉ giữ người đã tham gia sự kiện
-        members = [m for m in members if m["tag"] in participant_tags]
+        all_members: list = []
+        for cid in clan_ids_involved:
+            try:
+                all_members += await _donation_members_for_clan(cid)
+            except Exception:
+                continue
+        members = [m for m in all_members if m["tag"] in participant_tags]
         ranked = sorted(members, key=lambda m: m.get("donations", 0), reverse=True)
         leaderboard = [
             {
@@ -375,21 +477,13 @@ async def get_leaderboard(event_id: int):
         ]
         return {"event": event, "leaderboard": leaderboard, "participant_count": len(participants)}
 
-    # Điều kiện war — lấy war hiện tại hoặc gần nhất
-    war = None
-    try:
-        cur = await get_current_war(tag)
-        if cur.get("state") in ("inWar", "warEnded"):
-            war = cur
-    except Exception:
-        pass
-    if war is None:
-        log = await get_war_log(tag)
-        war = log[0] if log else None
-    if war is None:
-        raise HTTPException(404, "Không có dữ liệu war để tính điểm")
-
-    war_members = war.get("clan", {}).get("members", [])
+    # Điều kiện war — gộp war hiện tại/gần nhất của từng clan liên quan
+    war_members: list = []
+    for cid in clan_ids_involved:
+        try:
+            war_members += await _war_members_for_clan(cid)
+        except Exception:
+            continue
 
     # Chỉ xét thành viên đã tham gia sự kiện
     war_members = [m for m in war_members if m["tag"] in participant_tags]
@@ -422,7 +516,6 @@ async def get_leaderboard(event_id: int):
     return {
         "event": event,
         "leaderboard": leaderboard,
-        "war_end_time": war.get("endTime"),
         "participant_count": len(participants),
     }
 

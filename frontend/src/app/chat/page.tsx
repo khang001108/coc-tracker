@@ -24,26 +24,39 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
       </div>
     );
   }
+  // Ưu tiên dữ liệu gắn sẵn trên tin nhắn (đúng cho cả thành viên clan khác
+  // trong Chat Toàn Cầu), fallback về roster của clan đang xem nếu chưa có.
+  const th     = msg.sender_th ?? thLevel ?? 0;
+  const castle = msg.sender_castle ?? castleKey;
+  const cannon = msg.sender_cannon ?? cannonKey;
+  const clanName = msg.sender_clan_name as string | undefined;
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[78%] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
         {!isMine && (
-          <span className="flex items-center gap-1 px-1">
+          <span className="flex items-center gap-1 px-1 flex-wrap">
             {/* TH badge */}
-            {thLevel && thLevel > 0 ? (
+            {th && th > 0 ? (
               <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
-                style={{ color: thColor(thLevel), background: thColor(thLevel) + "22", border: `1px solid ${thColor(thLevel)}55` }}>
-                TH{thLevel}
+                style={{ color: thColor(th), background: thColor(th) + "22", border: `1px solid ${thColor(th)}55` }}>
+                TH{th}
               </span>
             ) : null}
             {/* Castle + cannon icons */}
-            {(castleKey || cannonKey) && (
+            {(castle || cannon) && (
               <span className="flex items-center gap-0.5 opacity-80 shrink-0">
-                {castleKey && <CastleIcon svgKey={castleKey} th={thLevel||0} size={14} animate={false} showTh={false}/>}
-                {cannonKey && <CannonIcon svgKey={cannonKey} size={12}/>}
+                {castle && <CastleIcon svgKey={castle} th={th||0} size={14} animate={false} showTh={false}/>}
+                {cannon && <CannonIcon svgKey={cannon} size={12}/>}
               </span>
             )}
             <span className="text-[11px] text-gray-500"><NameEffect effectKey={effectKey}>{msg.sender_name}</NameEffect></span>
+            {/* Huy hiệu hội — chỉ hiện ở Chat Toàn Cầu (liên clan) */}
+            {clanName && (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+                style={{ color: "#F4A130", background: "rgba(244,161,48,0.12)", border: "1px solid rgba(244,161,48,0.3)" }}>
+                🏯 {clanName}
+              </span>
+            )}
           </span>
         )}
         <div className={`rounded-2xl px-3.5 py-2 ${isMine ? "bg-yellow-500 text-gray-900" : "card !p-0 !border-0"}`}
@@ -143,7 +156,7 @@ export default function ChatPage() {
     setSending(true);
     setError("");
     try {
-      const name = room === "global" ? (guestNameInput.trim() || "Khách") : undefined;
+      const name = room === "global" && !member ? (guestNameInput.trim() || "Khách") : undefined;
       if (room === "global" && guestNameInput.trim()) setGuestName(guestNameInput.trim());
       await api.sendMessage(room, text, imageUrl, name);
       setInput("");
@@ -197,7 +210,7 @@ export default function ChatPage() {
           ) : (
             messages.map(m => (
               <MessageBubble key={m.id} msg={m}
-                isMine={room === "clan" ? m.sender_tag === member?.player_tag : false}
+                isMine={!!member && m.sender_tag === member.player_tag}
                 effectKey={m.sender_tag ? effectMap[m.sender_tag] : null}
                 castleKey={m.sender_tag ? castleMap[m.sender_tag] : null}
                 cannonKey={m.sender_tag ? cannonMap[m.sender_tag] : null}
@@ -212,7 +225,12 @@ export default function ChatPage() {
               <Lock size={14} /> Cần <a href="/login" className="underline font-semibold">đăng nhập thành viên</a> để chat trong clan.
             </div>
           )}
-          {room === "global" && (
+          {room === "global" && member && (
+            <p className="text-[11px] text-green-400 flex items-center gap-1.5 px-1">
+              <Users size={12}/> Đang chat với danh tính <b>{member.player_name}</b> — kèm huy hiệu hội, TH, lâu đài, pháo.
+            </p>
+          )}
+          {room === "global" && !member && (
             <input className="input text-xs !py-1.5" placeholder="Tên hiển thị của bạn (tuỳ chọn)"
               value={guestNameInput} onChange={e => setGuestNameInput(e.target.value)} maxLength={30} />
           )}

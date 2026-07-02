@@ -115,6 +115,15 @@ function EventCard({ event, myTag, onOpen }: { event: any; myTag?: string; onOpe
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-bold text-white text-sm">{event.title}</h3>
                 <span className={`badge text-[10px] ${badge.cls}`}>{badge.label}</span>
+                {event.visibility === "public" ? (
+                  <span className="badge text-[10px] flex items-center gap-0.5" style={{ color: "#38bdf8", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)" }}>
+                    🌐 Liên clan
+                  </span>
+                ) : (
+                  <span className="badge text-[10px] flex items-center gap-0.5" style={{ color: "#9ca3af", background: "rgba(156,163,175,0.1)", border: "1px solid rgba(156,163,175,0.25)" }}>
+                    <Lock size={9}/> Riêng clan
+                  </span>
+                )}
                 {iJoined && (
                   <span className="badge text-[10px] badge-green flex items-center gap-0.5">
                     <CheckCircle2 size={9}/> Đã tham gia
@@ -596,7 +605,14 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
     top_n: 3, reward_name: "", reward_image_url: "", reward_shop_link: "",
     reward_coins: 0,
     start_time: "", end_time: "", creator_zalo: "",
+    visibility: "private" as "private" | "public",
+    allowed_clan_ids: [] as number[],
   });
+  const [allClans, setAllClans] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isAdmin) api.listClans().then(setAllClans).catch(() => {});
+  }, [isAdmin]);
 
   useEffect(() => { api.getConditions().then(setConditions).catch(() => {}); }, []);
 
@@ -621,7 +637,8 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
       await api.createEvent(form);
       setForm({ title:"", description:"", event_type:"war", condition_type:"total_stars",
         top_n:3, reward_name:"", reward_image_url:"", reward_shop_link:"",
-        reward_coins:0, start_time:"", end_time:"", creator_zalo:"" });
+        reward_coins:0, start_time:"", end_time:"", creator_zalo:"",
+        visibility:"private", allowed_clan_ids:[] });
       setOpen(false); onCreated();
     } catch (e: any) { setError(e.message || "Lỗi tạo sự kiện"); }
     finally { setSaving(false); }
@@ -676,6 +693,47 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         <select className="input" value={form.condition_type} onChange={e => setForm({...form,condition_type:e.target.value})}>
           {conditions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
+      </div>
+
+      <div className="pt-2 border-t border-gray-800 space-y-2">
+        <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5"><Users size={13}/> Phạm vi tham gia</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button"
+            onClick={() => setForm({...form, visibility: "private", allowed_clan_ids: []})}
+            className={`rounded-xl py-2 text-xs font-semibold border transition-colors ${
+              form.visibility === "private" ? "bg-yellow-500/15 border-yellow-500/40 text-yellow-400" : "border-gray-800 text-gray-400"}`}>
+            🔒 Riêng clan này
+          </button>
+          <button type="button"
+            onClick={() => setForm({...form, visibility: "public"})}
+            className={`rounded-xl py-2 text-xs font-semibold border transition-colors ${
+              form.visibility === "public" ? "bg-yellow-500/15 border-yellow-500/40 text-yellow-400" : "border-gray-800 text-gray-400"}`}>
+            🌐 Liên clan (Public)
+          </button>
+        </div>
+        {form.visibility === "public" && (
+          <div className="text-[11px] text-gray-500 space-y-2">
+            <p>Thành viên các clan được chọn đều tham gia & nhận thưởng chung 1 bảng xếp hạng. Không chọn clan nào = mở cho <b>tất cả</b> clan.</p>
+            {isAdmin && allClans.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {allClans.map(c => {
+                  const checked = form.allowed_clan_ids.includes(c.id);
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setForm(f => ({...f, allowed_clan_ids:
+                        checked ? f.allowed_clan_ids.filter(id => id !== c.id) : [...f.allowed_clan_ids, c.id]}))}
+                      className={`px-2.5 py-1 rounded-full border text-[11px] ${
+                        checked ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-400" : "border-gray-800 text-gray-500"}`}>
+                      {checked ? "✓ " : ""}{c.clan_name}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="italic">Sẽ mở cho tất cả clan (chỉ admin mới chọn được từng clan cụ thể).</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="pt-2 border-t border-gray-800 space-y-2">

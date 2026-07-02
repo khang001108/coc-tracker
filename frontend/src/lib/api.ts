@@ -269,7 +269,7 @@ export const api = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(room === "clan" && member ? { "X-Member-Token": member.token } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
       },
       body: JSON.stringify({ room, message, image_url, sender_name }),
     });

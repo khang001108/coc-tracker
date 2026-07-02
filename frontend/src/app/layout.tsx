@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { PageScope } from "@/components/layout/PageScope";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { MusicProvider } from "@/components/ui/MusicContext";
 import { FloatingMusicWidget } from "@/components/ui/FloatingMusicWidget";
@@ -49,9 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="min-h-screen bg-gray-950 flex">
           <Sidebar />
           <div className="flex-1 md:ml-60 flex flex-col min-h-screen min-w-0">
-            <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-x-hidden w-full">
-              {children}
-            </main>
+            <PageScope>{children}</PageScope>
           </div>
           <MobileNav />
           <FloatingMusicWidget />

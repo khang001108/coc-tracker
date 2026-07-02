@@ -1,8 +1,11 @@
 """
 Chat — 2 phòng:
   - 'clan': chỉ thành viên đã đăng nhập (claim danh tính) mới chat được,
-            tin nhắn gắn tên thật + tag người chơi.
-  - 'global': ai cũng chat được, chỉ cần đặt tên hiển thị tạm (không cần đăng nhập).
+            tin nhắn gắn tên thật + tag người chơi, giới hạn trong clan đang chọn.
+  - 'global': chat LIÊN CLAN — thành viên bất kỳ clan nào cũng chat được với
+            nhau. Nếu đăng nhập (X-Member-Token) thì tin nhắn gắn kèm huy hiệu
+            hội (clan), TH, lâu đài + pháo đang trang bị; nếu không đăng nhập,
+            vẫn cho chat với tên khách tạm (không có huy hiệu).
 
 Dùng polling REST (không websocket) để đơn giản và ổn định trên hosting free
 (free tier hay bị sleep, không phù hợp giữ kết nối websocket lâu dài).
@@ -16,6 +19,41 @@ import uuid
 router = APIRouter()
 
 MAX_MSG_LEN = 1000
+
+
+async def _sender_flair(sb, player_tag: str) -> dict:
+    """Lấy huy hiệu hội (clan), TH, lâu đài + pháo đang trang bị của 1 thành
+    viên đã đăng nhập — chụp lại tại thời điểm gửi tin (denormalized) để tin
+    nhắn cũ vẫn hiển thị đúng ngay cả khi họ đổi trang bị/đổi clan sau này."""
+    acc = sb.table("member_accounts").select(
+        "player_name, clan_id, equipped_castle, equipped_cannon"
+    ).eq("player_tag", player_tag).execute()
+    if not acc.data:
+        return {}
+    a = acc.data[0]
+    clan_id = a.get("clan_id") or 1
+    clan_name = None
+    try:
+        c = sb.table("clans").select("clan_name").eq("id", clan_id).execute()
+        if c.data:
+            clan_name = c.data[0].get("clan_name")
+    except Exception:
+        pass
+    th = 0
+    try:
+        log_res = sb.table("member_log").select("th_level").eq("player_tag", player_tag).order("id", desc=True).limit(1).execute()
+        if log_res.data:
+            th = log_res.data[0].get("th_level") or 0
+    except Exception:
+        pass
+    return {
+        "sender_name": a.get("player_name"),
+        "sender_clan_id": clan_id,
+        "sender_clan_name": clan_name,
+        "sender_th": th,
+        "sender_castle": a.get("equipped_castle") or "castle_classic",
+        "sender_cannon": a.get("equipped_cannon") or "cannon_basic",
+    }
 
 
 @router.get("/messages")
@@ -56,21 +94,44 @@ async def send_message(request: Request, x_member_token: str | None = Header(def
     sb = get_supabase()
     sender_tag = None
     sender_name = display_name or "Khách"
+    flair: dict = {}
 
     if room == "clan":
         sender_tag = verify_member_token(x_member_token)
         if not sender_tag:
             raise HTTPException(401, "Cần đăng nhập thành viên để chat trong clan")
-        acc = sb.table("member_accounts").select("player_name").eq("player_tag", sender_tag).execute()
-        sender_name = acc.data[0]["player_name"] if acc.data else "Thành viên"
+        flair = await _sender_flair(sb, sender_tag)
+        sender_name = flair.get("sender_name") or "Thành viên"
     else:
-        sender_name = sender_name[:30] or "Khách"
+        # Chat Toàn Cầu (liên clan): đăng nhập thì gắn huy hiệu clan/TH/lâu đài/pháo,
+        # chưa đăng nhập thì vẫn cho chat với tên khách tạm.
+        maybe_tag = verify_member_token(x_member_token)
+        if maybe_tag:
+            sender_tag = maybe_tag
+            flair = await _sender_flair(sb, sender_tag)
+            sender_name = flair.get("sender_name") or sender_name
+        else:
+            sender_name = sender_name[:30] or "Khách"
 
     row = {
         "room": room, "sender_name": sender_name, "sender_tag": sender_tag,
         "message": message, "image_url": image_url, "is_system": False,
+        "sender_clan_id": flair.get("sender_clan_id"),
+        "sender_clan_name": flair.get("sender_clan_name"),
+        "sender_th": flair.get("sender_th"),
+        "sender_castle": flair.get("sender_castle"),
+        "sender_cannon": flair.get("sender_cannon"),
     }
-    res = sb.table("chat_messages").insert(row).execute()
+    if room == "clan":
+        row["clan_id"] = get_clan_id(request)
+    try:
+        res = sb.table("chat_messages").insert(row).execute()
+    except Exception:
+        # Cột sender_clan_id/... chưa tồn tại (chưa chạy migration) — bỏ các
+        # cột mới, gửi tin nhắn theo kiểu cũ để không chặn chat.
+        basic_row = {k: v for k, v in row.items() if k in (
+            "room", "sender_name", "sender_tag", "message", "image_url", "is_system", "clan_id")}
+        res = sb.table("chat_messages").insert(basic_row).execute()
     return res.data[0]
 
 

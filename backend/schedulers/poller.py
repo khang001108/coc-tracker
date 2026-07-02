@@ -1,6 +1,10 @@
 """
 Background scheduler: polls CoC API and stores snapshots.
 Runs every 5 min for war/raid, 15 min for clan overview.
+
+Đa clan: mọi job đều lặp qua TẤT CẢ clan trong bảng `clans` (get_all_clans()),
+không chỉ clan #1 — để mỗi clan đều có nhật ký thành viên, thông báo war/raid,
+donate, và coin thưởng sao war hoạt động độc lập, đúng của clan đó.
 """
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -39,207 +43,255 @@ async def get_all_clans() -> list:
             "telegram_bot_token, telegram_chat_id, "
             "notify_war, notify_raid, notify_join_leave"
         ).execute()
-        return res.data or []
+        if res.data:
+            return res.data
     except Exception:
-        # Fallback về settings table nếu clans table chưa có
-        from services.coc_api import get_coc_config
-        cfg = await get_coc_config()
-        return [{"id": 1, "clan_tag": cfg.get("clan_tag", ""), "coc_api_key": cfg.get("coc_api_key", "")}]
+        pass
+    # Fallback về settings table nếu clans table chưa có / rỗng
+    from services.coc_api import get_coc_config
+    cfg = await get_coc_config()
+    return [{"id": 1, "clan_tag": cfg.get("clan_tag", ""), "coc_api_key": cfg.get("coc_api_key", "")}]
 
 async def get_tag() -> str | None:
-    """Lấy tag của clan chính (id=1) — backward compat."""
+    """Lấy tag của clan chính (id=1) — backward compat cho chỗ nào chưa multi-clan hoá."""
     clans = await get_all_clans()
     return clans[0].get("clan_tag") if clans else None
 
-def upsert_snapshot(table: str, data: dict):
+def upsert_snapshot(table: str, data: dict, clan_id: int = 1):
     sb = get_supabase()
     # Các bảng snapshot_* không có cột UNIQUE nên upsert() sẽ tạo dòng MỚI mỗi lần
-    # thay vì cập nhật — xoá hết dòng cũ trước khi chèn để luôn chỉ có đúng 1 dòng
-    # mới nhất, tránh việc đọc dữ liệu (limit 1, không order) trả về dòng cũ.
-    sb.table(table).delete().neq("id", 0).execute()
-    sb.table(table).insert({
-        "data": json.dumps(data),
-        "updated_at": datetime.utcnow().isoformat()
-    }).execute()
+    # thay vì cập nhật — xoá hết dòng cũ CỦA CLAN NÀY trước khi chèn (nếu bảng có
+    # cột clan_id), tránh việc đọc dữ liệu trả về dòng cũ / clan khác.
+    try:
+        sb.table(table).delete().eq("clan_id", clan_id).execute()
+        sb.table(table).insert({
+            "data": json.dumps(data),
+            "updated_at": datetime.utcnow().isoformat(),
+            "clan_id": clan_id,
+        }).execute()
+    except Exception:
+        # Bảng chưa có cột clan_id (chưa chạy migration multi-clan) — fallback
+        # về hành vi cũ: chỉ giữ 1 dòng duy nhất, dùng cho clan #1.
+        if clan_id != 1:
+            raise
+        sb.table(table).delete().neq("id", 0).execute()
+        sb.table(table).insert({
+            "data": json.dumps(data),
+            "updated_at": datetime.utcnow().isoformat(),
+        }).execute()
 
-# ── Poll jobs ─────────────────────────────────────────────────────────────────
+# ── Poll jobs (lặp qua tất cả clan) ─────────────────────────────────────────────
 
 async def poll_clan():
-    try:
-        tag = await get_tag()
-        if not tag: return
-        data = await get_clan(tag)
-        upsert_snapshot("snapshot_clan", data)
-        log.info("Clan snapshot updated")
-    except Exception as e:
-        log.error(f"poll_clan error: {e}")
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            tag = c.get("clan_tag")
+            if not tag: continue
+            data = await get_clan(tag, clan_id=c["id"])
+            upsert_snapshot("snapshot_clan", data, clan_id=c["id"])
+            log.info(f"Clan snapshot updated (clan_id={c['id']})")
+        except Exception as e:
+            log.error(f"poll_clan error (clan_id={c.get('id')}): {e}")
 
 async def poll_war():
-    try:
-        tag = await get_tag()
-        if not tag: return
-        data = await get_current_war(tag)
-        state = data.get("state", "notInWar")
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            tag = c.get("clan_tag")
+            if not tag: continue
+            data = await get_current_war(tag, clan_id=c["id"])
+            state = data.get("state", "notInWar")
 
-        upsert_snapshot("snapshot_war", data)
+            upsert_snapshot("snapshot_war", data, clan_id=c["id"])
 
-        # Check for members who haven't attacked
-        if state == "inWar":
-            members = data.get("clan", {}).get("members", [])
-            team_size = data.get("teamSize", 0)
-            missing = []
-            for m in members:
-                attacks = m.get("attacks", [])
-                attacks_used = len(attacks)
-                # Each member gets 2 attacks in regular war, 1 in CWL
-                if attacks_used < 1:
-                    missing.append(m.get("name", "?"))
-            if missing:
-                end_time = data.get("endTime", "")
-                await notify_war_attack_reminder(missing, end_time)
+            # Check for members who haven't attacked
+            if state == "inWar":
+                members = data.get("clan", {}).get("members", [])
+                missing = []
+                for m in members:
+                    attacks = m.get("attacks", [])
+                    if len(attacks) < 1:
+                        missing.append(m.get("name", "?"))
+                if missing:
+                    end_time = data.get("endTime", "")
+                    await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
 
-        log.info(f"War snapshot updated: {state}")
-    except Exception as e:
-        log.error(f"poll_war error: {e}")
+            log.info(f"War snapshot updated (clan_id={c['id']}): {state}")
+        except Exception as e:
+            log.error(f"poll_war error (clan_id={c.get('id')}): {e}")
 
 async def poll_raid():
-    try:
-        tag = await get_tag()
-        if not tag: return
-        seasons = await get_raid_seasons(tag)
-        if not seasons: return
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            tag = c.get("clan_tag")
+            if not tag: continue
+            seasons = await get_raid_seasons(tag, clan_id=c["id"])
+            if not seasons: continue
 
-        latest = seasons[0]
-        upsert_snapshot("snapshot_raid", latest)
+            latest = seasons[0]
+            upsert_snapshot("snapshot_raid", latest, clan_id=c["id"])
 
-        # Check members who haven't raided
-        members = latest.get("members", [])
-        missing = [m["name"] for m in members if m.get("capitalResourcesLooted", 0) == 0]
-        if missing:
-            await notify_raid_reminder(missing)
+            # Check members who haven't raided
+            members = latest.get("members", [])
+            missing = [m["name"] for m in members if m.get("capitalResourcesLooted", 0) == 0]
+            if missing:
+                await notify_raid_reminder(missing, clan_id=c["id"])
 
-        log.info("Raid snapshot updated")
-    except Exception as e:
-        log.error(f"poll_raid error: {e}")
+            log.info(f"Raid snapshot updated (clan_id={c['id']})")
+        except Exception as e:
+            log.error(f"poll_raid error (clan_id={c.get('id')}): {e}")
 
 async def poll_members():
-    """Detect join/leave events by comparing with last snapshot."""
-    try:
-        tag = await get_tag()
-        if not tag: return
-        sb = get_supabase()
+    """Detect join/leave events by comparing with last snapshot — theo từng clan riêng."""
+    clans = await get_all_clans()
+    sb = get_supabase()
+    for c in clans:
+        clan_id = c["id"]
+        try:
+            tag = c.get("clan_tag")
+            if not tag: continue
 
-        current = await get_clan_members(tag)
-        current_tags = {m["tag"]: m for m in current}
+            current = await get_clan_members(tag, clan_id=clan_id)
+            current_tags = {m["tag"]: m for m in current}
 
-        # Load previous member list
-        res = sb.table("member_log").select("player_tag,name,th_level,status").eq("status", "active").execute()
-        prev_tags = {r["player_tag"]: r for r in res.data}
+            # Load previous member list (của đúng clan này)
+            try:
+                res = sb.table("member_log").select("player_tag,name,th_level,status") \
+                    .eq("status", "active").eq("clan_id", clan_id).execute()
+            except Exception:
+                # Bảng chưa có cột clan_id (chưa chạy migration) — chỉ hỗ trợ clan #1
+                if clan_id != 1: continue
+                res = sb.table("member_log").select("player_tag,name,th_level,status").eq("status", "active").execute()
+            prev_tags = {r["player_tag"]: r for r in res.data}
 
-        # New members
-        for tag_id, member in current_tags.items():
-            if tag_id not in prev_tags:
-                sb.table("member_log").insert({
-                    "player_tag": tag_id,
-                    "name": member.get("name"),
-                    "th_level": member.get("townHallLevel", 0),
-                    "status": "active",
-                    "joined_at": datetime.utcnow().isoformat()
-                }).execute()
-                await notify_member_join(member.get("name", "?"), member.get("townHallLevel", 0))
+            # New members
+            for tag_id, member in current_tags.items():
+                if tag_id not in prev_tags:
+                    row = {
+                        "player_tag": tag_id,
+                        "name": member.get("name"),
+                        "th_level": member.get("townHallLevel", 0),
+                        "status": "active",
+                        "joined_at": datetime.utcnow().isoformat(),
+                    }
+                    try:
+                        sb.table("member_log").insert({**row, "clan_id": clan_id}).execute()
+                    except Exception:
+                        sb.table("member_log").insert(row).execute()
+                    await notify_member_join(member.get("name", "?"), member.get("townHallLevel", 0), clan_id=clan_id)
 
-        # Left members
-        for tag_id, prev in prev_tags.items():
-            if tag_id not in current_tags:
-                sb.table("member_log").update({
-                    "status": "left",
-                    "left_at": datetime.utcnow().isoformat()
-                }).eq("player_tag", tag_id).execute()
-                await notify_member_leave(prev.get("name", "?"))
+            # Left members
+            for tag_id, prev in prev_tags.items():
+                if tag_id not in current_tags:
+                    q = sb.table("member_log").update({
+                        "status": "left",
+                        "left_at": datetime.utcnow().isoformat()
+                    }).eq("player_tag", tag_id)
+                    try:
+                        q.eq("clan_id", clan_id).execute()
+                    except Exception:
+                        q.execute()
+                    await notify_member_leave(prev.get("name", "?"), clan_id=clan_id)
 
-        log.info(f"Members polled: {len(current)} active")
-    except Exception as e:
-        log.error(f"poll_members error: {e}")
+            log.info(f"Members polled (clan_id={clan_id}): {len(current)} active")
+        except Exception as e:
+            log.error(f"poll_members error (clan_id={clan_id}): {e}")
 
 async def poll_war_stars():
     """Mỗi sao đạt được trong war (tính theo từng đòn đánh mới phát hiện) cộng
-    Coins cho người đánh (nếu đã có tài khoản), báo trong chat clan."""
-    try:
-        tag = await get_tag()
-        if not tag: return
-        cur = await get_current_war(tag)
-        if cur.get("state") not in ("inWar", "warEnded"): return
-        war_key = cur.get("endTime") or ""
-        if not war_key: return
+    Coins cho người đánh (nếu đã có tài khoản), báo trong chat clan — theo từng clan."""
+    clans = await get_all_clans()
+    sb = get_supabase()
+    cfg = sb.table("settings").select("value").eq("key", "coins_per_war_star").execute()
+    coins_per_star = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 100
 
-        sb = get_supabase()
-        cfg = sb.table("settings").select("value").eq("key", "coins_per_war_star").execute()
-        coins_per_star = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 100
+    for c in clans:
+        clan_id = c["id"]
+        try:
+            tag = c.get("clan_tag")
+            if not tag: continue
+            cur = await get_current_war(tag, clan_id=clan_id)
+            if cur.get("state") not in ("inWar", "warEnded"): continue
+            war_key = cur.get("endTime") or ""
+            if not war_key: continue
 
-        members = cur.get("clan", {}).get("members", [])
-        for m in members:
-            attacks = m.get("attacks", [])
-            if not attacks:
-                continue
-            tracker = sb.table("war_star_tracker").select("last_order").eq("war_key", war_key).eq("player_tag", m["tag"]).execute()
-            last_order = tracker.data[0]["last_order"] if tracker.data else 0
-            new_attacks = [a for a in attacks if a.get("order", 0) > last_order]
-            if not new_attacks:
-                continue
-            stars_gained = sum(a.get("stars", 0) for a in new_attacks)
-            max_order = max(a.get("order", 0) for a in new_attacks)
-            sb.table("war_star_tracker").upsert({"war_key": war_key, "player_tag": m["tag"], "last_order": max_order}).execute()
-            if stars_gained <= 0:
-                continue
-            acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
-            coins_awarded = stars_gained * coins_per_star
-            if acc.data:
-                new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
-                sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
-                sb.table("chat_messages").insert({
-                    "room": "clan", "sender_name": "Hệ thống", "sender_tag": None,
-                    "message": f"⚔️ {m.get('name','?')} đạt {stars_gained}⭐ trong war — +{coins_awarded} Coins!",
-                    "is_system": True,
-                }).execute()
-        log.info("War star coins checked")
-    except Exception as e:
-        log.error(f"poll_war_stars error: {e}")
+            members = cur.get("clan", {}).get("members", [])
+            for m in members:
+                attacks = m.get("attacks", [])
+                if not attacks:
+                    continue
+                tracker = sb.table("war_star_tracker").select("last_order").eq("war_key", war_key).eq("player_tag", m["tag"]).execute()
+                last_order = tracker.data[0]["last_order"] if tracker.data else 0
+                new_attacks = [a for a in attacks if a.get("order", 0) > last_order]
+                if not new_attacks:
+                    continue
+                stars_gained = sum(a.get("stars", 0) for a in new_attacks)
+                max_order = max(a.get("order", 0) for a in new_attacks)
+                sb.table("war_star_tracker").upsert({"war_key": war_key, "player_tag": m["tag"], "last_order": max_order}).execute()
+                if stars_gained <= 0:
+                    continue
+                acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
+                coins_awarded = stars_gained * coins_per_star
+                if acc.data:
+                    new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
+                    sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+                    msg_row = {
+                        "room": "clan", "sender_name": "Hệ thống", "sender_tag": None,
+                        "message": f"⚔️ {m.get('name','?')} đạt {stars_gained}⭐ trong war — +{coins_awarded} Coins!",
+                        "is_system": True,
+                    }
+                    try:
+                        sb.table("chat_messages").insert({**msg_row, "clan_id": clan_id}).execute()
+                    except Exception:
+                        sb.table("chat_messages").insert(msg_row).execute()
+            log.info(f"War star coins checked (clan_id={clan_id})")
+        except Exception as e:
+            log.error(f"poll_war_stars error (clan_id={clan_id}): {e}")
 
 async def poll_donations():
     """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
-    và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng.
+    và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng — theo từng clan.
     (CoC API không có dữ liệu 'xin lính' theo thời gian thực — đây là cách gần
     nhất có thể làm được: phát hiện SAU khi họ đã donate xong.)"""
-    try:
-        tag = await get_tag()
-        if not tag: return
-        sb = get_supabase()
-        members = await get_clan_members(tag)
-        res = sb.table("donation_tracker").select("player_tag,last_donations").execute()
-        prev = {r["player_tag"]: r["last_donations"] for r in res.data}
+    clans = await get_all_clans()
+    sb = get_supabase()
+    for c in clans:
+        clan_id = c["id"]
+        try:
+            tag = c.get("clan_tag")
+            if not tag: continue
+            members = await get_clan_members(tag, clan_id=clan_id)
+            res = sb.table("donation_tracker").select("player_tag,last_donations").execute()
+            prev = {r["player_tag"]: r["last_donations"] for r in res.data}
 
-        for m in members:
-            cur = m.get("donations", 0)
-            old = prev.get(m["tag"])
-            if old is not None and cur > old:
-                diff = cur - old
-                sb.table("chat_messages").insert({
-                    "room": "clan",
-                    "sender_name": "Hệ thống",
-                    "sender_tag": None,
-                    "message": f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur}) — +{diff} Coins!",
-                    "is_system": True,
-                }).execute()
-                # Cộng Coins nếu tài khoản player này đã được ai đó nhận (claim)
-                acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
-                if acc.data:
-                    new_coins = (acc.data[0].get("coins") or 0) + diff
-                    sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
-            sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur}).execute()
+            for m in members:
+                cur = m.get("donations", 0)
+                old = prev.get(m["tag"])
+                if old is not None and cur > old:
+                    diff = cur - old
+                    msg_row = {
+                        "room": "clan",
+                        "sender_name": "Hệ thống",
+                        "sender_tag": None,
+                        "message": f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur}) — +{diff} Coins!",
+                        "is_system": True,
+                    }
+                    try:
+                        sb.table("chat_messages").insert({**msg_row, "clan_id": clan_id}).execute()
+                    except Exception:
+                        sb.table("chat_messages").insert(msg_row).execute()
+                    # Cộng Coins nếu tài khoản player này đã được ai đó nhận (claim)
+                    acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
+                    if acc.data:
+                        new_coins = (acc.data[0].get("coins") or 0) + diff
+                        sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+                sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur}).execute()
 
-        log.info("Donation deltas checked")
-    except Exception as e:
-        log.error(f"poll_donations error: {e}")
+            log.info(f"Donation deltas checked (clan_id={clan_id})")
+        except Exception as e:
+            log.error(f"poll_donations error (clan_id={clan_id}): {e}")
 
 async def poll_global_chat_cleanup():
     """Chat Toàn Cầu tự làm mới — xoá tin nhắn cũ hơn 24h (Chat Clan giữ nguyên)."""
