@@ -18,6 +18,7 @@ export default function LoginPage() {
 
   // Claim modal
   const [claimTarget, setClaimTarget] = useState<any>(null);
+  const [tagConfirm, setTagConfirm] = useState("");
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [setupCode, setSetupCode] = useState("");
@@ -46,6 +47,9 @@ export default function LoginPage() {
   async function submitClaim(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const normalizedTarget = claimTarget.tag.replace("#", "").toUpperCase();
+    const normalizedInput = tagConfirm.replace("#", "").trim().toUpperCase();
+    if (normalizedInput !== normalizedTarget) return setError(`Tag chưa đúng — tag của "${claimTarget.name}" là ${claimTarget.tag}`);
     if (pin.length < 4) return setError("PIN tối thiểu 4 số");
     if (pin !== pin2) return setError("PIN nhập lại không khớp");
     if (setupCodeRequired && !setupCode.trim()) return setError("Cần nhập mã xác minh — hỏi thủ lĩnh clan hoặc admin web");
@@ -55,7 +59,7 @@ export default function LoginPage() {
       setMemberAuth(res);
       setMe(res);
       setClaimTarget(null);
-      setPin(""); setPin2(""); setSetupCode("");
+      setTagConfirm(""); setPin(""); setPin2(""); setSetupCode("");
       await load();
     } catch (e: any) {
       setError(e.message || "Lỗi nhận tài khoản");
@@ -167,7 +171,7 @@ export default function LoginPage() {
                 ) : me ? (
                   <span className="text-xs text-gray-600">—</span>
                 ) : (
-                  <button onClick={() => { setClaimTarget(m); setError(""); }}
+                  <button onClick={() => { setClaimTarget(m); setError(""); setTagConfirm(""); }}
                     className="btn-gold text-xs !px-3 !py-1.5">
                     Đây là tôi
                   </button>
@@ -181,11 +185,15 @@ export default function LoginPage() {
       {/* Claim modal */}
       {claimTarget && (
         <Portal>
-        <div className="modal-overlay" onClick={() => setClaimTarget(null)}>
+        <div className="modal-overlay" onClick={() => { setClaimTarget(null); setTagConfirm(""); }}>
           <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
             <form onSubmit={submitClaim} className="p-5 space-y-4">
               <h3 className="font-bold text-white text-lg">Nhận làm "{claimTarget.name}"</h3>
-              <p className="text-sm text-gray-400">Đặt 1 mã PIN (4-8 số) để lần sau đăng nhập lại. Chỉ bạn biết mã này.</p>
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Nhập lại tag của bạn để xác nhận đúng là bạn:</p>
+                <input className="input" placeholder="vd: #ABC123XYZ"
+                  value={tagConfirm} onChange={e => setTagConfirm(e.target.value.toUpperCase())} autoFocus />
+              </div>
               {setupCodeRequired && (
                 <div>
                   <input className="input" placeholder="Mã xác minh (hỏi thủ lĩnh/admin web)"
@@ -195,13 +203,16 @@ export default function LoginPage() {
                   </p>
                 </div>
               )}
-              <input className="input" type="password" inputMode="numeric" placeholder="Đặt PIN"
-                value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} maxLength={8} />
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Đặt 1 mã PIN (4-8 số) để lần sau đăng nhập lại. Chỉ bạn biết mã này.</p>
+                <input className="input" type="password" inputMode="numeric" placeholder="Đặt PIN"
+                  value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} maxLength={8} />
+              </div>
               <input className="input" type="password" inputMode="numeric" placeholder="Nhập lại PIN"
                 value={pin2} onChange={e => setPin2(e.target.value.replace(/\D/g, ""))} maxLength={8} />
               {error && <p className="text-sm text-red-400">{error}</p>}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setClaimTarget(null)} className="btn-secondary flex-1">Huỷ</button>
+                <button type="button" onClick={() => { setClaimTarget(null); setTagConfirm(""); }} className="btn-secondary flex-1">Huỷ</button>
                 <button type="submit" disabled={busy} className="btn-primary flex-1">{busy ? "..." : "Xác nhận"}</button>
               </div>
             </form>

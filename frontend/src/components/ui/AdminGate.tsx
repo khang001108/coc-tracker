@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { getAdminToken, setAdminToken } from "@/lib/api";
-import { Lock } from "lucide-react";
+import { getAdminToken, setAdminToken, clearAdminToken } from "@/lib/api";
+import { Lock, LogOut } from "lucide-react";
 
 export function AdminGate({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -30,6 +30,13 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleLogout() {
+    if (!confirm("Đăng xuất khỏi khu vực quản trị?")) return;
+    clearAdminToken();
+    setAuthed(false);
+    setPassword("");
   }
 
   if (checking) return null;
@@ -62,5 +69,15 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={handleLogout}
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-400 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-red-500/10">
+          <LogOut size={13} /> Đăng xuất admin
+        </button>
+      </div>
+      {children}
+    </div>
+  );
 }
