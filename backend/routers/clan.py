@@ -33,7 +33,9 @@ async def clan_info(request: Request):
     return await get_clan(tag)
 
 @router.get("/refresh")
-async def refresh():
-    from schedulers.poller import poll_clan
-    await poll_clan()
+async def refresh(request: Request):
+    clan_id = get_clan_id(request)
+    if clan_id == 1:
+        from schedulers.poller import poll_clan
+        await poll_clan()
     return {"ok": True}

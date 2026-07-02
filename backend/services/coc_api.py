@@ -38,38 +38,38 @@ def encode_tag(tag: str) -> str:
     return quote(tag, safe="")
 
 # ── Clan ──────────────────────────────────────────────────────────────────────
-async def get_clan(tag: str) -> dict:
-    return await coc_get(f"/clans/{encode_tag(tag)}")
+async def get_clan(tag: str, clan_id: int = 1) -> dict:
+    return await coc_get(f"/clans/{encode_tag(tag)}", clan_id=clan_id)
 
-async def get_clan_members(tag: str) -> list:
-    data = await coc_get(f"/clans/{encode_tag(tag)}/members")
+async def get_clan_members(tag: str, clan_id: int = 1) -> list:
+    data = await coc_get(f"/clans/{encode_tag(tag)}/members", clan_id=clan_id)
     return data.get("items", [])
 
 # ── War ───────────────────────────────────────────────────────────────────────
-async def get_current_war(tag: str) -> dict:
-    return await coc_get(f"/clans/{encode_tag(tag)}/currentwar")
+async def get_current_war(tag: str, clan_id: int = 1) -> dict:
+    return await coc_get(f"/clans/{encode_tag(tag)}/currentwar", clan_id=clan_id)
 
-async def get_war_log(tag: str) -> list:
-    data = await coc_get(f"/clans/{encode_tag(tag)}/warlog?limit=20")
+async def get_war_log(tag: str, clan_id: int = 1) -> list:
+    data = await coc_get(f"/clans/{encode_tag(tag)}/warlog?limit=20", clan_id=clan_id)
     return data.get("items", [])
 
-async def get_cwl_war(war_tag: str) -> dict:
+async def get_cwl_war(war_tag: str, clan_id: int = 1) -> dict:
     """Lấy chi tiết 1 war trong CWL theo warTag."""
-    return await coc_get(f"/clanwarleagues/wars/{encode_tag(war_tag)}")
+    return await coc_get(f"/clanwarleagues/wars/{encode_tag(war_tag)}", clan_id=clan_id)
 
-async def get_cwl_group(tag: str) -> dict:
-    return await coc_get(f"/clans/{encode_tag(tag)}/currentwar/leaguegroup")
+async def get_cwl_group(tag: str, clan_id: int = 1) -> dict:
+    return await coc_get(f"/clans/{encode_tag(tag)}/currentwar/leaguegroup", clan_id=clan_id)
 
 # ── Capital ───────────────────────────────────────────────────────────────────
-async def get_raid_seasons(tag: str) -> list:
-    data = await coc_get(f"/clans/{encode_tag(tag)}/capitalraidseasons?limit=5")
+async def get_raid_seasons(tag: str, clan_id: int = 1) -> list:
+    data = await coc_get(f"/clans/{encode_tag(tag)}/capitalraidseasons?limit=5", clan_id=clan_id)
     return data.get("items", [])
 
 # ── Clan Games ────────────────────────────────────────────────────────────────
-async def get_clan_info_for_games(tag: str) -> dict:
+async def get_clan_info_for_games(tag: str, clan_id: int = 1) -> dict:
     """Clan Games points are inside member info."""
-    return await coc_get(f"/clans/{encode_tag(tag)}")
+    return await coc_get(f"/clans/{encode_tag(tag)}", clan_id=clan_id)
 
 # ── Player ────────────────────────────────────────────────────────────────────
-async def get_player(player_tag: str) -> dict:
-    return await coc_get(f"/players/{encode_tag(player_tag)}")
+async def get_player(player_tag: str, clan_id: int = 1) -> dict:
+    return await coc_get(f"/players/{encode_tag(player_tag)}", clan_id=clan_id)

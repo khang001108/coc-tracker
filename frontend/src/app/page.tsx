@@ -1,5 +1,6 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
+import { ClanSwitcher } from "@/components/ui/ClanSwitcher";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShieldArt, GoldCoinArt, SwordsArt } from "@/components/ui/HeroArt";
@@ -99,6 +100,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
+      {/* Clan switcher — chỉ hiện trên mobile (desktop đã có trong Sidebar) */}
+      <div className="md:hidden"><ClanSwitcher /></div>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">

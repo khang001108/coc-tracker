@@ -35,3 +35,29 @@ async def resolve_clan(request: Request) -> dict:
     """Shortcut: lấy clan_id từ request rồi trả về config clan."""
     clan_id = get_clan_id(request)
     return await get_clan_config(clan_id)
+
+
+async def get_tag_for_request(request: Request) -> tuple[int, str]:
+    """Trả về (clan_id, clan_tag) đúng theo clan đang được chọn ở request.
+
+    - clan_id == 1 (mặc định) → lấy clan_tag từ bảng `settings` (clan chính, cũ).
+    - clan_id != 1            → lấy clan_tag từ bảng `clans` (multi-clan).
+
+    Dùng chung cho mọi router (war/capital/games/members...) để đảm bảo khi
+    người dùng đang chọn clan #2, #3... thì dữ liệu trả về luôn đúng clan đó
+    thay vì luôn rơi về clan #1.
+    """
+    clan_id = get_clan_id(request)
+    if clan_id != 1:
+        cfg = await get_clan_config(clan_id)
+        tag = cfg.get("clan_tag", "")
+        if not tag:
+            raise HTTPException(400, f"Clan {clan_id} chưa cấu hình clan_tag")
+        return clan_id, tag
+
+    from services.coc_api import get_coc_config
+    cfg = await get_coc_config()
+    tag = cfg.get("clan_tag")
+    if not tag:
+        raise HTTPException(400, "Chưa cấu hình clan tag")
+    return 1, tag

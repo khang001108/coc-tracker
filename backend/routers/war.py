@@ -1,48 +1,44 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from supabase_client import get_supabase
-from clan_context import get_clan_id
-from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war, get_coc_config
+from clan_context import get_tag_for_request
+from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war
 import json
 
 router = APIRouter()
 
 @router.get("/current")
-async def current_war():
-    sb = get_supabase()
-    res = sb.table("snapshot_war").select("data,updated_at").order("id", desc=True).limit(1).execute()
-    if res.data:
-        return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag: raise HTTPException(400, "Chưa cấu hình clan tag")
-    return await get_current_war(tag)
+async def current_war(request: Request):
+    clan_id, tag = await get_tag_for_request(request)
+
+    # Clan chính (id=1): dùng snapshot cache (poller cập nhật sẵn) cho nhanh.
+    if clan_id == 1:
+        sb = get_supabase()
+        res = sb.table("snapshot_war").select("data,updated_at").order("id", desc=True).limit(1).execute()
+        if res.data:
+            return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
+
+    # Clan khác (hoặc chưa có cache): gọi trực tiếp CoC API với đúng clan đang chọn.
+    return await get_current_war(tag, clan_id=clan_id)
 
 @router.get("/log")
-async def war_log():
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag: raise HTTPException(400, "Chưa cấu hình")
-    return {"items": await get_war_log(tag)}
+async def war_log(request: Request):
+    clan_id, tag = await get_tag_for_request(request)
+    return {"items": await get_war_log(tag, clan_id=clan_id)}
 
 @router.get("/cwl")
-async def cwl():
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag: raise HTTPException(400, "Chưa cấu hình")
+async def cwl(request: Request):
+    clan_id, tag = await get_tag_for_request(request)
     try:
-        return await get_cwl_group(tag)
+        return await get_cwl_group(tag, clan_id=clan_id)
     except Exception:
         return {"error": "Không có CWL đang diễn ra"}
 
 @router.get("/cwl/current")
-async def cwl_current_war():
+async def cwl_current_war(request: Request):
     """Tìm và trả về war CWL hiện tại của clan (có cả badge + isCWL flag)."""
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag:
-        raise HTTPException(400, "Chưa cấu hình clan tag")
+    clan_id, tag = await get_tag_for_request(request)
     try:
-        group = await get_cwl_group(tag)
+        group = await get_cwl_group(tag, clan_id=clan_id)
     except Exception:
         return {"state": "notInWar", "isCWL": True}
 
@@ -56,7 +52,7 @@ async def cwl_current_war():
             if war_tag == "#0":
                 continue
             try:
-                w = await get_cwl_war(war_tag)
+                w = await get_cwl_war(war_tag, clan_id=clan_id)
             except Exception:
                 continue
             our_side  = None
