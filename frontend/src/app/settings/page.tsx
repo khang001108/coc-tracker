@@ -695,9 +695,9 @@ function ClanManagement() {
     setPreview(null);
     try {
       const res = await api.testClan(key, tag);
-      if (res?.name) {
-        setPreview({ name: res.name, badge: res.badgeUrls?.medium || "" });
-        flash("ok", `✅ Tìm thấy: ${res.name}`);
+      if (res?.ok && res?.clan_name) {
+        setPreview({ name: res.clan_name, badge: res.badgeUrls?.medium || "" });
+        flash("ok", `✅ Tìm thấy: ${res.clan_name} (${res.members} thành viên)`);
       } else {
         flash("err", "Không tìm thấy clan. Kiểm tra tag và API key.");
       }
