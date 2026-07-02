@@ -9,6 +9,8 @@ import { thColor, roleLabel, roleClass } from "@/lib/utils";
 import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { EmberField } from "@/components/ui/EmberField";
+import { NameEffect } from "@/components/ui/NameEffect";
+import { NumberEffect } from "@/components/ui/NumberEffect";
 
 export default function LoginPage() {
   const [roster, setRoster] = useState<any[]>([]);
@@ -114,7 +116,7 @@ export default function LoginPage() {
           <CheckCircle2 size={24} className="text-green-400 shrink-0" />
           <div className="flex-1">
             <p className="text-sm text-gray-400">Đang đăng nhập với tư cách</p>
-            <p className="font-bold text-white">{me.player_name}</p>
+            <p className="font-bold text-white"><NameEffect effectKey={(me as any).equipped_effect}>{me.player_name}</NameEffect></p>
             <p className="text-xs text-yellow-400 flex items-center gap-1 mt-0.5">
               <Coins size={12} /> {(me as any).coins ?? 0} Coins
             </p>
@@ -153,11 +155,11 @@ export default function LoginPage() {
             {filtered.map(m => (
               <div key={m.tag} className="flex items-center gap-3 px-4 py-3">
                 <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
-                  {m.townHallLevel}
+                  <NumberEffect effectKey={m.equipped_number_effect}>{m.townHallLevel}</NumberEffect>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
-                    {m.name}
+                    <NameEffect effectKey={m.equipped_effect}>{m.name}</NameEffect>
                     {m.role === "leader" && <Crown size={12} className="text-yellow-400" />}
                   </p>
                   <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>

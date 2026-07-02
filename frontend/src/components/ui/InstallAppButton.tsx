@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { Download, Smartphone, CheckCircle2 } from "lucide-react";
 
+const INSTALLED_KEY = "coc_app_installed";
+
 export function InstallAppButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [installed, setInstalled] = useState(false);
@@ -9,10 +11,15 @@ export function InstallAppButton() {
   const [browserHint, setBrowserHint] = useState("");
 
   useEffect(() => {
-    // Đã cài rồi (đang chạy ở chế độ standalone/fullscreen) thì khỏi hiện nút
-    if (window.matchMedia?.("(display-mode: standalone)")?.matches || (navigator as any).standalone) {
-      setInstalled(true);
-    }
+    // Đã cài rồi thì khỏi hiện nút nữa, xét theo 2 cách:
+    // 1. Đang chạy trong đúng cửa sổ standalone (mở từ icon đã cài)
+    // 2. Trước đây đã từng cài thành công (nhớ qua localStorage) — vì nếu
+    //    đang xem ở TAB trình duyệt thường thì dù đã cài xong, trình duyệt
+    //    vẫn luôn báo "không phải standalone" (đúng theo chuẩn web), nên
+    //    phải tự nhớ lại để khỏi nhắc lại người dùng mỗi lần vào tab.
+    const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || (navigator as any).standalone;
+    const rememberedInstalled = localStorage.getItem(INSTALLED_KEY) === "1";
+    if (standalone || rememberedInstalled) setInstalled(true);
 
     function onPrompt(e: any) {
       e.preventDefault();
@@ -21,6 +28,7 @@ export function InstallAppButton() {
     function onInstalled() {
       setInstalled(true);
       setDeferredPrompt(null);
+      localStorage.setItem(INSTALLED_KEY, "1");
     }
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
@@ -41,8 +49,12 @@ export function InstallAppButton() {
   async function handleClick() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+      const choice = await deferredPrompt.userChoice;
       setDeferredPrompt(null);
+      if (choice?.outcome === "accepted") {
+        setInstalled(true);
+        localStorage.setItem(INSTALLED_KEY, "1");
+      }
       return;
     }
     setShowHelp(true);
@@ -52,7 +64,10 @@ export function InstallAppButton() {
     return (
       <div className="card flex items-center gap-3">
         <CheckCircle2 size={18} className="text-green-400 shrink-0" />
-        <p className="text-sm text-gray-400">App đã được cài trên thiết bị này.</p>
+        <div>
+          <p className="text-sm text-gray-400">App đã được cài trên thiết bị này.</p>
+          <p className="text-[11px] text-gray-600 mt-0.5">Mở từ icon ở màn hình chính/ngăn ứng dụng để dùng như app thật.</p>
+        </div>
       </div>
     );
   }
@@ -86,6 +101,11 @@ export function InstallAppButton() {
           )}
         </div>
       )}
+
+      <button onClick={() => { localStorage.setItem(INSTALLED_KEY, "1"); setInstalled(true); }}
+        className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors underline decoration-dotted">
+        Đã cài xong rồi — ẩn thẻ này đi
+      </button>
     </div>
   );
 }
