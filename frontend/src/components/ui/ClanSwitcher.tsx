@@ -9,7 +9,7 @@ export function ClanSwitcher() {
   const [open, setOpen] = useState(false);
   const [currentId, setCurrentId] = useState(1);
   const [currentInfo, setCurrentInfo] = useState<ClanInfo | null>(null);
-  const isAdmin = typeof window !== "undefined" && !!localStorage.getItem("admin_token");
+  const isAdmin = typeof window !== "undefined" && !!localStorage.getItem("coc_admin_token");
 
   useEffect(() => {
     setCurrentId(getCurrentClanId());
