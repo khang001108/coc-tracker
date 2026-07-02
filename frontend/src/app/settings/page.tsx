@@ -664,8 +664,8 @@ function ClanManagement() {
     try {
       const data = await api.listClans();
       setClans(data);
-    } catch {
-      // Backend chưa deploy hoặc chưa có clan → hiện empty state
+    } catch (e: any) {
+      flash("err", `Lỗi tải danh sách: ${e?.message || "Không kết nối được backend"}`);
       setClans([]);
     }
     setLoading(false);
