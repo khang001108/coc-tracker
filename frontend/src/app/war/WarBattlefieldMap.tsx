@@ -57,7 +57,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
 
         {/* Castle icon */}
         <div className="shrink-0">
-          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.castle} size={28} animate={false} />
+          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.equipped_castle} size={28} animate={false} />
         </div>
 
         {/* Name + stars + cannons */}
@@ -71,7 +71,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
           {/* Số pháo = số lượt đánh cho phép (1 ở CWL, 2 ở war thường) */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {Array.from({ length: maxAttacks }).map((_, i) => (
-              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} />
+              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.equipped_cannon} fired={!!attacks[i]} />
             ))}
           </div>
         </div>
