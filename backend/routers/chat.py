@@ -34,10 +34,21 @@ async def _sender_flair(sb, player_tag: str) -> dict:
     a = acc.data[0]
     clan_id = a.get("clan_id") or 1
     clan_name = None
+    clan_badge = None
     try:
         c = sb.table("clans").select("clan_name").eq("id", clan_id).execute()
         if c.data:
             clan_name = c.data[0].get("clan_name")
+    except Exception:
+        pass
+    try:
+        snap = sb.table("snapshot_clan").select("data").eq("clan_id", clan_id).order("id", desc=True).limit(1).execute()
+        if snap.data:
+            import json as _json
+            data = _json.loads(snap.data[0]["data"])
+            clan_badge = (data.get("badgeUrls") or {}).get("small") or (data.get("badgeUrls") or {}).get("medium")
+            if data.get("name"):
+                clan_name = data["name"]
     except Exception:
         pass
     th = 0
@@ -51,6 +62,7 @@ async def _sender_flair(sb, player_tag: str) -> dict:
         "sender_name": a.get("player_name"),
         "sender_clan_id": clan_id,
         "sender_clan_name": clan_name,
+        "sender_clan_badge": clan_badge,
         "sender_th": th,
         "sender_castle": a.get("equipped_castle") or "castle_classic",
         "sender_cannon": a.get("equipped_cannon") or "cannon_basic",
@@ -119,6 +131,7 @@ async def send_message(request: Request, background_tasks: BackgroundTasks, x_me
         "message": message, "image_url": image_url, "is_system": False,
         "sender_clan_id": flair.get("sender_clan_id"),
         "sender_clan_name": flair.get("sender_clan_name"),
+        "sender_clan_badge": flair.get("sender_clan_badge"),
         "sender_th": flair.get("sender_th"),
         "sender_castle": flair.get("sender_castle"),
         "sender_cannon": flair.get("sender_cannon"),

@@ -7,14 +7,19 @@ from fastapi import APIRouter, HTTPException, Request, Header
 from supabase_client import get_supabase
 from clan_context import get_clan_id
 from member_auth import verify_member_token
-from services.push_service import VAPID_PUBLIC_KEY, push_enabled
+from services.push_service import VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, push_enabled, _looks_like_raw_key
 
 router = APIRouter()
 
 
 @router.get("/vapid-public-key")
 async def vapid_public_key():
-    return {"key": VAPID_PUBLIC_KEY, "enabled": push_enabled()}
+    reason = None
+    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
+        reason = "Server chưa cấu hình VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY"
+    elif not _looks_like_raw_key(VAPID_PUBLIC_KEY):
+        reason = "VAPID_PUBLIC_KEY đang ở sai định dạng (PEM) — cần chuỗi base64url gọn, xem lại hướng dẫn"
+    return {"key": VAPID_PUBLIC_KEY, "enabled": push_enabled(), "reason": reason}
 
 
 @router.post("/subscribe")

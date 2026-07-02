@@ -17,8 +17,28 @@ MAX_SIZE = 20 * 1024 * 1024  # 20MB mỗi bài
 @router.get("/tracks")
 async def list_tracks():
     sb = get_supabase()
-    res = sb.table("soundtracks").select("*").order("created_at").execute()
+    try:
+        res = sb.table("soundtracks").select("*").order("sort_order", nullsfirst=False).order("created_at").execute()
+    except Exception:
+        # Cột sort_order chưa tồn tại (chưa chạy migration) — fallback thứ tự cũ
+        res = sb.table("soundtracks").select("*").order("created_at").execute()
     return res.data
+
+
+@router.put("/tracks/reorder")
+async def reorder_tracks(request: Request, _: bool = Depends(require_admin)):
+    """Lưu lại thứ tự phát nhạc sau khi kéo-thả sắp xếp trong Cài đặt."""
+    body = await request.json()
+    ids = body.get("order") or []
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(400, "Cần danh sách order (mảng id bài hát theo thứ tự mới)")
+    sb = get_supabase()
+    try:
+        for i, track_id in enumerate(ids):
+            sb.table("soundtracks").update({"sort_order": i}).eq("id", track_id).execute()
+    except Exception as e:
+        raise HTTPException(500, f"Chưa chạy migration cột sort_order: {str(e)}")
+    return {"ok": True}
 
 
 @router.post("/tracks")

@@ -26,7 +26,7 @@ function AttackBar({ attacks, maxAttacks = 2 }: { attacks: any[]; maxAttacks?: n
   );
 }
 
-function WarMemberRow({ member, mapPosition }: { member: any; mapPosition: number }) {
+function WarMemberRow({ member, mapPosition, maxAttacks = 2 }: { member: any; mapPosition: number; maxAttacks?: number }) {
   const attacks = member.attacks || [];
   const totalStars = attacks.reduce((s: number, a: any) => s + a.stars, 0);
   const bestDestruction = attacks.length > 0 ? Math.max(...attacks.map((a: any) => a.destructionPercentage)) : 0;
@@ -44,7 +44,7 @@ function WarMemberRow({ member, mapPosition }: { member: any; mapPosition: numbe
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <AttackBar attacks={attacks} />
+        <AttackBar attacks={attacks} maxAttacks={maxAttacks} />
         {attacks.length > 0 && (
           <span className="badge-gold text-xs">⭐{totalStars}</span>
         )}
@@ -58,6 +58,7 @@ function WarMemberRow({ member, mapPosition }: { member: any; mapPosition: numbe
 
 export default function WarPage() {
   const [war, setWar] = useState<any>(null);
+  const [cwlNext, setCwlNext] = useState<any>(null);
   const [warLog, setWarLog] = useState<any[]>([]);
   const [cwl, setCwl] = useState<any>(null);
   const [tab, setTab] = useState<"current" | "log" | "cwl">("current");
@@ -71,10 +72,13 @@ export default function WarPage() {
         api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar()
       ]);
       let warData = w.status === "fulfilled" ? w.value : null;
-      // Nếu không có war thường, kiểm tra CWL war
+      // Nếu không có war thường, kiểm tra CWL war (vòng hiện tại)
       if ((!warData || warData.state === "notInWar") && cwlWar.status === "fulfilled") {
-        const cw = cwlWar.value;
-        if (cw && cw.state && cw.state !== "notInWar") warData = cw;
+        const cw: any = cwlWar.value;
+        if (cw?.current && cw.current.state && cw.current.state !== "notInWar") {
+          warData = cw.current;
+          setCwlNext(cw.next || null);
+        }
       }
       // Gắn badge từ war thường nếu chưa có
       if (warData && !warData.isCWL) {
@@ -91,6 +95,7 @@ export default function WarPage() {
 
   const clanMembers = war?.clan?.members?.sort((a: any, b: any) => a.mapPosition - b.mapPosition) || [];
   const notAttacked = clanMembers.filter((m: any) => (m.attacks || []).length === 0);
+  const maxAttacks = war?.attacksPerMember || (war?.isCWL ? 1 : 2);
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -142,7 +147,7 @@ export default function WarPage() {
                     {war.state !== "preparation" ? (
                       <>
                         <p className="text-2xl font-bold text-yellow-400">⭐ {war.clan?.stars}</p>
-                        <p className="text-[11px] text-gray-400">{war.clan?.attacks}/{war.teamSize * 2} atk</p>
+                        <p className="text-[11px] text-gray-400">{war.clan?.attacks}/{war.teamSize * maxAttacks} atk</p>
                         <p className="text-[11px] text-gray-500">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
                       </>
                     ) : (
@@ -185,13 +190,33 @@ export default function WarPage() {
                     ) : (
                       <>
                         <p className="text-2xl font-bold text-red-400">⭐ {war.opponent?.stars}</p>
-                        <p className="text-[11px] text-gray-400">{war.opponent?.attacks}/{war.teamSize * 2} atk</p>
+                        <p className="text-[11px] text-gray-400">{war.opponent?.attacks}/{war.teamSize * maxAttacks} atk</p>
                         <p className="text-[11px] text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
                       </>
                     )}
                   </div>
                 </div>
               </div>
+
+              {/* War tiếp theo (CWL) — tách riêng, tránh nhầm với war đang diễn ra ở trên */}
+              {war.isCWL && cwlNext && (
+                <div className="card flex items-center gap-3" style={{ borderColor: "rgba(244,161,48,0.25)" }}>
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-lg shrink-0"
+                    style={{ background: "rgba(244,161,48,0.15)", color: "#F4A130" }}>
+                    Vòng tiếp theo
+                  </span>
+                  {cwlNext.opponent?.badgeUrl && (
+                    <img src={cwlNext.opponent.badgeUrl} alt="" className="w-8 h-8 object-contain shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">vs {cwlNext.opponent?.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {cwlNext.state === "preparation" ? "⚔️ Đang chuẩn bị" : cwlNext.state === "inWar" ? "🔥 Đang đánh" : cwlNext.state}
+                      {cwlNext.startTime ? ` · Bắt đầu ${formatDate(cwlNext.startTime)}` : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Missing attacks warning */}
               {notAttacked.length > 0 && (
@@ -227,7 +252,7 @@ export default function WarPage() {
               ) : (
                 <div className="card">
                   {clanMembers.map((m: any) => (
-                    <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} />
+                    <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} maxAttacks={maxAttacks} />
                   ))}
                 </div>
               )}

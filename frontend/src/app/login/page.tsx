@@ -20,6 +20,8 @@ export default function LoginPage() {
   const [claimTarget, setClaimTarget] = useState<any>(null);
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
+  const [setupCode, setSetupCode] = useState("");
+  const [setupCodeRequired, setSetupCodeRequired] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +40,7 @@ export default function LoginPage() {
     setMe(m);
     if (m) api.getMyMemberInfo().then(full => { if (full) setMe(full); });
     load();
+    api.isSetupCodeRequired().then(r => setSetupCodeRequired(!!r.required)).catch(() => {});
   }, []);
 
   async function submitClaim(e: React.FormEvent) {
@@ -45,13 +48,14 @@ export default function LoginPage() {
     setError("");
     if (pin.length < 4) return setError("PIN tối thiểu 4 số");
     if (pin !== pin2) return setError("PIN nhập lại không khớp");
+    if (setupCodeRequired && !setupCode.trim()) return setError("Cần nhập mã xác minh — hỏi thủ lĩnh clan hoặc admin web");
     setBusy(true);
     try {
-      const res = await api.claimMember(claimTarget.tag, claimTarget.name, pin);
+      const res = await api.claimMember(claimTarget.tag, claimTarget.name, pin, setupCode.trim());
       setMemberAuth(res);
       setMe(res);
       setClaimTarget(null);
-      setPin(""); setPin2("");
+      setPin(""); setPin2(""); setSetupCode("");
       await load();
     } catch (e: any) {
       setError(e.message || "Lỗi nhận tài khoản");
@@ -182,6 +186,15 @@ export default function LoginPage() {
             <form onSubmit={submitClaim} className="p-5 space-y-4">
               <h3 className="font-bold text-white text-lg">Nhận làm "{claimTarget.name}"</h3>
               <p className="text-sm text-gray-400">Đặt 1 mã PIN (4-8 số) để lần sau đăng nhập lại. Chỉ bạn biết mã này.</p>
+              {setupCodeRequired && (
+                <div>
+                  <input className="input" placeholder="Mã xác minh (hỏi thủ lĩnh/admin web)"
+                    value={setupCode} onChange={e => setSetupCode(e.target.value)} />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Mã này để chống người lạ nhận nhầm danh tính của bạn — chưa có thì liên hệ thủ lĩnh clan hoặc admin website để xin mã.
+                  </p>
+                </div>
+              )}
               <input className="input" type="password" inputMode="numeric" placeholder="Đặt PIN"
                 value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} maxLength={8} />
               <input className="input" type="password" inputMode="numeric" placeholder="Nhập lại PIN"

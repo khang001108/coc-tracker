@@ -42,9 +42,9 @@ function AttackBadge({ attack }: { attack: any }) {
   );
 }
 
-function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
+function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAttacks }: {
   member: any; attacks: any[]; side: "left" | "right";
-  iconMap: Record<string, any>; selected: boolean; onSelect: () => void;
+  iconMap: Record<string, any>; selected: boolean; onSelect: () => void; maxAttacks: number;
 }) {
   const isRight = side === "right";
   const totalStars = attacks.reduce((s, a) => s + a.stars, 0);
@@ -68,9 +68,9 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect }: {
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             <Stars stars={totalStars} />
           </div>
-          {/* 2 pháo = 2 lượt đánh */}
+          {/* Số pháo = số lượt đánh cho phép (1 ở CWL, 2 ở war thường) */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
-            {[0, 1].map(i => (
+            {Array.from({ length: maxAttacks }).map((_, i) => (
               <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.cannon} fired={!!attacks[i]} />
             ))}
           </div>
@@ -145,6 +145,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
   const fade = (tag: string) => !selected || connected.has(tag);
 
   const rows = Math.max(ourTeam.length, theirTeam.length);
+  const maxAttacks = war?.attacksPerMember || (war?.isCWL ? 1 : 2);
 
   return (
     <div className="card !p-0 overflow-hidden relative">
@@ -154,7 +155,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Bản đồ chiến trường</h3>
         <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
           <span>⚔ #X = vị trí tấn công</span>
-          <span>🔫🔫 = 2 lượt đánh</span>
+          <span>{"🔫".repeat(maxAttacks)} = {maxAttacks} lượt đánh</span>
           {selected && (
             <button onClick={() => setSelected(null)} className="text-yellow-600 font-bold">✕</button>
           )}
@@ -178,7 +179,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
               <div style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
                 {left && (
                   <MemberCard member={left} side="left"
-                    attacks={ourAtks[left.tag] || []} iconMap={iconMap}
+                    attacks={ourAtks[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
                     selected={selected?.tag === left.tag}
                     onSelect={() => setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" })} />
                 )}
@@ -191,7 +192,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
               <div style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
                 {right && (
                   <MemberCard member={right} side="right"
-                    attacks={theirAtks[right.tag] || []} iconMap={iconMap}
+                    attacks={theirAtks[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
                     selected={selected?.tag === right.tag}
                     onSelect={() => setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" })} />
                 )}

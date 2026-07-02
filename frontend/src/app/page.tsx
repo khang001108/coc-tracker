@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ShieldArt, GoldCoinArt, SwordsArt } from "@/components/ui/HeroArt";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
-import { Shield, Users, Trophy, Star, Swords, RefreshCw, AlertCircle, TrendingUp, Crown } from "lucide-react";
+import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown } from "lucide-react";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -38,6 +38,7 @@ function EmptyState({ message }: { message: string }) {
 export default function DashboardPage() {
   const [clan, setClan] = useState<any>(null);
   const [war, setWar] = useState<any>(null);
+  const [cwl, setCwl] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -46,9 +47,10 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const [c, w] = await Promise.all([api.getClan(), api.getCurrentWar()]);
-      setClan(c);
-      setWar(w);
+      const [c, w, cw] = await Promise.allSettled([api.getClan(), api.getCurrentWar(), api.getCWLCurrentWar()]);
+      if (c.status === "fulfilled") setClan(c.value); else throw c.reason;
+      setWar(w.status === "fulfilled" ? w.value : null);
+      setCwl(cw.status === "fulfilled" ? cw.value : null);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -118,10 +120,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </ClanSwitcher>
-        <button onClick={refresh} disabled={refreshing} title="Làm mới"
-          className="icon-btn-game w-10 h-10 text-gray-900 shrink-0 disabled:opacity-60">
-          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-        </button>
       </div>
 
       {/* Clan description — viền hoa văn */}
@@ -192,6 +190,40 @@ export default function DashboardPage() {
           </div>
           {war.endTime && (
             <p className="text-xs text-gray-500 text-center mt-3">Kết thúc: {formatDate(war.endTime)}</p>
+          )}
+        </div>
+      )}
+
+      {/* CWL status — tách riêng khỏi war thường ở trên, vì 1 clan có thể vừa
+          war thường vừa CWL cùng lúc */}
+      {cwl?.current?.state && cwl.current.state !== "notInWar" && (
+        <div className="card relative overflow-hidden" style={{ borderColor: "rgba(244,161,48,0.3)", background: "rgba(244,161,48,0.04)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-white flex items-center gap-2">
+              <Trophy size={18} className="text-yellow-400" />
+              Clan War League{cwl.season ? ` · ${cwl.season}` : ""}
+            </h2>
+            <span className={`badge font-semibold ${warStateLabel(cwl.current.state).color}`}>
+              {warStateLabel(cwl.current.state).label}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">{cwl.current.clan?.name}</p>
+              <p className="text-2xl font-bold text-yellow-400">⭐ {cwl.current.clan?.stars ?? 0}</p>
+              <p className="text-sm text-gray-400">{cwl.current.clan?.destructionPercentage?.toFixed(2)}%</p>
+            </div>
+            <div className="flex items-center justify-center">
+              <span className="text-gray-600 font-bold text-xl">VS</span>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">{cwl.current.opponent?.name}</p>
+              <p className="text-2xl font-bold text-red-400">⭐ {cwl.current.opponent?.stars ?? 0}</p>
+              <p className="text-sm text-gray-400">{cwl.current.opponent?.destructionPercentage?.toFixed(2)}%</p>
+            </div>
+          </div>
+          {cwl.next?.opponent?.name && (
+            <p className="text-xs text-gray-500 text-center mt-3">Vòng tiếp theo: vs {cwl.next.opponent.name}</p>
           )}
         </div>
       )}

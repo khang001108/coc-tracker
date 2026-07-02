@@ -33,21 +33,44 @@ async def cwl(request: Request):
     except Exception:
         return {"error": "Không có CWL đang diễn ra"}
 
+
+def _normalize_cwl_war(w: dict, tag: str, badge_map: dict):
+    """Chuẩn hoá 1 war CWL: đảm bảo clan ta luôn ở key 'clan', gắn badge."""
+    our_side = None
+    if w.get("clan", {}).get("tag") == tag:
+        our_side = "clan"
+    elif w.get("opponent", {}).get("tag") == tag:
+        our_side = "opponent"
+    if not our_side:
+        return None
+    if our_side == "opponent":
+        w["clan"], w["opponent"] = w["opponent"], w["clan"]
+    w["clan"]["badgeUrl"] = badge_map.get(w["clan"]["tag"], "")
+    w["opponent"]["badgeUrl"] = badge_map.get(w["opponent"]["tag"], "")
+    w["isCWL"] = True
+    return w
+
+
 @router.get("/cwl/current")
 async def cwl_current_war(request: Request):
-    """Tìm và trả về war CWL hiện tại của clan (có cả badge + isCWL flag)."""
+    """Trả về war CWL HIỆN TẠI (đang đánh/vừa đấu xong) TÁCH RIÊNG khỏi war
+    TIẾP THEO (vòng kế đã lên cặp đấu nhưng chưa tới ngày đánh) — tránh nhầm
+    lẫn hiển thị dữ liệu vòng sau như thể đang là vòng đang diễn ra."""
     clan_id, tag = await get_tag_for_request(request)
     try:
         group = await get_cwl_group(tag, clan_id=clan_id)
     except Exception:
-        return {"state": "notInWar", "isCWL": True}
+        return {"state": "notInWar", "isCWL": True, "current": None, "next": None}
 
-    clans      = group.get("clans", [])
-    rounds     = group.get("rounds", [])
-    badge_map  = {c_["tag"]: c_.get("badgeUrls", {}).get("medium", "") for c_ in clans}
+    clans     = group.get("clans", [])
+    rounds    = group.get("rounds", [])
+    season    = group.get("season", "")
+    badge_map = {c_["tag"]: c_.get("badgeUrls", {}).get("medium", "") for c_ in clans}
 
-    # Duyệt các round từ mới nhất → tìm war active có clan ta
-    for round_data in reversed(rounds):
+    # Thu thập TẤT CẢ các vòng có clan ta tham gia, theo đúng thứ tự vòng
+    # (không đảo ngược) — mỗi phần tử biết rõ mình thuộc vòng thứ mấy.
+    matches = []
+    for round_index, round_data in enumerate(rounds):
         for war_tag in round_data.get("warTags", []):
             if war_tag == "#0":
                 continue
@@ -55,22 +78,35 @@ async def cwl_current_war(request: Request):
                 w = await get_cwl_war(war_tag, clan_id=clan_id)
             except Exception:
                 continue
-            our_side  = None
-            their_side = None
-            if w.get("clan", {}).get("tag") == tag:
-                our_side, their_side = "clan", "opponent"
-            elif w.get("opponent", {}).get("tag") == tag:
-                our_side, their_side = "opponent", "clan"
-            if not our_side:
-                continue
-            # Swap nếu cần để clan ta luôn ở key "clan"
-            if our_side == "opponent":
-                w["clan"], w["opponent"] = w["opponent"], w["clan"]
-            # Gắn badge URL
-            w["clan"]["badgeUrl"]     = badge_map.get(w["clan"]["tag"], "")
-            w["opponent"]["badgeUrl"] = badge_map.get(w["opponent"]["tag"], "")
-            w["isCWL"] = True
-            w["season"] = group.get("season", "")
-            return w
+            normalized = _normalize_cwl_war(w, tag, badge_map)
+            if normalized:
+                matches.append({"round_index": round_index, "state": normalized.get("state"), "war": normalized})
+                break  # chỉ có đúng 1 war của ta mỗi vòng
 
-    return {"state": "notInWar", "isCWL": True}
+    if not matches:
+        return {"state": "notInWar", "isCWL": True, "current": None, "next": None, "season": season}
+
+    # Ưu tiên vòng đang "inWar" (đang đánh) làm HIỆN TẠI; nếu không có (giữa
+    # các vòng, hoặc mùa đã hết) thì lấy vòng gần nhất theo thứ tự.
+    current = next((m for m in matches if m["state"] == "inWar"), None) or matches[-1]
+    current_idx_in_matches = matches.index(current)
+
+    # Vòng TIẾP THEO: đúng vòng kế ngay sau vòng hiện tại (nếu đã có cặp đấu).
+    nxt = None
+    if current_idx_in_matches + 1 < len(matches):
+        candidate = matches[current_idx_in_matches + 1]
+        if candidate["round_index"] == current["round_index"] + 1:
+            nxt = candidate
+
+    current["war"]["season"] = season
+    if nxt:
+        nxt["war"]["season"] = season
+
+    return {
+        "isCWL": True,
+        "season": season,
+        "current": current["war"],
+        "next": nxt["war"] if nxt else None,
+        # Giữ tương thích ngược: nơi nào đọc thẳng field ở gốc vẫn có current
+        **current["war"],
+    }

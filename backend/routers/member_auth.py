@@ -4,6 +4,7 @@ from member_auth import hash_pin, create_member_token, verify_member_token
 from services.coc_api import get_clan_members
 from clan_context import get_tag_for_request, get_clan_id
 from auth import require_admin
+import os
 
 router = APIRouter()
 
@@ -32,16 +33,31 @@ async def roster(request: Request):
     ]
 
 
+@router.get("/setup-code-required")
+async def setup_code_required():
+    return {"required": bool(os.environ.get("MEMBER_SETUP_CODE", "").strip())}
+
+
 @router.post("/claim")
 async def claim(request: Request):
     body = await request.json()
     player_tag = (body.get("player_tag") or "").strip()
     player_name = (body.get("player_name") or "").strip()
     pin = (body.get("pin") or "").strip()
+    setup_code = (body.get("setup_code") or "").strip()
     if not player_tag or not player_name:
         raise HTTPException(400, "Thiếu thông tin người chơi")
     if not pin.isdigit() or not (4 <= len(pin) <= 8):
         raise HTTPException(400, "PIN phải là 4-8 chữ số")
+
+    required_code = os.environ.get("MEMBER_SETUP_CODE", "").strip()
+    if required_code and setup_code != required_code:
+        raise HTTPException(
+            403,
+            "Mã xác minh không đúng. Đây là mã bảo mật do thủ lĩnh/admin web cấp — "
+            "liên hệ thủ lĩnh clan hoặc admin website để lấy mã trước khi nhận tài khoản.",
+        )
+
     clan_id = get_clan_id(request)
     sb = get_supabase()
     existing = sb.table("member_accounts").select("player_tag").eq("player_tag", player_tag).execute()

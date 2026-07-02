@@ -4,7 +4,15 @@ import { api } from "@/lib/api";
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
+  let rawData: string;
+  try {
+    rawData = atob(base64);
+  } catch {
+    throw new Error(
+      "Mã VAPID trên server không đúng định dạng (có thể vẫn đang ở dạng PEM ----BEGIN----). " +
+      "Liên hệ admin website để cấu hình lại VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY."
+    );
+  }
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
   return outputArray;
@@ -29,8 +37,8 @@ export async function getCurrentSubscription(): Promise<PushSubscription | null>
 export async function enablePush(opts?: { notify_chat?: boolean; notify_event?: boolean }): Promise<{ ok: boolean; error?: string }> {
   if (!pushSupported()) return { ok: false, error: "Trình duyệt này không hỗ trợ thông báo đẩy" };
   try {
-    const { key, enabled } = await api.getVapidKey();
-    if (!enabled || !key) return { ok: false, error: "Server chưa cấu hình thông báo đẩy (VAPID key)" };
+    const { key, enabled, reason } = await api.getVapidKey();
+    if (!enabled || !key) return { ok: false, error: reason || "Server chưa cấu hình thông báo đẩy (VAPID key)" };
 
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return { ok: false, error: "Bạn đã từ chối quyền thông báo" };

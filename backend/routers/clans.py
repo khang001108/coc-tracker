@@ -14,7 +14,11 @@ router = APIRouter()
 # ─── List all clans ───────────────────────────────────────────────────────────
 
 @router.get("/")
-async def list_clans(_: bool = Depends(require_admin)):
+async def list_clans():
+    """Danh sách clan (id, tên, tag, cờ) — công khai cho MỌI người dùng (không
+    chỉ admin) vì đây chỉ là để hiển thị/chuyển đổi giữa các clan, không lộ
+    thông tin nhạy cảm (admin_token, API key... vẫn chỉ admin xem được qua
+    GET /{clan_id})."""
     sb = get_supabase()
     res = sb.table("clans").select("id, clan_tag, clan_name, created_at").order("id").execute()
     clans = res.data or []

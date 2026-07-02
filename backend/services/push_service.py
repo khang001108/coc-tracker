@@ -22,7 +22,14 @@ VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@example.com")
 
 
 def push_enabled() -> bool:
-    return bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)
+    return bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY and _looks_like_raw_key(VAPID_PUBLIC_KEY))
+
+
+def _looks_like_raw_key(key: str) -> bool:
+    """VAPID key phải là 1 chuỗi base64url gọn (không phải PEM có
+    -----BEGIN-----/xuống dòng) — nếu dán nhầm PEM vào thì báo sai định dạng
+    thay vì để trình duyệt vỡ lỗi atob() khó hiểu."""
+    return "-----BEGIN" not in key and "\n" not in key.strip()
 
 
 def _send_one(sub: dict, payload: dict) -> bool:

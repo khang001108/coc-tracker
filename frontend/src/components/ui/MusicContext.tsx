@@ -81,12 +81,19 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
     if (audioRef.current) audioRef.current.volume = v;
   }
 
-  // Tắt nhạc khi chuyển tab / thoát trang
+  // Tắt nhạc khi chuyển tab / thoát trang — và TỰ BẬT LẠI khi quay lại tab
+  // (trước đây chỉ tắt mà không tự bật lại, phải bấm play thủ công).
+  const wasPlayingRef = useRef(false);
   useEffect(() => {
     function onHide() {
-      if (document.hidden && audioRef.current) {
-        audioRef.current.pause();
+      if (document.hidden) {
+        wasPlayingRef.current = playing;
+        if (audioRef.current) audioRef.current.pause();
         setPlaying(false);
+      } else if (wasPlayingRef.current && config.enabled && audioRef.current) {
+        audioRef.current.play()
+          .then(() => { setPlaying(true); setNeedsUnlock(false); })
+          .catch(() => setNeedsUnlock(true));
       }
     }
     function onUnload() { audioRef.current?.pause(); }
@@ -99,7 +106,7 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("beforeunload", onUnload);
       window.removeEventListener("pagehide", onUnload);
     };
-  }, []);
+  }, [playing, config.enabled]);
 
   return (
     <Ctx.Provider value={{ tracks, config, playing, needsUnlock, volume, currentTrack, playlist, togglePlay, skip, setVolume }}>

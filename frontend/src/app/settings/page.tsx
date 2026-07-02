@@ -81,6 +81,26 @@ function MusicSettings() {
     }
   }
 
+  // Kéo-thả sắp xếp thứ tự phát nhạc
+  const dragIndex = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  function handleDrop(dropIndex: number) {
+    if (dragIndex.current === null || dragIndex.current === dropIndex) {
+      dragIndex.current = null; setDragOverIndex(null);
+      return;
+    }
+    const next = [...tracks];
+    const [moved] = next.splice(dragIndex.current, 1);
+    next.splice(dropIndex, 0, moved);
+    setTracks(next);
+    dragIndex.current = null;
+    setDragOverIndex(null);
+    api.reorderTracks(next.map(t => t.id))
+      .then(() => flashMsg("Đã lưu thứ tự phát nhạc mới", "success"))
+      .catch((e: any) => flashMsg(e.message || "Lỗi lưu thứ tự"));
+  }
+
   return (
     <div className="card space-y-4">
       <audio ref={previewRef} onEnded={() => setPlayingId(null)} />
@@ -120,10 +140,19 @@ function MusicSettings() {
       </div>
 
       <div>
-        <label className="text-xs text-gray-500 mb-1.5 block">Danh sách bài hát ({tracks.length})</label>
+        <label className="text-xs text-gray-500 mb-1.5 block">Danh sách bài hát ({tracks.length}) — kéo-thả ⠿ để đổi thứ tự phát</label>
         <div className="space-y-1.5 mb-3">
-          {tracks.map(t => (
-            <div key={t.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+          {tracks.map((t, i) => (
+            <div key={t.id}
+              draggable
+              onDragStart={() => { dragIndex.current = i; }}
+              onDragOver={e => { e.preventDefault(); setDragOverIndex(i); }}
+              onDragLeave={() => setDragOverIndex(o => (o === i ? null : o))}
+              onDrop={() => handleDrop(i)}
+              onDragEnd={() => { dragIndex.current = null; setDragOverIndex(null); }}
+              className={`flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2 transition-colors ${
+                dragOverIndex === i ? "ring-1 ring-yellow-500 bg-yellow-500/10" : ""}`}>
+              <span className="text-gray-600 cursor-grab active:cursor-grabbing select-none shrink-0" title="Kéo để sắp xếp">⠿</span>
               <button onClick={() => preview(t)} className="p-1.5 rounded-full hover:bg-gray-700 text-yellow-400 shrink-0">
                 {playingId === t.id ? <Pause size={14} /> : <Play size={14} />}
               </button>

@@ -29,7 +29,8 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
   const th     = msg.sender_th ?? thLevel ?? 0;
   const castle = msg.sender_castle ?? castleKey;
   const cannon = msg.sender_cannon ?? cannonKey;
-  const clanName = msg.sender_clan_name as string | undefined;
+  const clanName  = msg.sender_clan_name as string | undefined;
+  const clanBadge = msg.sender_clan_badge as string | undefined;
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[78%] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
@@ -52,9 +53,9 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
             <span className="text-[11px] text-gray-500"><NameEffect effectKey={effectKey}>{msg.sender_name}</NameEffect></span>
             {/* Huy hiệu hội — chỉ hiện ở Chat Toàn Cầu (liên clan) */}
             {clanName && (
-              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+              <span className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
                 style={{ color: "#F4A130", background: "rgba(244,161,48,0.12)", border: "1px solid rgba(244,161,48,0.3)" }}>
-                🏯 {clanName}
+                {clanBadge ? <img src={clanBadge} alt="" className="w-3.5 h-3.5 object-contain" /> : "🏯"} {clanName}
               </span>
             )}
           </span>

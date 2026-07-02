@@ -219,6 +219,7 @@ export const api = {
   getMusicConfig: () => apiFetch("/api/music/config"),
   updateMusicConfig: (data: any) => apiFetch("/api/music/config", { method: "POST", body: JSON.stringify(data) }),
   deleteTrack:  (id: number) => apiFetch(`/api/music/tracks/${id}`, { method: "DELETE" }),
+  reorderTracks: (order: number[]) => apiFetch("/api/music/tracks/reorder", { method: "PUT", body: JSON.stringify({ order }) }),
   uploadTrack: async (file: File, title?: string) => {
     const token = getAdminToken();
     const fd = new FormData();
@@ -238,8 +239,9 @@ export const api = {
 
   // Member identity (claim/login)
   getRoster:    () => apiFetch("/api/member/roster"),
-  claimMember:  (player_tag: string, player_name: string, pin: string) =>
-    apiFetch("/api/member/claim", { method: "POST", body: JSON.stringify({ player_tag, player_name, pin }) }),
+  claimMember:  (player_tag: string, player_name: string, pin: string, setup_code: string) =>
+    apiFetch("/api/member/claim", { method: "POST", body: JSON.stringify({ player_tag, player_name, pin, setup_code }) }),
+  isSetupCodeRequired: () => apiFetch("/api/member/setup-code-required"),
   loginMember:  (player_tag: string, pin: string) =>
     apiFetch("/api/member/login", { method: "POST", body: JSON.stringify({ player_tag, pin }) }),
   releaseMember: (player_tag: string) =>

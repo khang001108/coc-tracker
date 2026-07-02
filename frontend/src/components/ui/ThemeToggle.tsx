@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
+import Script from "next/script";
 
 const KEY = "coc_theme";
 
@@ -9,9 +10,12 @@ export function applyTheme(theme: "dark" | "gold") {
 }
 
 export function ThemeInitScript() {
-  // Chạy trước khi React hydrate để tránh nháy sai theme lúc tải trang
+  // Chạy TRƯỚC khi React hydrate (strategy="beforeInteractive") để tránh
+  // nháy/về sai theme lúc tải trang. Dùng next/script thay vì thẻ <script>
+  // thường trong <head> vì App Router không đảm bảo <script> thường trong
+  // <head> luôn chạy trước hydrate — beforeInteractive mới đảm bảo điều đó.
   const code = `(function(){try{var t=localStorage.getItem('${KEY}');if(t==='gold'){document.documentElement.classList.add('theme-gold');}}catch(e){}})();`;
-  return <script dangerouslySetInnerHTML={{ __html: code }} />;
+  return <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: code }} />;
 }
 
 export function ThemeToggle({ variant = "full" }: { variant?: "full" | "icon" }) {
@@ -20,6 +24,9 @@ export function ThemeToggle({ variant = "full" }: { variant?: "full" | "icon" })
   useEffect(() => {
     const saved = (localStorage.getItem(KEY) as "dark" | "gold") || "dark";
     setTheme(saved);
+    // Đảm bảo class luôn khớp với localStorage kể cả khi script pre-hydrate
+    // vì lý do gì đó chưa kịp áp dụng (ví dụ điều hướng SPA giữa các trang).
+    applyTheme(saved);
   }, []);
 
   function toggle() {

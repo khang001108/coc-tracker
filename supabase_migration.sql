@@ -481,3 +481,18 @@ ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "service_all" ON push_subscriptions;
 CREATE POLICY "service_all" ON push_subscriptions FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.push_subscriptions TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 4 (đổi clan cho member, cờ hội trong chat, xác minh thành viên)
+-- ════════════════════════════════════════════════════════════════
+
+-- Chat: lưu kèm URL cờ/huy hiệu hội thật của người gửi (thay vì icon tự vẽ)
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_clan_badge TEXT;
+
+-- Ghi chú: KHÔNG cần cột DB cho "mã xác minh thành viên" — mã này được cấu
+-- hình bằng biến môi trường MEMBER_SETUP_CODE trên Render (Settings →
+-- Environment), không lưu trong CSDL. Để trống/không set = tắt yêu cầu xác
+-- minh (ai bấm "Đây là tôi" cũng nhận được luôn, như trước giờ).
+
+-- Nhạc: cho phép kéo-thả sắp xếp thứ tự phát trong Cài đặt
+ALTER TABLE soundtracks ADD COLUMN IF NOT EXISTS sort_order INTEGER;

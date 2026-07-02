@@ -68,14 +68,12 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
       setCurrentInfo(getCurrentClanInfo());
     }
     refresh();
-    if (isAdmin) {
-      api.listClans().then((data: ClanInfo[]) => setClans(data)).catch(() => {});
-    }
+    api.listClans().then((data: ClanInfo[]) => setClans(data)).catch(() => {});
     return onClanChanged(() => refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const switchable = isAdmin && clans.length > 1;
+  const switchable = clans.length > 1;
 
   // ── Chế độ "bọc nội dung có sẵn" (header trang Tổng quan) ─────────────────
   if (children) {
@@ -97,8 +95,8 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
   }
 
   // ── Chế độ "badge" mặc định (Sidebar desktop) ─────────────────────────────
-  // Ẩn hoàn toàn nếu chỉ có 1 clan và không phải admin
-  if (!isAdmin && clans.length <= 1) return null;
+  // Ẩn hoàn toàn nếu chỉ có 1 clan
+  if (clans.length <= 1) return null;
 
   const name = currentInfo?.clan_name || "Clan #" + currentId;
   const tag  = currentInfo?.clan_tag  || "";
