@@ -13,8 +13,14 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = getAdminToken();
-    setAuthed(!!token);
-    setChecking(false);
+    if (!token) { setAuthed(false); setChecking(false); return; }
+    // Xác thực lại với server — nếu ADMIN_PASSWORD đã bị đổi thì token cũ
+    // (ký bằng mật khẩu cũ) sẽ không còn hợp lệ, tự động đăng xuất khỏi
+    // MỌI thiết bị/trình duyệt đang đăng nhập, không chỉ nơi vừa đổi mật khẩu.
+    api.verifyAdminToken()
+      .then(() => setAuthed(true))
+      .catch(() => { clearAdminToken(); setAuthed(false); })
+      .finally(() => setChecking(false));
   }, []);
 
   async function handleLogin(e: React.FormEvent) {

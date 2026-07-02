@@ -22,6 +22,13 @@ async def login(request: Request):
         raise HTTPException(401, "Sai mật khẩu")
     return {"token": create_token()}
 
+@router.get("/verify-token")
+async def verify_token(_: bool = Depends(require_admin)):
+    """Kiểm tra token admin hiện tại còn hợp lệ không — dùng lúc mở trang để
+    tự đăng xuất nếu ADMIN_PASSWORD đã bị đổi (token cũ ký bằng mật khẩu cũ
+    sẽ không khớp chữ ký nữa, tự động vô hiệu, không cần lưu blacklist)."""
+    return {"ok": True}
+
 @router.get("/")
 async def get_settings(_: bool = Depends(require_admin)):
     try:

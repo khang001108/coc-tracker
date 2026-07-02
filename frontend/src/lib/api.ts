@@ -92,6 +92,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ password }),
     }),
+  verifyAdminToken: () => apiFetch("/api/settings/verify-token"),
 
   // Settings
   getSettings:    () => apiFetch("/api/settings/"),
