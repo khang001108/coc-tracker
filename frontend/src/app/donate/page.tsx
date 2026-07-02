@@ -5,21 +5,28 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { Heart, Gamepad2, ArrowUpDown } from "lucide-react";
+import { NameEffect } from "@/components/ui/NameEffect";
+import { NumberEffect } from "@/components/ui/NumberEffect";
 
 type SortKey = "donations" | "donationsReceived" | "ratio" | "name" | "th";
 
 export default function DonatePage() {
   const [members, setMembers] = useState<any[]>([]);
+  const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"donate" | "games">("donate");
   const [sortKey, setSortKey] = useState<SortKey>("donations");
   const [sortAsc, setSortAsc] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getClanGames()
-      .then(d => setMembers(d.members || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.allSettled([api.getClanGames(), api.getRoster()]).then(([d, roster]) => {
+      if (d.status === "fulfilled") setMembers((d.value as any).members || []);
+      if (roster.status === "fulfilled") {
+        const map: Record<string, any> = {};
+        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+        setRosterMap(map);
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   function toggleSort(key: SortKey) {
@@ -85,7 +92,9 @@ export default function DonatePage() {
               <p className="text-xs text-gray-500 mt-1">Tổng nhận</p>
             </div>
             <div className="card text-center">
-              <p className="text-sm font-bold text-yellow-400 truncate">{topDonor?.name || "—"}</p>
+              <p className="text-sm font-bold text-yellow-400 truncate">
+                <NameEffect effectKey={topDonor ? rosterMap[topDonor.tag]?.equipped_effect : null}>{topDonor?.name || "—"}</NameEffect>
+              </p>
               <p className="text-xs text-gray-500 mt-1">Top donor</p>
               {topDonor && <p className="text-xs text-green-400">{formatNumber(topDonor.donations)}</p>}
             </div>
@@ -110,11 +119,13 @@ export default function DonatePage() {
                     <div className="col-span-1">
                       <div className="w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center"
                         style={{ color: thColor(m.th), background: thColor(m.th) + "22" }}>
-                        {m.th}
+                        <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
                       </div>
                     </div>
                     <div className="col-span-4 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{m.name}</p>
+                      <p className="text-sm font-medium text-white truncate">
+                        <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                      </p>
                       <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                     </div>
                     <div className="col-span-3 text-right">
@@ -152,9 +163,13 @@ export default function DonatePage() {
                 <span className={`text-sm font-bold w-6 text-right shrink-0 ${
                   i < 3 ? ["text-yellow-400","text-gray-300","text-amber-600"][i] : "text-gray-600"
                 }`}>{i + 1}</span>
-                <div className="th-badge text-[10px]" style={{ color: thColor(m.th) }}>{m.th}</div>
+                <div className="th-badge text-[10px]" style={{ color: thColor(m.th) }}>
+                  <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{m.name}</p>
+                  <p className="text-sm font-medium text-white truncate">
+                    <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                  </p>
                   <div className="progress-bar mt-1">
                     <div className="progress-fill" style={{ width: `${Math.min((m.donations / (sorted[0]?.donations || 1)) * 100, 100)}%` }} />
                   </div>

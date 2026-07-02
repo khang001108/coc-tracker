@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { formatDate, thColor } from "@/lib/utils";
 import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List } from "lucide-react";
 import WarBattlefieldMap from "./WarBattlefieldMap";
+import { NameEffect } from "@/components/ui/NameEffect";
 
 function AttackBar({ attacks, maxAttacks = 2 }: { attacks: any[]; maxAttacks?: number }) {
   return (
@@ -26,7 +27,7 @@ function AttackBar({ attacks, maxAttacks = 2 }: { attacks: any[]; maxAttacks?: n
   );
 }
 
-function WarMemberRow({ member, mapPosition, maxAttacks = 2 }: { member: any; mapPosition: number; maxAttacks?: number }) {
+function WarMemberRow({ member, mapPosition, maxAttacks = 2, rosterMap = {} }: { member: any; mapPosition: number; maxAttacks?: number; rosterMap?: Record<string, any> }) {
   const attacks = member.attacks || [];
   const totalStars = attacks.reduce((s: number, a: any) => s + a.stars, 0);
   const bestDestruction = attacks.length > 0 ? Math.max(...attacks.map((a: any) => a.destructionPercentage)) : 0;
@@ -38,7 +39,9 @@ function WarMemberRow({ member, mapPosition, maxAttacks = 2 }: { member: any; ma
         {member.townHallLevel}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">{member.name}</p>
+        <p className="text-sm font-medium text-white truncate">
+          <NameEffect effectKey={rosterMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
+        </p>
         {attacks.length > 0 && (
           <p className="text-xs text-gray-500">{bestDestruction.toFixed(0)}% phá hủy</p>
         )}
@@ -61,6 +64,7 @@ export default function WarPage() {
   const [cwlNext, setCwlNext] = useState<any>(null);
   const [warLog, setWarLog] = useState<any[]>([]);
   const [cwl, setCwl] = useState<any>(null);
+  const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"current" | "log" | "cwl">("current");
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [loading, setLoading] = useState(true);
@@ -68,9 +72,14 @@ export default function WarPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [w, wl, c, cwlWar] = await Promise.allSettled([
-        api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar()
+      const [w, wl, c, cwlWar, roster] = await Promise.allSettled([
+        api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar(), api.getRoster()
       ]);
+      if (roster.status === "fulfilled") {
+        const map: Record<string, any> = {};
+        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+        setRosterMap(map);
+      }
       let warData = w.status === "fulfilled" ? w.value : null;
       // Nếu không có war thường, kiểm tra CWL war (vòng hiện tại)
       if ((!warData || warData.state === "notInWar") && cwlWar.status === "fulfilled") {
@@ -252,7 +261,7 @@ export default function WarPage() {
               ) : (
                 <div className="card">
                   {clanMembers.map((m: any) => (
-                    <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} maxAttacks={maxAttacks} />
+                    <WarMemberRow key={m.tag} member={m} mapPosition={m.mapPosition} maxAttacks={maxAttacks} rosterMap={rosterMap} />
                   ))}
                 </div>
               )}

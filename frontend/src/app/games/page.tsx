@@ -3,9 +3,12 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { Gamepad2, Trophy, RefreshCw } from "lucide-react";
+import { NameEffect } from "@/components/ui/NameEffect";
+import { NumberEffect } from "@/components/ui/NumberEffect";
 
 export default function GamesPage() {
   const [members, setMembers] = useState<any[]>([]);
+  const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -14,8 +17,13 @@ export default function GamesPage() {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const d = await api.getClanGames();
-      setMembers(d.members || []);
+      const [d, roster] = await Promise.allSettled([api.getClanGames(), api.getRoster()]);
+      if (d.status === "fulfilled") setMembers((d.value as any).members || []);
+      if (roster.status === "fulfilled") {
+        const map: Record<string, any> = {};
+        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+        setRosterMap(map);
+      }
       setLastUpdate(new Date());
     } catch {}
     finally {
@@ -96,10 +104,12 @@ export default function GamesPage() {
                     </span>
                     <div className="w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center shrink-0"
                       style={{ color: thColor(m.th), background: thColor(m.th) + "22" }}>
-                      {m.th}
+                      <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-sm font-semibold text-white truncate">
+                        <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {done && <span className="badge-green text-[10px]">✓ Hoàn thành</span>}

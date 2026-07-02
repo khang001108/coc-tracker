@@ -4,6 +4,7 @@ import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
+import { NameEffect } from "@/components/ui/NameEffect";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
 const STAR_FILL = (s: number) =>
@@ -63,7 +64,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
         {/* Name + stars + cannons */}
         <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
           <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: "var(--py-card-text, #e5e7eb)" }}>
-            {member.name}
+            <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
           </p>
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             <Stars stars={totalStars} />

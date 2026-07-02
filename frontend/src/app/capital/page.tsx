@@ -5,16 +5,22 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { Castle, TrendingUp, Users, Coins, AlertCircle } from "lucide-react";
+import { NameEffect } from "@/components/ui/NameEffect";
 
 export default function CapitalPage() {
   const [raid, setRaid] = useState<any>(null);
+  const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getRaidSeasons()
-      .then(setRaid)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.allSettled([api.getRaidSeasons(), api.getRoster()]).then(([r, roster]) => {
+      if (r.status === "fulfilled") setRaid(r.value);
+      if (roster.status === "fulfilled") {
+        const map: Record<string, any> = {};
+        (roster.value as any[]).forEach(x => { map[x.tag] = x; });
+        setRosterMap(map);
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   const members: any[] = raid?.members || [];
@@ -85,7 +91,7 @@ export default function CapitalPage() {
               </p>
               <div className="flex flex-wrap gap-2">
                 {notRaided.map((m: any) => (
-                  <span key={m.tag} className="badge-red">{m.name}</span>
+                  <span key={m.tag} className="badge-red"><NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect></span>
                 ))}
               </div>
             </div>
@@ -105,7 +111,9 @@ export default function CapitalPage() {
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{m.name}</p>
+                      <p className="text-sm font-medium text-white truncate">
+                        <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                      </p>
                       <div className="progress-bar mt-1.5 w-full">
                         <div className="progress-fill" style={{ width: `${pct}%` }} />
                       </div>

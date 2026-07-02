@@ -7,6 +7,8 @@ import { ShieldArt, GoldCoinArt, SwordsArt } from "@/components/ui/HeroArt";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
 import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown } from "lucide-react";
+import { NameEffect } from "@/components/ui/NameEffect";
+import { NumberEffect } from "@/components/ui/NumberEffect";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   const [clan, setClan] = useState<any>(null);
   const [war, setWar] = useState<any>(null);
   const [cwl, setCwl] = useState<any>(null);
+  const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -47,10 +50,17 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const [c, w, cw] = await Promise.allSettled([api.getClan(), api.getCurrentWar(), api.getCWLCurrentWar()]);
+      const [c, w, cw, roster] = await Promise.allSettled([
+        api.getClan(), api.getCurrentWar(), api.getCWLCurrentWar(), api.getRoster(),
+      ]);
       if (c.status === "fulfilled") setClan(c.value); else throw c.reason;
       setWar(w.status === "fulfilled" ? w.value : null);
       setCwl(cw.status === "fulfilled" ? cw.value : null);
+      if (roster.status === "fulfilled") {
+        const map: Record<string, any> = {};
+        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+        setRosterMap(map);
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -246,10 +256,14 @@ export default function DashboardPage() {
               <div key={m.tag} className="flex items-center gap-3 py-3">
                 <span className="text-gray-600 text-sm w-6 text-right shrink-0">{i + 1}</span>
                 <div className="th-badge" style={{ background: `linear-gradient(135deg, ${thColor(m.townHallLevel)}33, #1a1a1a)`, borderColor: thColor(m.townHallLevel) + "44" }}>
-                  <span style={{ color: thColor(m.townHallLevel) }}>{m.townHallLevel}</span>
+                  <span style={{ color: thColor(m.townHallLevel) }}>
+                    <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.townHallLevel}</NumberEffect>
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{m.name}</p>
+                  <p className="text-sm font-medium text-white truncate">
+                    <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                  </p>
                   <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                 </div>
                 <div className="text-right shrink-0">
