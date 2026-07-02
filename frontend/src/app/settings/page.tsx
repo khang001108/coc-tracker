@@ -264,13 +264,68 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       <div className={embedded ? "contents" : "columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6"}>
 
-      {/* ── Quản lý Multi-Clan ── */}
+      {/* ── CoC API Key ── */}
       <div className="card space-y-4">
-        <h2 className="font-bold text-white flex items-center gap-2">
-          🏰 Quản lý Clan
-        </h2>
-        <p className="text-xs text-gray-500">Thêm/sửa/xoá clan. Mỗi clan cần CoC API key riêng.</p>
-        <ClanManagement />
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+            <Key size={16} className="text-yellow-400" />
+          </div>
+          <h2 className="font-bold text-white">Clash of Clans API</h2>
+        </div>
+
+        <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
+          <p className="font-semibold">📌 Cách lấy API Key:</p>
+          <ol className="list-decimal list-inside space-y-0.5 text-blue-400">
+            <li>Vào <a href="https://developer.clashofclans.com" target="_blank" className="underline hover:text-white">developer.clashofclans.com</a></li>
+            <li>Đăng nhập bằng tài khoản Supercell</li>
+            <li>Tạo key mới với <strong>IP của server Render</strong> (xem trong Dashboard → Render → Settings → Static IP)</li>
+            <li>Copy key và dán vào đây</li>
+          </ol>
+        </div>
+
+        <div>
+          <label className="label">API Key</label>
+          <div className="relative">
+            <input
+              className="input pr-10"
+              type={showKey ? "text" : "password"}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              name="coc_api_key_field"
+              data-lpignore="true"
+              data-1p-ignore
+              value={settings.coc_api_key || ""}
+              onChange={e => set("coc_api_key", e.target.value)}
+              placeholder="eyJ0eXAiOiJKV1Qi..."
+            />
+            <button onClick={() => setShowKey(s => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Clan Tag</label>
+          <input className="input" value={settings.clan_tag || ""}
+            onChange={e => set("clan_tag", e.target.value.toUpperCase())}
+            placeholder="#ABC123" />
+          <p className="text-xs text-gray-600 mt-1">Ví dụ: #2PP (có dấu #)</p>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={testClan} disabled={!!testing}
+            className="btn-secondary flex items-center gap-2 text-sm">
+            {testing === "clan" ? <Loader2 size={14} className="animate-spin" /> : null}
+            Test kết nối
+          </button>
+          <button onClick={() => saveMultiple(["coc_api_key", "clan_tag"])} disabled={!!saving}
+            className="btn-gold flex items-center gap-2 text-sm">
+            {saving?.includes("coc_api_key") ? <Loader2 size={14} className="animate-spin" /> : null}
+            Lưu
+          </button>
+        </div>
       </div>
 
       {/* ── CoC API Key ── */}
@@ -335,6 +390,15 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             Lưu
           </button>
         </div>
+      </div>
+
+      {/* ── Quản lý Multi-Clan ── */}
+      <div className="card space-y-4">
+        <h2 className="font-bold text-white flex items-center gap-2">
+          🏰 Quản lý Clan
+        </h2>
+        <p className="text-xs text-gray-500">Thêm/sửa/xoá clan. Mỗi clan cần CoC API key riêng.</p>
+        <ClanManagement />
       </div>
 
       {/* ── Discord ── */}
@@ -872,3 +936,4 @@ export default function SettingsPage() {
     </AdminGate>
   );
 }
+

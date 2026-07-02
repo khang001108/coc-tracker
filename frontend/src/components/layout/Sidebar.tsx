@@ -70,6 +70,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
+      <div className="px-3 pt-2 pb-1"><ClanSwitcher /></div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
