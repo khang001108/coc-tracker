@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, RefreshCw } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
+import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
@@ -1051,6 +1052,7 @@ export default function SettingsPage() {
 
       {/* Ai cũng chỉnh được — không cần đăng nhập admin, vì đây là quyền của
           từng trình duyệt/thiết bị, không phải cấu hình clan. */}
+      <InstallAppButton />
       <PushNotificationSettings />
 
       <AdminGate>
