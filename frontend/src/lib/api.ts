@@ -73,6 +73,9 @@ export const api = {
   getCurrentWar:  () => apiFetch("/api/war/current"),
   getWarLog:      () => apiFetch("/api/war/log"),
   getCWL:         () => apiFetch("/api/war/cwl"),
+  getWarActivity: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/war-activity?period=${period}`),
+  getDonationTrend: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/donation-trend?period=${period}`),
+  cleanupStatsNow: () => apiFetch("/api/settings/cleanup-stats-now", { method: "POST" }),
   getCWLCurrentWar: () => apiFetch("/api/war/cwl/current"),
 
   // Capital

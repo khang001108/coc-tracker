@@ -520,17 +520,39 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       {/* ── Xoá lịch sử chat tự động ── */}
       <div className="card space-y-3">
-        <h2 className="font-bold text-white">💬 Lịch sử Chat</h2>
-        <p className="text-xs text-gray-500">Tin nhắn cũ hơn số ngày dưới đây sẽ tự động bị xoá mỗi ngày.</p>
+        <h2 className="font-bold text-white">💬 Lịch sử Chat Toàn Cầu</h2>
+        <p className="text-xs text-gray-500">Tin nhắn ở Chat Toàn Cầu (liên clan) cũ hơn số ngày dưới đây sẽ tự động bị xoá. Chat Clan không bị ảnh hưởng, luôn được giữ lại.</p>
         <div className="flex items-center gap-2">
           <input type="number" min={1} max={365} className="input !w-28"
-            value={settings.chat_retention_days ?? "30"}
+            value={settings.chat_retention_days ?? "1"}
             onChange={e => set("chat_retention_days", e.target.value)} />
           <span className="text-sm text-gray-400">ngày</span>
-          <button onClick={() => api.saveSetting("chat_retention_days", settings.chat_retention_days || "30")}
+          <button onClick={() => api.saveSetting("chat_retention_days", settings.chat_retention_days || "1")}
             className="btn-gold text-sm ml-auto">Lưu</button>
         </div>
         <p className="text-[11px] text-gray-600">Đặt 0 để không tự xoá.</p>
+      </div>
+
+      {/* ── Xoá dữ liệu thống kê tích luỹ ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">📊 Dữ liệu thống kê tích luỹ</h2>
+        <p className="text-xs text-gray-500">
+          Lượt tham chiến war + lịch sử donate dùng để tính "War yếu nhất / Hay bỏ war / Donate ít nhất" ở trang Thống kê.
+          Dữ liệu cũ hơn số ngày dưới đây sẽ tự động bị xoá — để trống/0 để giữ vĩnh viễn (khuyến khích nếu muốn xem "Từ đầu").
+        </p>
+        <div className="flex items-center gap-2">
+          <input type="number" min={0} max={3650} className="input !w-28"
+            value={settings.stats_retention_days ?? "0"}
+            onChange={e => set("stats_retention_days", e.target.value)} />
+          <span className="text-sm text-gray-400">ngày</span>
+          <button onClick={() => api.saveSetting("stats_retention_days", settings.stats_retention_days || "0")}
+            className="btn-gold text-sm ml-auto">Lưu</button>
+        </div>
+        <button onClick={async () => {
+          if (!confirm("Xoá ngay dữ liệu thống kê cũ hơn số ngày đã cấu hình ở trên?")) return;
+          try { await api.cleanupStatsNow(); showToast("Đã dọn dẹp xong!"); }
+          catch (e: any) { showToast(e.message, "error"); }
+        }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
       </div>
 
       {/* ── Dọn dẹp tài sản thành viên rời clan ── */}

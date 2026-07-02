@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ShieldArt, GoldCoinArt, SwordsArt } from "@/components/ui/HeroArt";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
-import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown } from "lucide-react";
+import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 
@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [tagCopied, setTagCopied] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -126,7 +127,17 @@ export default function DashboardPage() {
                   <span className="badge-gold text-xs">{clan.warLeague.name}</span>
                 )}
               </h1>
-              <p className="page-subtitle">#{clan?.tag?.replace("#", "") || "—"}</p>
+              <p className="page-subtitle flex items-center gap-1.5">
+                #{clan?.tag?.replace("#", "") || "—"}
+                {clan?.tag && (
+                  <span
+                    onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(clan.tag); setTagCopied(true); setTimeout(() => setTagCopied(false), 1500); }}
+                    title="Copy tag clan"
+                    className="cursor-pointer text-gray-500 hover:text-yellow-400 transition-colors">
+                    {tagCopied ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </ClanSwitcher>

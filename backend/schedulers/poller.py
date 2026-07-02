@@ -8,7 +8,7 @@ donate, và coin thưởng sao war hoạt động độc lập, đúng của cla
 """
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config
+from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config, get_cwl_group, get_cwl_war
 from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave
 from supabase_client import get_supabase
 from datetime import datetime, timedelta
@@ -25,6 +25,7 @@ async def start_scheduler():
     scheduler.add_job(poll_members,   IntervalTrigger(minutes=10), id="poll_members",   replace_existing=True)
     scheduler.add_job(poll_donations, IntervalTrigger(minutes=10), id="poll_donations", replace_existing=True)
     scheduler.add_job(poll_asset_cleanup, IntervalTrigger(hours=6), id="poll_asset_cleanup", replace_existing=True)
+    scheduler.add_job(poll_stats_cleanup, IntervalTrigger(hours=12), id="poll_stats_cleanup", replace_existing=True)
     scheduler.add_job(poll_global_chat_cleanup, IntervalTrigger(hours=1), id="poll_global_chat_cleanup", replace_existing=True)
     scheduler.start()
     log.info("Scheduler started")
@@ -94,7 +95,62 @@ async def poll_clan():
         except Exception as e:
             log.error(f"poll_clan error (clan_id={c.get('id')}): {e}")
 
+def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "random"):
+    """Ghi lại lượt tham chiến của từng thành viên khi 1 war đã kết thúc (hoặc
+    đang ở battle day cuối) — dùng upsert nên gọi lặp lại nhiều lần (mỗi lần
+    poll) vẫn an toàn, không bị nhân đôi dữ liệu."""
+    end_time = war_data.get("endTime")
+    if not end_time:
+        return
+    attacks_allowed = war_data.get("attacksPerMember") or (1 if war_type == "cwl" else 2)
+    members = war_data.get("clan", {}).get("members", [])
+    rows = []
+    for m in members:
+        attacks = m.get("attacks", [])
+        rows.append({
+            "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
+            "player_tag": m.get("tag"), "player_name": m.get("name", "?"),
+            "attacks_used": len(attacks), "attacks_allowed": attacks_allowed,
+            "stars_earned": sum(a.get("stars", 0) for a in attacks),
+        })
+    if not rows:
+        return
+    try:
+        sb.table("war_participation_log").upsert(rows, on_conflict="clan_id,war_end_time,player_tag").execute()
+    except Exception as e:
+        log.error(f"_log_war_participation error (clan_id={clan_id}): {e}")
+
+
+async def _log_cwl_participation(sb, clan_id: int, tag: str):
+    """Với CWL: tìm vòng đang 'warEnded' gần nhất và ghi lại lượt tham chiến."""
+    try:
+        group = await get_cwl_group(tag, clan_id=clan_id)
+    except Exception:
+        return
+    for round_data in group.get("rounds", []):
+        for war_tag in round_data.get("warTags", []):
+            if war_tag == "#0":
+                continue
+            try:
+                w = await get_cwl_war(war_tag, clan_id=clan_id)
+            except Exception:
+                continue
+            if w.get("state") != "warEnded":
+                continue
+            our_side = None
+            if w.get("clan", {}).get("tag") == tag:
+                our_side = "clan"
+            elif w.get("opponent", {}).get("tag") == tag:
+                our_side = "opponent"
+            if not our_side:
+                continue
+            if our_side == "opponent":
+                w["clan"], w["opponent"] = w["opponent"], w["clan"]
+            _log_war_participation(sb, clan_id, w, war_type="cwl")
+
+
 async def poll_war():
+    sb = get_supabase()
     clans = await get_all_clans()
     for c in clans:
         try:
@@ -116,6 +172,13 @@ async def poll_war():
                 if missing:
                     end_time = data.get("endTime", "")
                     await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
+
+            # War đã kết thúc — ghi lại lượt tham chiến từng người cho thống kê tích luỹ
+            if state == "warEnded":
+                _log_war_participation(sb, c["id"], data, war_type="random")
+
+            # CWL: ghi lại vòng vừa kết thúc (nếu có)
+            await _log_cwl_participation(sb, c["id"], tag)
 
             log.info(f"War snapshot updated (clan_id={c['id']}): {state}")
         except Exception as e:
@@ -263,12 +326,28 @@ async def poll_donations():
             tag = c.get("clan_tag")
             if not tag: continue
             members = await get_clan_members(tag, clan_id=clan_id)
-            res = sb.table("donation_tracker").select("player_tag,last_donations").execute()
-            prev = {r["player_tag"]: r["last_donations"] for r in res.data}
+            res = sb.table("donation_tracker").select("player_tag,last_donations,last_donations_received").execute()
+            prev = {r["player_tag"]: r for r in res.data}
 
             for m in members:
                 cur = m.get("donations", 0)
-                old = prev.get(m["tag"])
+                cur_recv = m.get("donationsReceived", 0)
+                prev_row = prev.get(m["tag"])
+                old = prev_row["last_donations"] if prev_row else None
+                old_recv = prev_row.get("last_donations_received", 0) if prev_row else 0
+
+                # CoC tự reset donate hàng tuần (số giảm đột ngột về gần 0) —
+                # phát hiện lúc đó để lưu lại tổng của tuần vừa qua, dùng cho
+                # thống kê "donate ít nhất" theo tuần/tháng/từ đầu.
+                if old is not None and cur < old:
+                    try:
+                        sb.table("donation_snapshot_log").insert({
+                            "clan_id": clan_id, "player_tag": m["tag"], "player_name": m.get("name", "?"),
+                            "donations": old, "donations_received": old_recv,
+                        }).execute()
+                    except Exception:
+                        pass
+
                 if old is not None and cur > old:
                     diff = cur - old
                     msg_row = {
@@ -287,19 +366,25 @@ async def poll_donations():
                     if acc.data:
                         new_coins = (acc.data[0].get("coins") or 0) + diff
                         sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
-                sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur}).execute()
+                sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur, "last_donations_received": cur_recv}).execute()
 
             log.info(f"Donation deltas checked (clan_id={clan_id})")
         except Exception as e:
             log.error(f"poll_donations error (clan_id={clan_id}): {e}")
 
 async def poll_global_chat_cleanup():
-    """Chat Toàn Cầu tự làm mới — xoá tin nhắn cũ hơn 24h (Chat Clan giữ nguyên)."""
+    """Chat Toàn Cầu tự làm mới — xoá tin nhắn cũ hơn N ngày (cấu hình trong
+    Cài đặt → 'chat_retention_days', mặc định 1 ngày). Chat Clan giữ nguyên,
+    không tự xoá."""
     try:
         sb = get_supabase()
-        cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        cfg = sb.table("settings").select("value").eq("key", "chat_retention_days").execute()
+        days = float(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"] else 1
+        if days <= 0:
+            return
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
         sb.table("chat_messages").delete().eq("room", "global").lt("created_at", cutoff).execute()
-        log.info("Global chat cleaned up (>24h)")
+        log.info(f"Global chat cleaned up (>{days} ngày)")
     except Exception as e:
         log.error(f"poll_global_chat_cleanup error: {e}")
 
@@ -331,3 +416,20 @@ async def poll_asset_cleanup():
             log.info(f"Cleared assets for {tag} (left clan > {days} days)")
     except Exception as e:
         log.error(f"poll_asset_cleanup error: {e}")
+
+async def poll_stats_cleanup():
+    """Xoá dữ liệu thống kê tích luỹ (lượt tham chiến war, lịch sử donate) cũ
+    hơn N ngày (cấu hình trong Cài đặt → 'stats_retention_days'). Để trống/0 =
+    giữ vĩnh viễn, không tự xoá."""
+    try:
+        sb = get_supabase()
+        cfg = sb.table("settings").select("value").eq("key", "stats_retention_days").execute()
+        days = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 0
+        if days <= 0:
+            return
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        sb.table("war_participation_log").delete().lt("created_at", cutoff).execute()
+        sb.table("donation_snapshot_log").delete().lt("snapshot_at", cutoff).execute()
+        log.info(f"Stats cleanup: removed records older than {days} days")
+    except Exception as e:
+        log.error(f"poll_stats_cleanup error: {e}")

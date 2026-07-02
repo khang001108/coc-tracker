@@ -11,7 +11,7 @@ ALLOWED_KEYS = [
     "discord_webhook",
     "telegram_bot_token", "telegram_chat_id",
     "notify_war", "notify_raid", "notify_donate", "notify_member",
-    "asset_cleanup_days", "coins_per_war_star",
+    "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
 ]
 
 @router.post("/login")
@@ -27,6 +27,15 @@ async def verify_token(_: bool = Depends(require_admin)):
     """Kiểm tra token admin hiện tại còn hợp lệ không — dùng lúc mở trang để
     tự đăng xuất nếu ADMIN_PASSWORD đã bị đổi (token cũ ký bằng mật khẩu cũ
     sẽ không khớp chữ ký nữa, tự động vô hiệu, không cần lưu blacklist)."""
+    return {"ok": True}
+
+@router.post("/cleanup-stats-now")
+async def cleanup_stats_now(_: bool = Depends(require_admin)):
+    """Xoá ngay dữ liệu thống kê tích luỹ (lượt tham chiến war, lịch sử
+    donate) theo số ngày cấu hình ở stats_retention_days — dùng khi admin
+    bấm nút 'Xoá ngay' thay vì đợi job chạy tự động."""
+    from schedulers.poller import poll_stats_cleanup
+    await poll_stats_cleanup()
     return {"ok": True}
 
 @router.get("/")

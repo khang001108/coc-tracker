@@ -502,3 +502,51 @@ ALTER TABLE soundtracks ADD COLUMN IF NOT EXISTS sort_order INTEGER;
 -- người gửi thuộc 1 clan khác với clan đang xem)
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_effect TEXT;
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_number_effect TEXT;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 5 (Thống kê tích luỹ: war yếu/hay bỏ war/donate ít,
+-- theo tuần/tháng/từ đầu) + xoá dữ liệu định kỳ
+-- ════════════════════════════════════════════════════════════════
+
+-- Ghi lại lượt tham chiến của TỪNG thành viên mỗi khi 1 war kết thúc — để
+-- tính "hay bỏ war" (không đánh hết lượt) và "war yếu" (TB sao/war) tích
+-- luỹ theo thời gian, thay vì chỉ nhìn war hiện tại.
+CREATE TABLE IF NOT EXISTS war_participation_log (
+  id               SERIAL PRIMARY KEY,
+  clan_id          INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  war_end_time     TEXT NOT NULL,
+  war_type         TEXT NOT NULL DEFAULT 'random',  -- 'random' | 'cwl'
+  player_tag       TEXT NOT NULL,
+  player_name      TEXT NOT NULL,
+  attacks_used     INTEGER NOT NULL DEFAULT 0,
+  attacks_allowed  INTEGER NOT NULL DEFAULT 2,
+  stars_earned     INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, war_end_time, player_tag)
+);
+CREATE INDEX IF NOT EXISTS idx_war_participation_clan_time ON war_participation_log(clan_id, created_at);
+
+-- Ghi lại tổng donate của từng người MỖI KHI phát hiện CoC reset donate hàng
+-- tuần (số donate tự nhiên giảm về 0) — để cộng dồn tính theo tuần/tháng.
+CREATE TABLE IF NOT EXISTS donation_snapshot_log (
+  id                   SERIAL PRIMARY KEY,
+  clan_id              INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag           TEXT NOT NULL,
+  player_name          TEXT NOT NULL,
+  donations            INTEGER NOT NULL DEFAULT 0,
+  donations_received   INTEGER NOT NULL DEFAULT 0,
+  snapshot_at          TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_donation_snapshot_clan_time ON donation_snapshot_log(clan_id, snapshot_at);
+
+ALTER TABLE donation_tracker ADD COLUMN IF NOT EXISTS last_donations_received INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE war_participation_log  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE donation_snapshot_log  ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON war_participation_log;
+CREATE POLICY "service_all" ON war_participation_log FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON donation_snapshot_log;
+CREATE POLICY "service_all" ON donation_snapshot_log FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_participation_log  TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.donation_snapshot_log  TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;

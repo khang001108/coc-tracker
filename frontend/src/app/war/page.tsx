@@ -6,7 +6,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatDate, thColor } from "@/lib/utils";
-import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List } from "lucide-react";
+import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check } from "lucide-react";
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
 
@@ -68,6 +68,7 @@ export default function WarPage() {
   const [tab, setTab] = useState<"current" | "log" | "cwl">("current");
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [loading, setLoading] = useState(true);
+  const [copiedMissing, setCopiedMissing] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -230,9 +231,22 @@ export default function WarPage() {
               {/* Missing attacks warning */}
               {notAttacked.length > 0 && (
                 <div className="card border-red-500/30 bg-red-500/5">
-                  <p className="text-red-400 font-semibold text-sm flex items-center gap-2 mb-2">
-                    <XCircle size={16} /> {notAttacked.length} thành viên chưa đánh
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-red-400 font-semibold text-sm flex items-center gap-2">
+                      <XCircle size={16} /> {notAttacked.length} thành viên chưa đánh
+                    </p>
+                    <button
+                      onClick={() => {
+                        const text = `⚠️ ${notAttacked.length} thành viên CHƯA ĐÁNH WAR:\n` +
+                          notAttacked.map((m: any, i: number) => `${i + 1}. ${m.name}`).join("\n");
+                        navigator.clipboard.writeText(text);
+                        setCopiedMissing(true);
+                        setTimeout(() => setCopiedMissing(false), 1500);
+                      }}
+                      className="flex items-center gap-1 text-xs text-red-400/80 hover:text-red-300 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10">
+                      {copiedMissing ? <><Check size={12}/> Đã copy</> : <><Copy size={12}/> Copy danh sách</>}
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {notAttacked.map((m: any) => (
                       <span key={m.tag} className="badge-red">{m.name}</span>
