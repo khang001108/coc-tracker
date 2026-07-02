@@ -55,22 +55,24 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex w-60 bg-gray-900 border-r border-gray-800 flex-col fixed h-full z-20">
-      {/* Logo */}
-      <div className="p-5 border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-gold-pulse"
+      {/* Logo + Clan Switcher tích hợp */}
+      <div className="border-b border-gray-800">
+        {/* App title */}
+        <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "linear-gradient(135deg, #F4A130, #8B4513)" }}>
-            <Shield size={20} className="text-white" />
+            <Shield size={16} className="text-white" />
           </div>
           <div>
-            <p className="font-bold text-white leading-tight">CoC Tracker</p>
-            <p className="text-xs text-yellow-500/70">Clash of Clans</p>
+            <p className="font-bold text-white text-sm leading-tight">CoC Tracker</p>
+            <p className="text-[10px] text-yellow-500/70">Clash of Clans</p>
           </div>
         </div>
+        {/* Clan switcher — click vào badge để đổi clan */}
+        <div className="px-3 pb-3"><ClanSwitcher /></div>
       </div>
 
       {/* Nav */}
-      <div className="px-3 pt-2 pb-1"><ClanSwitcher /></div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
