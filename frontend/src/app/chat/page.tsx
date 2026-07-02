@@ -5,6 +5,7 @@ import { getMemberAuth, getGuestName, setGuestName } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { MessageCircle, Send, Image as ImageIcon, Smile, Lock, Users, Globe } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { NumberEffect } from "@/components/ui/NumberEffect";
 import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
 import { thColor } from "@/lib/utils";
 
@@ -29,6 +30,8 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
   const th     = msg.sender_th ?? thLevel ?? 0;
   const castle = msg.sender_castle ?? castleKey;
   const cannon = msg.sender_cannon ?? cannonKey;
+  const nameEffectKey = msg.sender_effect ?? effectKey;
+  const numberEffectKey = msg.sender_number_effect as string | undefined;
   const clanName  = msg.sender_clan_name as string | undefined;
   const clanBadge = msg.sender_clan_badge as string | undefined;
   return (
@@ -40,7 +43,7 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
             {th && th > 0 ? (
               <span className="text-[9px] font-bold px-1 py-0.5 rounded shrink-0"
                 style={{ color: thColor(th), background: thColor(th) + "22", border: `1px solid ${thColor(th)}55` }}>
-                TH{th}
+                TH<NumberEffect effectKey={numberEffectKey}>{th}</NumberEffect>
               </span>
             ) : null}
             {/* Castle + cannon icons */}
@@ -50,7 +53,7 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
                 {cannon && <CannonIcon svgKey={cannon} size={12}/>}
               </span>
             )}
-            <span className="text-[11px] text-gray-500"><NameEffect effectKey={effectKey}>{msg.sender_name}</NameEffect></span>
+            <span className="text-[11px] text-gray-500"><NameEffect effectKey={nameEffectKey}>{msg.sender_name}</NameEffect></span>
             {/* Huy hiệu hội — chỉ hiện ở Chat Toàn Cầu (liên clan) */}
             {clanName && (
               <span className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"

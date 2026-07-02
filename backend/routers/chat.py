@@ -27,7 +27,7 @@ async def _sender_flair(sb, player_tag: str) -> dict:
     viên đã đăng nhập — chụp lại tại thời điểm gửi tin (denormalized) để tin
     nhắn cũ vẫn hiển thị đúng ngay cả khi họ đổi trang bị/đổi clan sau này."""
     acc = sb.table("member_accounts").select(
-        "player_name, clan_id, equipped_castle, equipped_cannon"
+        "player_name, clan_id, equipped_castle, equipped_cannon, equipped_effect, equipped_number_effect"
     ).eq("player_tag", player_tag).execute()
     if not acc.data:
         return {}
@@ -66,6 +66,8 @@ async def _sender_flair(sb, player_tag: str) -> dict:
         "sender_th": th,
         "sender_castle": a.get("equipped_castle") or "castle_classic",
         "sender_cannon": a.get("equipped_cannon") or "cannon_basic",
+        "sender_effect": a.get("equipped_effect"),
+        "sender_number_effect": a.get("equipped_number_effect"),
     }
 
 
@@ -135,6 +137,8 @@ async def send_message(request: Request, background_tasks: BackgroundTasks, x_me
         "sender_th": flair.get("sender_th"),
         "sender_castle": flair.get("sender_castle"),
         "sender_cannon": flair.get("sender_cannon"),
+        "sender_effect": flair.get("sender_effect"),
+        "sender_number_effect": flair.get("sender_number_effect"),
     }
     if room == "clan":
         row["clan_id"] = get_clan_id(request)

@@ -496,3 +496,9 @@ ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_clan_badge TEXT;
 
 -- Nhạc: cho phép kéo-thả sắp xếp thứ tự phát trong Cài đặt
 ALTER TABLE soundtracks ADD COLUMN IF NOT EXISTS sort_order INTEGER;
+
+-- Chat: lưu kèm hiệu ứng tên/số của người gửi (trước đây chưa lưu nên hiệu
+-- ứng mua ở cửa hàng không hiện trong Chat, đặc biệt là Chat Toàn Cầu khi
+-- người gửi thuộc 1 clan khác với clan đang xem)
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_effect TEXT;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_number_effect TEXT;
