@@ -1,0 +1,77 @@
+"""
+Đăng ký/huỷ nhận thông báo đẩy (Web Push) — thành viên bất kỳ (kể cả chưa
+đăng nhập, chỉ là khách xem app) đều có thể bật, không cần quyền admin,
+vì đây là lựa chọn của từng trình duyệt/thiết bị, không phải cấu hình clan.
+"""
+from fastapi import APIRouter, HTTPException, Request, Header
+from supabase_client import get_supabase
+from clan_context import get_clan_id
+from member_auth import verify_member_token
+from services.push_service import VAPID_PUBLIC_KEY, push_enabled
+
+router = APIRouter()
+
+
+@router.get("/vapid-public-key")
+async def vapid_public_key():
+    return {"key": VAPID_PUBLIC_KEY, "enabled": push_enabled()}
+
+
+@router.post("/subscribe")
+async def subscribe(
+    request: Request,
+    x_member_token: str | None = Header(default=None),
+):
+    body = await request.json()
+    sub = body.get("subscription") or {}
+    endpoint = sub.get("endpoint")
+    keys = sub.get("keys") or {}
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+    if not endpoint or not p256dh or not auth:
+        raise HTTPException(400, "Subscription không hợp lệ")
+
+    clan_id = get_clan_id(request)
+    player_tag = verify_member_token(x_member_token)
+
+    row = {
+        "endpoint": endpoint,
+        "p256dh": p256dh,
+        "auth": auth,
+        "clan_id": clan_id,
+        "player_tag": player_tag,
+        "notify_chat": bool(body.get("notify_chat", True)),
+        "notify_event": bool(body.get("notify_event", True)),
+    }
+    sb = get_supabase()
+    try:
+        sb.table("push_subscriptions").upsert(row, on_conflict="endpoint").execute()
+    except Exception as e:
+        raise HTTPException(500, f"Lỗi lưu đăng ký thông báo: {str(e)}")
+    return {"ok": True}
+
+
+@router.post("/unsubscribe")
+async def unsubscribe(request: Request):
+    body = await request.json()
+    endpoint = body.get("endpoint")
+    if not endpoint:
+        raise HTTPException(400, "Cần endpoint")
+    sb = get_supabase()
+    sb.table("push_subscriptions").delete().eq("endpoint", endpoint).execute()
+    return {"ok": True}
+
+
+@router.put("/preferences")
+async def update_preferences(request: Request):
+    """Bật/tắt riêng từng loại thông báo (chat / sự kiện) cho 1 subscription."""
+    body = await request.json()
+    endpoint = body.get("endpoint")
+    if not endpoint:
+        raise HTTPException(400, "Cần endpoint")
+    update = {k: v for k, v in body.items() if k in ("notify_chat", "notify_event")}
+    if not update:
+        raise HTTPException(400, "Không có gì để cập nhật")
+    sb = get_supabase()
+    sb.table("push_subscriptions").update(update).eq("endpoint", endpoint).execute()
+    return {"ok": True}

@@ -260,6 +260,22 @@ export const api = {
   deleteClan:  (id: number) => apiFetch(`/api/clans/${id}`, { method: "DELETE" }),
   regenToken:  (id: number) => apiFetch(`/api/clans/${id}/regen-token`, { method: "POST" }),
 
+  // Push notifications (thông báo ngoài app)
+  getVapidKey:  () => apiFetch("/api/push/vapid-public-key"),
+  pushSubscribe: (subscription: any, opts?: { notify_chat?: boolean; notify_event?: boolean }) =>
+    apiFetch("/api/push/subscribe", {
+      method: "POST",
+      headers: (() => {
+        const member = getMemberAuth();
+        return member ? { "X-Member-Token": member.token } : {};
+      })(),
+      body: JSON.stringify({ subscription, ...opts }),
+    }),
+  pushUnsubscribe: (endpoint: string) =>
+    apiFetch("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  pushPreferences: (endpoint: string, prefs: { notify_chat?: boolean; notify_event?: boolean }) =>
+    apiFetch("/api/push/preferences", { method: "PUT", body: JSON.stringify({ endpoint, ...prefs }) }),
+
   // Chat
   getMessages: (room: "clan" | "global", afterId = 0) =>
     apiFetch(`/api/chat/messages?room=${room}&after_id=${afterId}&limit=50`),

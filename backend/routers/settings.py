@@ -63,7 +63,8 @@ async def test_clan_connection(request: Request, _: bool = Depends(require_admin
             )
         if r.status_code == 200:
             data = r.json()
-            return {"ok": True, "clan_name": data.get("name"), "members": data.get("members"), "tag": data.get("tag")}
+            return {"ok": True, "clan_name": data.get("name"), "members": data.get("members"),
+                    "tag": data.get("tag"), "badgeUrls": data.get("badgeUrls") or {}}
         elif r.status_code == 403:
             raise HTTPException(403, "API key không hợp lệ hoặc IP server chưa được whitelist trong CoC Developer")
         elif r.status_code == 404:

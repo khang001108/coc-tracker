@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from supabase_client import get_supabase
 from auth import require_admin
 import secrets
+import json
 
 router = APIRouter()
 
@@ -16,7 +17,27 @@ router = APIRouter()
 async def list_clans(_: bool = Depends(require_admin)):
     sb = get_supabase()
     res = sb.table("clans").select("id, clan_tag, clan_name, created_at").order("id").execute()
-    return res.data or []
+    clans = res.data or []
+
+    # Gắn thêm cờ/huy hiệu + tên thật (lấy từ snapshot cache của từng clan,
+    # không gọi CoC API trực tiếp ở đây để tránh chậm/rate-limit) — fallback
+    # về clan_name đã lưu nếu chưa có snapshot.
+    for c in clans:
+        c["badge_url"] = None
+        try:
+            snap = sb.table("snapshot_clan").select("data").eq("clan_id", c["id"]).order("id", desc=True).limit(1).execute()
+        except Exception:
+            snap = sb.table("snapshot_clan").select("data").order("id", desc=True).limit(1).execute() if c["id"] == 1 else None
+        if snap and snap.data:
+            try:
+                data = json.loads(snap.data[0]["data"])
+                c["badge_url"] = (data.get("badgeUrls") or {}).get("small") or (data.get("badgeUrls") or {}).get("medium")
+                if data.get("name"):
+                    c["clan_name"] = data["name"]
+            except Exception:
+                pass
+
+    return clans
 
 
 # ─── Create clan ──────────────────────────────────────────────────────────────

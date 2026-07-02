@@ -1,8 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { Check, ChevronDown, Plus, Repeat } from "lucide-react";
 import { getCurrentClanId, getCurrentClanInfo, setCurrentClan, onClanChanged, ClanInfo } from "@/lib/clanContext";
 import { api } from "@/lib/api";
+
+function ClanBadge({ clan, size = 28 }: { clan: ClanInfo; size?: number }) {
+  if (clan.badge_url) {
+    return <img src={clan.badge_url} alt={clan.clan_name} className="rounded-lg shrink-0 object-contain"
+      style={{ width: size, height: size, background: "rgba(0,0,0,0.2)" }} />;
+  }
+  // Chưa có cờ/huy hiệu (chưa từng poll được dữ liệu clan này) — fallback chữ #id
+  return (
+    <div className="rounded-lg shrink-0 flex items-center justify-center font-black"
+      style={{ width: size, height: size, fontSize: size * 0.4, background: "linear-gradient(135deg,#F4A130,#B8731A)", color: "#1A0A00" }}>
+      #{clan.id}
+    </div>
+  );
+}
 
 function ClanDropdown({ clans, currentId, isAdmin, onClose }: {
   clans: ClanInfo[]; currentId: number; isAdmin: boolean; onClose: () => void;
@@ -13,10 +27,7 @@ function ClanDropdown({ clans, currentId, isAdmin, onClose }: {
       {clans.map(cl => (
         <button key={cl.id} onClick={() => { setCurrentClan(cl); onClose(); }}
           className="w-full flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-yellow-400/10">
-          <div className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-black"
-            style={{ background: "linear-gradient(135deg,#F4A130,#B8731A)", color: "#1A0A00" }}>
-            #{cl.id}
-          </div>
+          <ClanBadge clan={cl} size={28} />
           <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-semibold truncate" style={{ color: "var(--py-card-text,#fff)" }}>{cl.clan_name}</p>
             <p className="text-[10px] text-gray-500">{cl.clan_tag}</p>
@@ -41,8 +52,8 @@ function ClanDropdown({ clans, currentId, isAdmin, onClose }: {
  * - Không truyền `children`: hiện dạng "badge" gọn (dùng trong Sidebar desktop).
  * - Có truyền `children`: bọc quanh nội dung do component cha tự vẽ (vd. huy
  *   hiệu + tên hội thật ở đầu trang Tổng quan) và biến nó thành nút bấm để
- *   đổi clan — chỉ khi có quyền đổi (admin + có ≥2 clan), ngược lại render
- *   `children` bình thường, không bọc gì thêm.
+ *   đổi clan — chỉ khi có quyền đổi (admin + có ≥2 clan). Có gắn thêm 1 icon
+ *   nhỏ (⇄) để người dùng biết đây là nơi bấm để đổi clan.
  */
 export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
   const [clans, setClans]       = useState<ClanInfo[]>([]);
@@ -71,8 +82,14 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
     if (!switchable) return <>{children}</>;
     return (
       <div className="relative">
-        <button onClick={() => setOpen(o => !o)} className="w-full text-left rounded-2xl transition-opacity active:opacity-70">
+        <button onClick={() => setOpen(o => !o)}
+          className="w-full text-left rounded-2xl transition-opacity active:opacity-70 flex items-center gap-2">
           {children}
+          {/* Icon báo hiệu bấm được để đổi clan */}
+          <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(244,161,48,0.15)", border: "1px solid rgba(244,161,48,0.35)" }}>
+            <Repeat size={12} className="text-yellow-400" />
+          </span>
         </button>
         {open && <ClanDropdown clans={clans} currentId={currentId} isAdmin={isAdmin} onClose={() => setOpen(false)} />}
       </div>
@@ -85,6 +102,7 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
 
   const name = currentInfo?.clan_name || "Clan #" + currentId;
   const tag  = currentInfo?.clan_tag  || "";
+  const currentClan = clans.find(c => c.id === currentId) || currentInfo || { id: currentId, clan_tag: tag, clan_name: name };
 
   return (
     <div className="relative">
@@ -96,11 +114,7 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
           background: open ? "rgba(244,161,48,0.12)" : "rgba(244,161,48,0.06)",
           border: "1px solid rgba(244,161,48,0.2)",
         }}>
-        {/* Badge icon */}
-        <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-black"
-          style={{ background: "linear-gradient(135deg,#F4A130,#B8731A)", color: "#1A0A00" }}>
-          {clans.length > 0 ? `#${currentId}` : "🏰"}
-        </div>
+        <ClanBadge clan={currentClan as ClanInfo} size={32} />
         {/* Tên clan */}
         <div className="flex-1 min-w-0 text-left">
           <p className="text-xs font-bold truncate leading-tight" style={{ color: "var(--py-card-text,#fff)" }}>

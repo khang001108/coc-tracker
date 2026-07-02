@@ -431,3 +431,53 @@ UPDATE events SET visibility = 'private' WHERE visibility IS NULL;
 
 -- event_participants đã có clan_id ở PART 1 phía trên (dùng để biết mỗi
 -- người tham gia sự kiện liên clan thuộc clan nào khi tính bảng xếp hạng).
+
+-- ════════════════════════════════════════════════════════════════
+-- MULTI-CLAN MIGRATION — PART 3
+-- Cho phép cache snapshot (clan/war/raid) lưu riêng theo từng clan, để
+-- danh sách "đổi clan" hiện đúng cờ/huy hiệu + tên thật của từng clan mà
+-- không phải gọi trực tiếp CoC API mỗi lần mở dropdown.
+-- ════════════════════════════════════════════════════════════════
+
+ALTER TABLE snapshot_clan ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+ALTER TABLE snapshot_war  ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+ALTER TABLE snapshot_raid ADD COLUMN IF NOT EXISTS clan_id INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE;
+UPDATE snapshot_clan SET clan_id = 1 WHERE clan_id IS NULL;
+UPDATE snapshot_war  SET clan_id = 1 WHERE clan_id IS NULL;
+UPDATE snapshot_raid SET clan_id = 1 WHERE clan_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_snapshot_clan_clan ON snapshot_clan(clan_id);
+CREATE INDEX IF NOT EXISTS idx_snapshot_war_clan  ON snapshot_war(clan_id);
+CREATE INDEX IF NOT EXISTS idx_snapshot_raid_clan ON snapshot_raid(clan_id);
+
+-- "Clan chính" chỉ là tên tạm lúc migrate — đổi về tên hội THẬT lấy từ
+-- snapshot clan (nếu đã có), để danh sách đổi clan không còn hiện chữ
+-- "Clan chính" chung chung nữa.
+UPDATE clans SET clan_name = (
+  SELECT (sc.data::json ->> 'name') FROM snapshot_clan sc WHERE sc.clan_id = clans.id ORDER BY sc.id DESC LIMIT 1
+)
+WHERE clans.id = 1 AND clans.clan_name = 'Clan chính'
+  AND EXISTS (SELECT 1 FROM snapshot_clan sc WHERE sc.clan_id = clans.id);
+
+-- ════════════════════════════════════════════════════════════════
+-- WEB PUSH NOTIFICATIONS (thông báo ngoài app)
+-- Cho phép người dùng bật thông báo trình duyệt/PWA khi có tin nhắn chat
+-- mới hoặc sự kiện mới, kể cả khi không mở app. Cần cấu hình biến môi
+-- trường VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY trên backend (xem README).
+-- ════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id           SERIAL PRIMARY KEY,
+  endpoint     TEXT NOT NULL UNIQUE,
+  p256dh       TEXT NOT NULL,
+  auth         TEXT NOT NULL,
+  clan_id      INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag   TEXT,                 -- NULL nếu đăng ký khi chưa đăng nhập thành viên
+  notify_chat  BOOLEAN NOT NULL DEFAULT true,
+  notify_event BOOLEAN NOT NULL DEFAULT true,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_push_sub_clan ON push_subscriptions(clan_id);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON push_subscriptions;
+CREATE POLICY "service_all" ON push_subscriptions FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.push_subscriptions TO service_role;

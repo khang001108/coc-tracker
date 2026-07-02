@@ -20,12 +20,13 @@ Phạm vi (visibility):
   - top_donations          : donate cao nhất hiện tại
   - manual                 : admin tự chọn người thắng
 """
-from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header
+from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header, BackgroundTasks
 from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin, verify_admin_token
 from member_auth import verify_member_token
 from services.coc_api import get_current_war, get_war_log, get_clan_members
+from services.push_service import send_push_to_clan
 import uuid
 
 router = APIRouter()
@@ -64,6 +65,27 @@ async def resolve_creator(clan_id: int, x_admin_token: str | None, x_member_toke
     acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
     name = acc.data[0]["player_name"] if acc.data else me.get("name", "Thành viên")
     return {"is_admin": False, "creator_name": name, "creator_tag": member_tag}
+
+
+async def _notify_event(event: dict):
+    """Gửi push (ngoài app) báo sự kiện mới/được duyệt cho đúng (các) clan liên quan."""
+    sb = get_supabase()
+    title = f"🎉 Sự kiện mới: {event.get('title','')}"
+    body = event.get("reward_name") or "Xem chi tiết trong app"
+    if event.get("visibility") == "public":
+        allowed = event.get("allowed_clan_ids")
+        if allowed:
+            clan_ids = allowed
+        else:
+            res = sb.table("clans").select("id").execute()
+            clan_ids = [c["id"] for c in (res.data or [])] or [event.get("clan_id", 1)]
+    else:
+        clan_ids = [event.get("clan_id", 1)]
+    for cid in clan_ids:
+        try:
+            await send_push_to_clan(cid, title, body, "/events", "event")
+        except Exception:
+            pass
 
 
 def _member_clan_id(sb, player_tag: str | None) -> int | None:
@@ -152,6 +174,7 @@ async def list_events(request: Request):
 @router.post("/")
 async def create_event(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_admin_token: str | None = Header(default=None),
     x_member_token: str | None = Header(default=None),
 ):
@@ -201,7 +224,11 @@ async def create_event(
     except Exception:
         # Cột visibility/allowed_clan_ids chưa tồn tại (chưa chạy migration)
         res = sb.table("events").insert(row).execute()
-    return res.data[0]
+
+    created = res.data[0]
+    if created.get("status") == "active":
+        background_tasks.add_task(_notify_event, created)
+    return created
 
 
 @router.put("/{event_id}")
@@ -253,11 +280,12 @@ async def delete_event(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.post("/{event_id}/approve")
-async def approve_event(event_id: int, _: bool = Depends(require_admin)):
+async def approve_event(event_id: int, background_tasks: BackgroundTasks, _: bool = Depends(require_admin)):
     sb = get_supabase()
     res = sb.table("events").update({"status": "active"}).eq("id", event_id).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy sự kiện")
+    background_tasks.add_task(_notify_event, res.data[0])
     return res.data[0]
 
 

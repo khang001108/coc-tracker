@@ -5,13 +5,31 @@ import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeO
 import { AdminGate } from "@/components/ui/AdminGate";
 import { roleLabel, roleClass } from "@/lib/utils";
 
+function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
+  if (!msg) return null;
+  return (
+    <p className={`text-xs px-2.5 py-1.5 rounded-lg border ${
+      type === "error"
+        ? "text-red-400 bg-red-500/10 border-red-500/20"
+        : "text-green-400 bg-green-500/10 border-green-500/20"}`}>
+      {msg}
+    </p>
+  );
+}
+
 function MusicSettings() {
   const [tracks, setTracks] = useState<any[]>([]);
   const [config, setConfig] = useState({ enabled: false, mode: "all", selected_id: "" });
   const [uploading, setUploading] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const previewRef = useRef<HTMLAudioElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
 
   async function load() {
     const [t, c] = await Promise.all([api.getTracks().catch(() => []), api.getMusicConfig().catch(() => null)]);
@@ -36,8 +54,9 @@ function MusicSettings() {
         await api.uploadTrack(file);
       }
       await load();
+      flashMsg("Đã tải nhạc lên!", "success");
     } catch (err: any) {
-      alert(err.message || "Lỗi tải nhạc lên");
+      flashMsg(err.message || "Lỗi tải nhạc lên");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -122,6 +141,7 @@ function MusicSettings() {
         </button>
         <input ref={fileRef} type="file" accept="audio/*" multiple className="hidden" onChange={handleUpload} />
         <p className="text-[11px] text-gray-600 mt-1.5">Hỗ trợ MP3, WAV, OGG, M4A — tối đa 20MB mỗi file.</p>
+        {msg && <div className="mt-1.5"><MiniToast msg={msg.text} type={msg.type} /></div>}
       </div>
     </div>
   );
@@ -154,6 +174,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
+  const [clanPreview, setClanPreview] = useState<{ name: string; badge: string; members: number } | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [showKey, setShowKey] = useState(false);
 
@@ -171,6 +192,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
   function set(key: string, val: string) {
     setSettings(s => ({ ...s, [key]: val }));
+    if (key === "coc_api_key" || key === "clan_tag") setClanPreview(null);
   }
 
   async function save(key: string) {
@@ -199,8 +221,10 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
   async function testClan() {
     setTesting("clan");
+    setClanPreview(null);
     try {
       const res = await api.testClan(settings.coc_api_key || "", settings.clan_tag || "");
+      setClanPreview({ name: res.clan_name, badge: res.badgeUrls?.medium || "", members: res.members });
       showToast(`✅ Kết nối OK: ${res.clan_name} (${res.members} thành viên)`);
     } catch (e: any) {
       showToast(e.message, "error");
@@ -314,12 +338,24 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           <p className="text-xs text-gray-600 mt-1">Ví dụ: #2PP (có dấu #)</p>
         </div>
 
+        <button onClick={testClan} disabled={!!testing}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
+          style={{ background: "rgba(244,161,48,0.12)", border: "1px solid rgba(244,161,48,0.35)", color: "#F4A130" }}>
+          {testing === "clan" ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
+          {testing === "clan" ? "Đang kiểm tra..." : "🔍 Kiểm tra kết nối"}
+        </button>
+
+        {clanPreview && (
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
+            {clanPreview.badge && <img src={clanPreview.badge} alt="" className="w-10 h-10 object-contain"/>}
+            <div>
+              <p className="text-sm font-bold text-green-400">{clanPreview.name}</p>
+              <p className="text-[10px] text-green-600">Kết nối thành công ✓ · {clanPreview.members} thành viên</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <button onClick={testClan} disabled={!!testing}
-            className="btn-secondary flex items-center gap-2 text-sm">
-            {testing === "clan" ? <Loader2 size={14} className="animate-spin" /> : null}
-            Test kết nối
-          </button>
           <button onClick={() => saveMultiple(["coc_api_key", "clan_tag"])} disabled={!!saving}
             className="btn-gold flex items-center gap-2 text-sm">
             {saving?.includes("coc_api_key") ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -519,6 +555,12 @@ function MemberAccountsSettings() {
   const [roster, setRoster] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyTag, setBusyTag] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
 
   async function load() {
     setLoading(true);
@@ -533,8 +575,9 @@ function MemberAccountsSettings() {
     try {
       await api.releaseMember(tag);
       await load();
+      flashMsg(`Đã gỡ tài khoản của ${name}`, "success");
     } catch (e: any) {
-      alert(e.message || "Lỗi gỡ tài khoản");
+      flashMsg(e.message || "Lỗi gỡ tài khoản");
     } finally {
       setBusyTag(null);
     }
@@ -551,6 +594,7 @@ function MemberAccountsSettings() {
         Danh sách người đã "nhận" làm danh tính trong clan. Nếu ai đó nhận nhầm tên (vd nhận nhầm thành thủ lĩnh),
         bấm "Gỡ" để xoá lượt nhận đó — người đúng sẽ vào <a href="/login" className="text-yellow-500 underline">/login</a> nhận lại bình thường.
       </p>
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
 
       {loading ? (
         <div className="h-20 bg-gray-800 rounded-xl animate-pulse" />
@@ -582,6 +626,7 @@ function ShopPricingSettings() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [toastMsg, setToastMsg] = useState("");
+  const [toastErr, setToastErr] = useState("");
 
   async function load() {
     setLoading(true);
@@ -599,7 +644,8 @@ function ShopPricingSettings() {
       setTimeout(() => setToastMsg(""), 2000);
       await load();
     } catch (e: any) {
-      alert(e.message || "Lỗi cập nhật giá");
+      setToastErr(e.message || "Lỗi cập nhật giá");
+      setTimeout(() => setToastErr(""), 4000);
     } finally {
       setSavingId(null);
     }
@@ -616,6 +662,7 @@ function ShopPricingSettings() {
       <h3 className="font-bold text-white">🏷️ Giá Cửa hàng vật phẩm</h3>
       <p className="text-xs text-gray-500">Chỉnh giá Coins cho từng vật phẩm trong Cửa hàng. Đặt 0 = miễn phí mặc định.</p>
       {toastMsg && <p className="text-xs text-green-400">{toastMsg}</p>}
+      {toastErr && <MiniToast msg={toastErr} type="error" />}
       {loading ? (
         <div className="h-24 bg-gray-800 rounded-xl animate-pulse" />
       ) : (
@@ -756,26 +803,33 @@ function ClanManagement() {
           {clans.map(cl => (
             <div key={cl.id} className="flex items-center gap-3 p-3 rounded-xl"
               style={{ background: "var(--py-card-bg)", border: `1px solid ${cl.id === 1 ? "rgba(244,161,48,0.4)" : "var(--py-card-border)"}` }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs"
-                style={{ background: "linear-gradient(135deg,#F4A130,#B8731A)", color: "#1A0A00" }}>
-                #{cl.id}
-              </div>
+              {cl.badge_url ? (
+                <img src={cl.badge_url} alt="" className="w-8 h-8 rounded-lg shrink-0 object-contain" style={{ background: "rgba(0,0,0,0.2)" }}/>
+              ) : (
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs"
+                  style={{ background: "linear-gradient(135deg,#F4A130,#B8731A)", color: "#1A0A00" }}>
+                  #{cl.id}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate" style={{ color: "var(--py-card-text)" }}>{cl.clan_name}</p>
                 <p className="text-xs text-gray-500">{cl.clan_tag}</p>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 <button onClick={() => regen(cl.id)} title="Reset token"
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors">
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+                  style={{ background: "rgba(244,161,48,0.1)", border: "1px solid rgba(244,161,48,0.3)", color: "#F4A130" }}>
                   <RefreshCw size={13}/>
                 </button>
-                <button onClick={() => startEdit(cl)}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 transition-colors">
+                <button onClick={() => startEdit(cl)} title="Sửa clan"
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+                  style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", color: "#60a5fa" }}>
                   <Edit3 size={13}/>
                 </button>
                 {cl.id !== 1 && (
-                  <button onClick={() => del(cl.id, cl.clan_name)}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                  <button onClick={() => del(cl.id, cl.clan_name)} title="Xoá clan"
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+                    style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
                     <Trash2 size={13}/>
                   </button>
                 )}
@@ -852,24 +906,133 @@ function ClanManagement() {
 }
 
 
+function PushNotificationSettings() {
+  const [supported, setSupported] = useState(true);
+  const [permission, setPermission] = useState<string>("default");
+  const [subscribed, setSubscribed] = useState(false);
+  const [notifyChat, setNotifyChat] = useState(true);
+  const [notifyEvent, setNotifyEvent] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function refresh() {
+    const { pushSupported, getPushPermission, getCurrentSubscription } = await import("@/lib/push");
+    if (!pushSupported()) { setSupported(false); return; }
+    setPermission(await getPushPermission());
+    const sub = await getCurrentSubscription();
+    setSubscribed(!!sub);
+  }
+
+  useEffect(() => { refresh(); }, []);
+
+  async function handleToggle() {
+    setBusy(true);
+    try {
+      if (subscribed) {
+        const { disablePush } = await import("@/lib/push");
+        await disablePush();
+        setSubscribed(false);
+        flashMsg("Đã tắt thông báo ngoài app", "success");
+      } else {
+        const { enablePush } = await import("@/lib/push");
+        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent });
+        if (res.ok) {
+          setSubscribed(true);
+          flashMsg("Đã bật thông báo ngoài app!", "success");
+        } else {
+          flashMsg(res.error || "Không bật được thông báo");
+        }
+        setPermission(await Notification.permission);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updatePref(key: "notify_chat" | "notify_event", val: boolean) {
+    if (key === "notify_chat") setNotifyChat(val); else setNotifyEvent(val);
+    if (!subscribed) return;
+    const { getCurrentSubscription } = await import("@/lib/push");
+    const sub = await getCurrentSubscription();
+    if (sub) {
+      try { await api.pushPreferences(sub.endpoint, { [key]: val }); }
+      catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
+    }
+  }
+
+  if (!supported) return null;
+
+  return (
+    <div className="card space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center">
+          <Globe size={16} className="text-purple-400" />
+        </div>
+        <h2 className="font-bold text-white">Thông báo ngoài app</h2>
+      </div>
+      <p className="text-sm text-gray-400">
+        Nhận thông báo trên trình duyệt/điện thoại kể cả khi không mở app — khi có tin nhắn chat mới hoặc sự kiện mới.
+      </p>
+
+      <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "var(--py-card-text)" }}>
+            {subscribed ? "Đã bật" : "Đang tắt"}
+          </p>
+          {permission === "denied" && (
+            <p className="text-[11px] text-red-400 mt-0.5">Trình duyệt đã chặn quyền thông báo — vào cài đặt trình duyệt để mở lại.</p>
+          )}
+        </div>
+        <button onClick={handleToggle} disabled={busy || permission === "denied"}
+          className={subscribed ? "btn-secondary text-sm" : "btn-gold text-sm"}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : subscribed ? "Tắt" : "Bật thông báo"}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center justify-between text-sm" style={{ color: "var(--py-card-text)" }}>
+          💬 Tin nhắn chat mới
+          <input type="checkbox" checked={notifyChat} onChange={e => updatePref("notify_chat", e.target.checked)} className="w-4 h-4 accent-yellow-500" />
+        </label>
+        <label className="flex items-center justify-between text-sm" style={{ color: "var(--py-card-text)" }}>
+          🎉 Sự kiện mới
+          <input type="checkbox" checked={notifyEvent} onChange={e => updatePref("notify_event", e.target.checked)} className="w-4 h-4 accent-yellow-500" />
+        </label>
+      </div>
+
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
-    <AdminGate>
-      <div className="space-y-6 max-w-5xl animate-fade-up">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Settings size={22} className="text-yellow-400" /> Cài đặt
-          </h1>
-          <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
-        </div>
+    <div className="space-y-6 max-w-5xl animate-fade-up">
+      <div>
+        <h1 className="page-title flex items-center gap-2">
+          <Settings size={22} className="text-yellow-400" /> Cài đặt
+        </h1>
+        <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
+      </div>
+
+      {/* Ai cũng chỉnh được — không cần đăng nhập admin, vì đây là quyền của
+          từng trình duyệt/thiết bị, không phải cấu hình clan. */}
+      <PushNotificationSettings />
+
+      <AdminGate>
         <div className="columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
           <SettingsPageInner embedded />
           <MusicSettings />
           <MemberAccountsSettings />
           <ShopPricingSettings />
         </div>
-      </div>
-    </AdminGate>
+      </AdminGate>
+    </div>
   );
 }
 

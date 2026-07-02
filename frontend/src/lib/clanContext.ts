@@ -9,6 +9,7 @@ export interface ClanInfo {
   id: number;
   clan_tag: string;
   clan_name: string;
+  badge_url?: string | null;
 }
 
 export function getCurrentClanId(): number {

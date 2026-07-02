@@ -10,10 +10,11 @@ Chat — 2 phòng:
 Dùng polling REST (không websocket) để đơn giản và ổn định trên hosting free
 (free tier hay bị sleep, không phù hợp giữ kết nối websocket lâu dài).
 """
-from fastapi import APIRouter, HTTPException, Request, Header, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Header, UploadFile, File, BackgroundTasks
 from supabase_client import get_supabase
 from clan_context import get_clan_id
 from member_auth import verify_member_token
+from services.push_service import send_push_to_clan, send_push_global
 import uuid
 
 router = APIRouter()
@@ -77,7 +78,7 @@ async def get_messages(request: Request, room: str = "global", after_id: int = 0
 
 
 @router.post("/messages")
-async def send_message(request: Request, x_member_token: str | None = Header(default=None)):
+async def send_message(request: Request, background_tasks: BackgroundTasks, x_member_token: str | None = Header(default=None)):
     body = await request.json()
     room = body.get("room", "global")
     message = (body.get("message") or "").strip()
@@ -132,6 +133,19 @@ async def send_message(request: Request, x_member_token: str | None = Header(def
         basic_row = {k: v for k, v in row.items() if k in (
             "room", "sender_name", "sender_tag", "message", "image_url", "is_system", "clan_id")}
         res = sb.table("chat_messages").insert(basic_row).execute()
+
+    # Thông báo đẩy (ngoài app) — chạy nền, không chặn phản hồi chat.
+    preview = message[:80] if message else ("[Hình ảnh]" if image_url else "")
+    if room == "clan":
+        background_tasks.add_task(
+            send_push_to_clan, row.get("clan_id", get_clan_id(request)),
+            f"💬 {sender_name}", preview, "/chat", "chat", sender_tag,
+        )
+    else:
+        background_tasks.add_task(
+            send_push_global, f"🌐 {sender_name}", preview, "/chat", sender_tag,
+        )
+
     return res.data[0]
 
 
