@@ -23,8 +23,11 @@ async def clan_info(request: Request):
         data = await coc_get(f"/clans/{encode_tag(tag)}", clan_id=clan_id)
         return data
 
-    # Clan 1: dùng snapshot cache như cũ
-    res = sb.table("snapshot_clan").select("data,updated_at").order("id", desc=True).limit(1).execute()
+    # Clan 1: dùng snapshot cache như cũ (PHẢI lọc đúng clan_id=1 — trước đây
+    # thiếu điều kiện này nên có lúc lấy nhầm snapshot của CLAN KHÁC, do bảng
+    # snapshot_clan giờ có nhiều dòng — mỗi clan 1 dòng — nếu không lọc sẽ
+    # luôn lấy dòng có id lớn nhất, tức là clan nào vừa được poll gần nhất).
+    res = sb.table("snapshot_clan").select("data,updated_at").eq("clan_id", 1).order("id", desc=True).limit(1).execute()
     if res.data:
         return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
     tag = await get_tag_by_clan_id(1)

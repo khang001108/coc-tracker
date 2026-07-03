@@ -600,7 +600,6 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [error, setError]           = useState("");
   const [loadingWarTime, setLoadingWarTime] = useState(false);
   const isAdmin = !!getAdminToken();
-  const bannerSrc = usePageBanner("events", "/art/prince-celebration.jpg");
 
   const [form, setForm] = useState({
     title: "", description: "", event_type: "war", condition_type: "total_stars",
@@ -816,6 +815,7 @@ export default function EventsPage() {
   const [myJoinedIds, setMyJoinedIds] = useState<Set<number>>(new Set());
   const isAdmin = !!getAdminToken();
   const member  = getMemberAuth();
+  const bannerSrc = usePageBanner("events", "/art/prince-celebration.jpg");
 
   async function load() {
     setLoading(true);

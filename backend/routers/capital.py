@@ -13,7 +13,7 @@ async def raid_seasons(request: Request):
     # Clan chính (id=1): dùng snapshot cache cho nhanh.
     if clan_id == 1:
         sb = get_supabase()
-        res = sb.table("snapshot_raid").select("data,updated_at").order("id", desc=True).limit(1).execute()
+        res = sb.table("snapshot_raid").select("data,updated_at").eq("clan_id", 1).order("id", desc=True).limit(1).execute()
         if res.data:
             return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
 
