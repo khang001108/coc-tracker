@@ -23,11 +23,12 @@ async def list_clans():
     res = sb.table("clans").select("id, clan_tag, clan_name, created_at").order("id").execute()
     clans = res.data or []
 
-    # Gắn thêm cờ/huy hiệu + tên thật (lấy từ snapshot cache của từng clan,
-    # không gọi CoC API trực tiếp ở đây để tránh chậm/rate-limit) — fallback
-    # về clan_name đã lưu nếu chưa có snapshot.
+    # Gắn thêm cờ/huy hiệu + tên thật (ưu tiên lấy từ snapshot cache cho
+    # nhanh; nếu clan vừa mới thêm — chưa có snapshot lần nào — thì gọi
+    # thẳng CoC API 1 lần để có ngay, khỏi phải đợi tới chu kỳ poll tiếp theo).
     for c in clans:
         c["badge_url"] = None
+        data = None
         try:
             snap = sb.table("snapshot_clan").select("data").eq("clan_id", c["id"]).order("id", desc=True).limit(1).execute()
         except Exception:
@@ -35,11 +36,18 @@ async def list_clans():
         if snap and snap.data:
             try:
                 data = json.loads(snap.data[0]["data"])
-                c["badge_url"] = (data.get("badgeUrls") or {}).get("small") or (data.get("badgeUrls") or {}).get("medium")
-                if data.get("name"):
-                    c["clan_name"] = data["name"]
             except Exception:
-                pass
+                data = None
+        if not data and c.get("clan_tag"):
+            try:
+                from services.coc_api import get_clan as fetch_clan_live
+                data = await fetch_clan_live(c["clan_tag"], clan_id=c["id"])
+            except Exception:
+                data = None
+        if data:
+            c["badge_url"] = (data.get("badgeUrls") or {}).get("small") or (data.get("badgeUrls") or {}).get("medium")
+            if data.get("name"):
+                c["clan_name"] = data["name"]
 
     return clans
 
@@ -69,7 +77,19 @@ async def create_clan(request: Request, _: bool = Depends(require_admin)):
         res = sb.table("clans").insert(row).execute()
     except Exception as e:
         raise HTTPException(400, f"Clan tag đã tồn tại hoặc lỗi: {str(e)}")
-    return res.data[0]
+
+    created = res.data[0]
+    # Lấy ngay dữ liệu clan (tên thật, cờ/huy hiệu...) để cache lại — khỏi
+    # phải đợi tới chu kỳ poll nền tiếp theo (tối đa 15 phút) mới có.
+    try:
+        from services.coc_api import get_clan as fetch_clan_live
+        from schedulers.poller import upsert_snapshot
+        live = await fetch_clan_live(clan_tag, clan_id=created["id"])
+        upsert_snapshot("snapshot_clan", live, clan_id=created["id"])
+    except Exception:
+        pass  # không sao — list_clans() vẫn tự fallback gọi live nếu cache trống
+
+    return created
 
 
 # ─── Get / Update clan ────────────────────────────────────────────────────────
