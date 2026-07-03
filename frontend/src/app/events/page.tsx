@@ -845,7 +845,7 @@ export default function EventsPage() {
   return (
     <div className="space-y-5 animate-fade-up">
       {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden p-6 md:p-9"
+      <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background:"linear-gradient(135deg,rgba(244,161,48,0.18),rgba(236,72,153,0.12),rgba(139,69,19,0.15))" }}>
         <ArtBanner src="/art/prince-celebration.jpg" opacity={0.4} objectPosition="center 30%" />
         <FireworkField bursts={4}/>

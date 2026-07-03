@@ -95,7 +95,7 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-5 animate-fade-up max-w-4xl">
-      <div className="relative rounded-2xl overflow-hidden p-6 md:p-10"
+      <div className="relative rounded-2xl overflow-hidden p-7 md:p-12"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
         <ArtBanner src="/art/skeleton-king.jpg" opacity={0.4} objectPosition="center 25%" />
         <EmberField count={16} />

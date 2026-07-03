@@ -137,7 +137,7 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="relative rounded-2xl overflow-hidden p-6 md:p-9"
+      <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,69,19,0.08))" }}>
         <ArtBanner src="/art/royal-vista.jpg" opacity={0.4} objectPosition="center 45%" />
         <div className="relative banner-content">

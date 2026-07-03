@@ -99,7 +99,7 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <div className="relative rounded-2xl overflow-hidden p-6 md:p-9"
+      <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
         <ArtBanner src="/art/ruins-aftermath.jpg" opacity={0.4} objectPosition="center 35%" />
         <div className="relative banner-content">
