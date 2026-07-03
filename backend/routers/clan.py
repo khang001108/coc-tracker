@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from supabase_client import get_supabase
-from services.coc_api import get_clan, get_coc_config
-from clan_context import get_clan_id
+from services.coc_api import get_clan
+from clan_context import get_clan_id, get_tag_by_clan_id
 import json
 
 router = APIRouter()
@@ -27,9 +27,7 @@ async def clan_info(request: Request):
     res = sb.table("snapshot_clan").select("data,updated_at").order("id", desc=True).limit(1).execute()
     if res.data:
         return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
-    if not tag: raise HTTPException(400, "Chưa cấu hình clan tag")
+    tag = await get_tag_by_clan_id(1)
     return await get_clan(tag)
 
 @router.get("/refresh")

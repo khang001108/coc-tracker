@@ -1,7 +1,7 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
 import { EmberField } from "@/components/ui/EmberField";
-import { SwordsArt } from "@/components/ui/HeroArt";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -140,11 +140,8 @@ export default function WarPage() {
             <>
               {/* War header */}
               <div className="card relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: war.isCWL ? "#5C2A00" : "#5C1E1E" }}>
+                <ArtBanner src="/art/giants-balloons-desert.jpg" opacity={0.3} objectPosition="center 30%" />
                 <EmberField count={22} speed={1.4} />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <SwordsArt size={120} opacity={0.08} />
-                </div>
-
                 {/* CWL badge */}
                 {war.isCWL && (
                   <div className="relative flex justify-center mb-2">

@@ -3,7 +3,7 @@ import { CocLoader } from "@/components/ui/CocLoader";
 import { ClanSwitcher } from "@/components/ui/ClanSwitcher";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldArt, GoldCoinArt, SwordsArt } from "@/components/ui/HeroArt";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
 import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check } from "lucide-react";
@@ -183,10 +183,7 @@ export default function DashboardPage() {
       {/* War status */}
       {war?.state && war.state !== "notInWar" && (
         <div className="card border-red-500/20 bg-red-500/5 relative overflow-hidden">
-          {/* Kiếm chéo — watermark trung tâm phải */}
-          <div className="absolute inset-0 flex items-center justify-end pointer-events-none" style={{ paddingRight: 8 }}>
-            <SwordsArt size={100} opacity={0.11} />
-          </div>
+          <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.22} objectPosition="center 25%" />
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-white flex items-center gap-2">
               <Swords size={18} className="text-red-400" />

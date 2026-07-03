@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel } from "@/lib/utils";
 import { BarChart3, TrendingUp, AlertTriangle, ShieldOff, HeartCrack, Copy, Check } from "lucide-react";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -98,11 +99,15 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <BarChart3 size={22} className="text-yellow-400" /> Thống kê
-        </h1>
-        <p className="page-subtitle">Biểu đồ hoạt động clan</p>
+      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
+        style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
+        <ArtBanner src="/art/ruins-aftermath.jpg" opacity={0.28} objectPosition="center 35%" />
+        <div className="relative">
+          <h1 className="page-title flex items-center gap-2">
+            <BarChart3 size={22} className="text-yellow-400" /> Thống kê
+          </h1>
+          <p className="page-subtitle">Biểu đồ hoạt động clan</p>
+        </div>
       </div>
 
       {loading ? (

@@ -2,7 +2,7 @@
 import { CocLoader } from "@/components/ui/CocLoader";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClanBadgeArt } from "@/components/ui/HeroArt";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import { api } from "@/lib/api";
 import { getMemberAuth, setMemberAuth, clearMemberAuth } from "@/lib/api";
 import { thColor, roleLabel, roleClass } from "@/lib/utils";
@@ -97,6 +97,7 @@ export default function LoginPage() {
     <div className="space-y-5 animate-fade-up max-w-3xl">
       <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
+        <ArtBanner src="/art/archer-queen-army.jpg" opacity={0.3} objectPosition="center 30%" />
         <EmberField count={16} />
         <div className="relative flex items-center gap-4">
           <div className="flex-1">
@@ -104,9 +105,6 @@ export default function LoginPage() {
               <UserCheck size={22} className="text-green-400" /> Nhận diện thành viên
             </h1>
             <p className="page-subtitle">Chọn đúng tên bạn trong clan để đăng nhập và chat với danh tính thật</p>
-          </div>
-          <div className="shrink-0 opacity-90">
-            <ClanBadgeArt size={88} opacity={0.22} />
           </div>
         </div>
       </div>

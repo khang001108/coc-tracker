@@ -550,3 +550,17 @@ CREATE POLICY "service_all" ON donation_snapshot_log FOR ALL TO service_role USI
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_participation_log  TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.donation_snapshot_log  TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 6 (hợp nhất cấu hình clan #1 vào bảng `clans`)
+-- Trước đây clan #1 dùng RIÊNG bảng `settings` (key='coc_api_key'/'clan_tag')
+-- cho mọi lệnh gọi CoC API sống, trong khi màn "Quản lý Clan" lại sửa vào
+-- bảng `clans` (không có tác dụng gì với clan #1!). Giờ mọi clan — kể cả #1
+-- — đều dùng thống nhất bảng `clans`. Đoạn dưới copy giá trị đang hoạt động
+-- từ `settings` sang `clans` (chỉ khi clans.id=1 đang trống) để không bị mất
+-- cấu hình đang chạy.
+-- ════════════════════════════════════════════════════════════════
+UPDATE clans SET
+  coc_api_key = COALESCE(NULLIF(coc_api_key, ''), (SELECT value FROM settings WHERE key = 'coc_api_key')),
+  clan_tag    = COALESCE(NULLIF(clan_tag, ''), (SELECT value FROM settings WHERE key = 'clan_tag'))
+WHERE id = 1;

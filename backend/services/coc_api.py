@@ -16,14 +16,15 @@ async def get_coc_config() -> dict:
     return config
 
 async def coc_get(path: str, clan_id: int = 1) -> dict:
-    """Gọi CoC API. Nếu clan_id khác 1, dùng API key của clan đó từ bảng clans."""
-    if clan_id != 1:
-        # Multi-clan: lấy API key từ bảng clans
-        from supabase_client import get_supabase
-        sb = get_supabase()
-        res = sb.table("clans").select("coc_api_key").eq("id", clan_id).execute()
-        api_key = (res.data[0].get("coc_api_key") or "") if res.data else ""
-    else:
+    """Gọi CoC API — API key luôn lấy từ bảng `clans` theo đúng clan_id (kể cả
+    clan #1), để sửa key/tag ở màn 'Quản lý Clan' áp dụng cho MỌI clan nhất
+    quán. Fallback về bảng settings (kiểu cũ) chỉ khi clan #1 chưa có key
+    trong bảng clans (chưa chạy migration/chưa từng lưu qua Quản lý Clan)."""
+    from supabase_client import get_supabase
+    sb = get_supabase()
+    res = sb.table("clans").select("coc_api_key").eq("id", clan_id).execute()
+    api_key = (res.data[0].get("coc_api_key") or "") if res.data else ""
+    if not api_key and clan_id == 1:
         config = await get_coc_config()
         api_key = config.get("coc_api_key", "")
     if not api_key:

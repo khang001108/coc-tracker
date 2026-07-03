@@ -38,23 +38,17 @@ async def resolve_clan(request: Request) -> dict:
 
 
 async def get_tag_by_clan_id(clan_id: int) -> str:
-    """Trả về clan_tag đúng theo clan_id (không cần Request).
-
-    - clan_id == 1 (mặc định) → lấy clan_tag từ bảng `settings` (clan chính, cũ).
-    - clan_id != 1            → lấy clan_tag từ bảng `clans` (multi-clan).
-    """
-    if clan_id != 1:
-        cfg = await get_clan_config(clan_id)
-        tag = cfg.get("clan_tag", "")
-        if not tag:
-            raise HTTPException(400, f"Clan {clan_id} chưa cấu hình clan_tag")
-        return tag
-
-    from services.coc_api import get_coc_config
-    cfg = await get_coc_config()
-    tag = cfg.get("clan_tag")
+    """Trả về clan_tag đúng theo clan_id — luôn lấy từ bảng `clans` (kể cả
+    clan #1), nhất quán với coc_get(). Fallback bảng `settings` (kiểu cũ)
+    chỉ khi clan #1 chưa có tag trong bảng clans."""
+    cfg = await get_clan_config(clan_id)
+    tag = cfg.get("clan_tag", "")
+    if not tag and clan_id == 1:
+        from services.coc_api import get_coc_config
+        old_cfg = await get_coc_config()
+        tag = old_cfg.get("clan_tag", "")
     if not tag:
-        raise HTTPException(400, "Chưa cấu hình clan tag")
+        raise HTTPException(400, f"Clan {clan_id} chưa cấu hình clan_tag")
     return tag
 
 

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Settings, Key, MessageSquare, Send, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, RefreshCw } from "lucide-react";
+import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, RefreshCw } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
@@ -204,9 +204,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
-  const [clanPreview, setClanPreview] = useState<{ name: string; badge: string; members: number } | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
-  const [showKey, setShowKey] = useState(false);
 
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
@@ -222,7 +220,6 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
   function set(key: string, val: string) {
     setSettings(s => ({ ...s, [key]: val }));
-    if (key === "coc_api_key" || key === "clan_tag") setClanPreview(null);
   }
 
   async function save(key: string) {
@@ -246,20 +243,6 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
       showToast(e.message, "error");
     } finally {
       setSaving(null);
-    }
-  }
-
-  async function testClan() {
-    setTesting("clan");
-    setClanPreview(null);
-    try {
-      const res = await api.testClan(settings.coc_api_key || "", settings.clan_tag || "");
-      setClanPreview({ name: res.clan_name, badge: res.badgeUrls?.medium || "", members: res.members });
-      showToast(`✅ Kết nối OK: ${res.clan_name} (${res.members} thành viên)`);
-    } catch (e: any) {
-      showToast(e.message, "error");
-    } finally {
-      setTesting(null);
     }
   }
 
@@ -318,14 +301,13 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       <div className={embedded ? "contents" : "columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6"}>
 
-      {/* ── CoC API Key ── */}
+      {/* ── Quản lý Clan (đã gộp chung với cấu hình CoC API — mỗi clan, kể cả
+           clan chính, đều sửa Tag + API Key ngay trong danh sách bên dưới) ── */}
       <div className="card space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center">
-            <Key size={16} className="text-yellow-400" />
-          </div>
-          <h2 className="font-bold text-white">Clash of Clans API</h2>
-        </div>
+        <h2 className="font-bold text-white flex items-center gap-2">
+          🏰 Quản lý Clan
+        </h2>
+        <p className="text-xs text-gray-500">Thêm/sửa/xoá clan. Mỗi clan cần CoC API key riêng.</p>
 
         <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
           <p className="font-semibold">📌 Cách lấy API Key:</p>
@@ -337,69 +319,6 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           </ol>
         </div>
 
-        <div>
-          <label className="label">API Key</label>
-          <div className="relative">
-            <input
-              className="input pr-10"
-              type={showKey ? "text" : "password"}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              name="coc_api_key_field"
-              data-lpignore="true"
-              data-1p-ignore
-              value={settings.coc_api_key || ""}
-              onChange={e => set("coc_api_key", e.target.value)}
-              placeholder="eyJ0eXAiOiJKV1Qi..."
-            />
-            <button onClick={() => setShowKey(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="label">Clan Tag</label>
-          <input className="input" value={settings.clan_tag || ""}
-            onChange={e => set("clan_tag", e.target.value.toUpperCase())}
-            placeholder="#ABC123" />
-          <p className="text-xs text-gray-600 mt-1">Ví dụ: #2PP (có dấu #)</p>
-        </div>
-
-        <button onClick={testClan} disabled={!!testing}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
-          style={{ background: "rgba(244,161,48,0.12)", border: "1px solid rgba(244,161,48,0.35)", color: "#F4A130" }}>
-          {testing === "clan" ? <Loader2 size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
-          {testing === "clan" ? "Đang kiểm tra..." : "🔍 Kiểm tra kết nối"}
-        </button>
-
-        {clanPreview && (
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
-            {clanPreview.badge && <img src={clanPreview.badge} alt="" className="w-10 h-10 object-contain"/>}
-            <div>
-              <p className="text-sm font-bold text-green-400">{clanPreview.name}</p>
-              <p className="text-[10px] text-green-600">Kết nối thành công ✓ · {clanPreview.members} thành viên</p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <button onClick={() => saveMultiple(["coc_api_key", "clan_tag"])} disabled={!!saving}
-            className="btn-gold flex items-center gap-2 text-sm">
-            {saving?.includes("coc_api_key") ? <Loader2 size={14} className="animate-spin" /> : null}
-            Lưu
-          </button>
-        </div>
-      </div>
-
-      {/* ── Quản lý Multi-Clan ── */}
-      <div className="card space-y-4">
-        <h2 className="font-bold text-white flex items-center gap-2">
-          🏰 Quản lý Clan
-        </h2>
-        <p className="text-xs text-gray-500">Thêm/sửa/xoá clan. Mỗi clan cần CoC API key riêng.</p>
         <ClanManagement />
       </div>
 

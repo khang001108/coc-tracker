@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
 import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 
@@ -136,11 +137,15 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Users size={22} className="text-blue-400" /> Thành viên
-        </h1>
-        <p className="page-subtitle">{members.length}/50 thành viên</p>
+      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
+        style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,69,19,0.08))" }}>
+        <ArtBanner src="/art/giant-sunset.jpg" opacity={0.28} objectPosition="center 40%" />
+        <div className="relative">
+          <h1 className="page-title flex items-center gap-2">
+            <Users size={22} className="text-blue-400" /> Thành viên
+          </h1>
+          <p className="page-subtitle">{members.length}/50 thành viên</p>
+        </div>
       </div>
 
       {/* Tabs */}

@@ -1,6 +1,6 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
-import { GoldCoinArt } from "@/components/ui/HeroArt";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
@@ -33,15 +33,13 @@ export default function CapitalPage() {
     <div className="space-y-5 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-5"
         style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(100,50,150,0.08))" }}>
+        <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.4} objectPosition="center 40%" />
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">
               <Castle size={22} className="text-purple-400" /> Clan Capital
             </h1>
             <p className="page-subtitle">Raid Weekend — theo dõi đột kích</p>
-          </div>
-          <div className="shrink-0 opacity-90">
-            <GoldCoinArt size={88} opacity={0.25} />
           </div>
         </div>
       </div>

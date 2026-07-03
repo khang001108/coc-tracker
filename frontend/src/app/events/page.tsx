@@ -1,5 +1,5 @@
 "use client";
-import { TrophyArt } from "@/components/ui/HeroArt";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 import { useEffect, useRef, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
@@ -847,6 +847,7 @@ export default function EventsPage() {
       {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden p-6"
         style={{ background:"linear-gradient(135deg,rgba(244,161,48,0.18),rgba(236,72,153,0.12),rgba(139,69,19,0.15))" }}>
+        <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.32} objectPosition="center 35%" />
         <FireworkField bursts={4}/>
         <div className="relative flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 animate-gold-pulse"
@@ -858,9 +859,6 @@ export default function EventsPage() {
               Sự kiện & Trao thưởng <Sparkles size={18} className="text-yellow-400"/>
             </h1>
             <p className="page-subtitle">War giải, thử thách, quà từ cửa hàng của clan</p>
-          </div>
-          <div className="shrink-0 opacity-90">
-            <TrophyArt size={88} opacity={0.22} />
           </div>
         </div>
       </div>

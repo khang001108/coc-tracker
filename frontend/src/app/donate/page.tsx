@@ -7,6 +7,7 @@ import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { Heart, Gamepad2, ArrowUpDown } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
+import { ArtBanner } from "@/components/ui/ArtBanner";
 
 type SortKey = "donations" | "donationsReceived" | "ratio" | "name" | "th";
 
@@ -65,11 +66,15 @@ export default function DonatePage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div>
-        <h1 className="page-title flex items-center gap-2">
-          <Heart size={22} className="text-pink-400" /> Donate & Clan Games
-        </h1>
-        <p className="page-subtitle">Thống kê đóng góp và điểm clan games</p>
+      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
+        style={{ background: "linear-gradient(135deg, rgba(236,72,153,0.14), rgba(139,69,19,0.08))" }}>
+        <ArtBanner src="/art/balloon-swarm-skulls.jpg" opacity={0.26} objectPosition="center 25%" />
+        <div className="relative">
+          <h1 className="page-title flex items-center gap-2">
+            <Heart size={22} className="text-pink-400" /> Donate & Clan Games
+          </h1>
+          <p className="page-subtitle">Thống kê đóng góp và điểm clan games</p>
+        </div>
       </div>
 
       {/* Tabs */}
