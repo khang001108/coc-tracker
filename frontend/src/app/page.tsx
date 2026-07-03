@@ -13,15 +13,17 @@ import { EmberField } from "@/components/ui/EmberField";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
-    <div className="card">
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gray-800`}>
-          <Icon size={20} className={color} />
+    <div className="card !p-3">
+      <div className="flex items-center gap-2.5">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-gray-800`}>
+          <Icon size={15} className={color} />
+        </div>
+        <div className="min-w-0">
+          <p className="stat-value !text-base leading-tight truncate">{value ?? "—"}</p>
+          <p className="stat-label !text-[10px] leading-tight truncate">{label}</p>
         </div>
       </div>
-      <p className="stat-value">{value ?? "—"}</p>
-      <p className="stat-label mt-1">{label}</p>
-      {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -42,25 +44,28 @@ export default function DashboardPage() {
   const [clan, setClan] = useState<any>(null);
   const [war, setWar] = useState<any>(null);
   const [cwl, setCwl] = useState<any>(null);
+  const [raid, setRaid] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [tagCopied, setTagCopied] = useState(false);
+  const [overviewCfg, setOverviewCfg] = useState<Record<string, string>>({});
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const [c, w, cw, roster] = await Promise.allSettled([
-        api.getClan(), api.getCurrentWar(), api.getCWLCurrentWar(), api.getRoster(),
+      const [c, w, cw, roster, r] = await Promise.allSettled([
+        api.getClan(), api.getCurrentWar(), api.getCWLCurrentWar(), api.getRoster(), api.getRaidSeasons(),
       ]);
       if (c.status === "fulfilled") setClan(c.value); else throw c.reason;
       setWar(w.status === "fulfilled" ? w.value : null);
       setCwl(cw.status === "fulfilled" ? cw.value : null);
+      setRaid(r.status === "fulfilled" ? r.value : null);
       if (roster.status === "fulfilled") {
         const map: Record<string, any> = {};
-        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+        (roster.value as any[]).forEach(m => { map[m.tag] = m; });
         setRosterMap(map);
       }
     } catch (e: any) {
@@ -85,6 +90,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load();
+    api.getPublicSettings().then(setOverviewCfg).catch(() => {});
     // Auto-refresh mỗi 5 phút
     const t = setInterval(() => load(), 5 * 60 * 1000);
     return () => clearInterval(t);
@@ -173,7 +179,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Thành viên"    value={`${clan?.members || 0}/50`}   icon={Users}    color="text-blue-400" />
         <StatCard label="Điểm Clan"     value={formatNumber(clan?.clanPoints || 0)} icon={Trophy} color="text-yellow-400" />
         <StatCard label="Level Clan"    value={clan?.clanLevel || 0}          icon={Star}     color="text-purple-400" />
@@ -182,8 +188,8 @@ export default function DashboardPage() {
       </div>
 
       {/* War status */}
-      {war?.state && war.state !== "notInWar" && (
-        <div className="card border-red-500/20 bg-red-500/5 relative overflow-hidden">
+      {war?.state && war.state !== "notInWar" && overviewCfg.overview_show_war !== "false" && (
+        <Link href="/war" className="block card border-red-500/20 bg-red-500/5 relative overflow-hidden transition-transform hover:scale-[1.01] active:scale-[0.99]">
           <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.8} objectPosition="center 25%" />
           <EmberField count={18} speed={1.2} />
           <div className="relative flex items-center justify-between mb-4 banner-content">
@@ -211,13 +217,13 @@ export default function DashboardPage() {
           {war.endTime && (
             <p className="relative text-xs text-gray-300 text-center mt-3 banner-content">Kết thúc: {formatDate(war.endTime)}</p>
           )}
-        </div>
+        </Link>
       )}
 
       {/* CWL status — tách riêng khỏi war thường ở trên, vì 1 clan có thể vừa
           war thường vừa CWL cùng lúc */}
-      {cwl?.current?.state && cwl.current.state !== "notInWar" && (
-        <div className="card relative overflow-hidden" style={{ borderColor: "rgba(244,161,48,0.3)", background: "rgba(244,161,48,0.04)" }}>
+      {cwl?.current?.state && cwl.current.state !== "notInWar" && overviewCfg.overview_show_cwl !== "false" && (
+        <Link href="/war?tab=cwl" className="block card relative overflow-hidden transition-transform hover:scale-[1.01] active:scale-[0.99]" style={{ borderColor: "rgba(244,161,48,0.3)", background: "rgba(244,161,48,0.04)" }}>
           <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.75} objectPosition="center 30%" />
           <EmberField count={18} speed={1.2} />
           <div className="relative flex items-center justify-between mb-4 banner-content">
@@ -247,7 +253,35 @@ export default function DashboardPage() {
           {cwl.next?.opponent?.name && (
             <p className="relative text-xs text-gray-500 text-center mt-3">Vòng tiếp theo: vs {cwl.next.opponent.name}</p>
           )}
-        </div>
+        </Link>
+      )}
+
+      {/* Capital Raid status — hiện khi đang có Raid Weekend diễn ra */}
+      {raid?.state === "ongoing" && overviewCfg.overview_show_capital !== "false" && (
+        <Link href="/capital" className="block card relative overflow-hidden transition-transform hover:scale-[1.01] active:scale-[0.99]" style={{ borderColor: "rgba(168,85,247,0.3)", background: "rgba(168,85,247,0.04)" }}>
+          <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.8} objectPosition="center 40%" />
+          <div className="relative flex items-center justify-between mb-4 banner-content">
+            <h2 className="font-bold text-white flex items-center gap-2">
+              <Shield size={18} className="text-purple-400" />
+              Clan Capital — Raid Weekend
+            </h2>
+            <span className="badge font-semibold badge-green">Đang diễn ra</span>
+          </div>
+          <div className="relative grid grid-cols-3 gap-4 text-center banner-content">
+            <div>
+              <p className="text-2xl font-bold text-yellow-400">{formatNumber((raid.members || []).reduce((s: number, m: any) => s + (m.capitalResourcesLooted || 0), 0))}</p>
+              <p className="text-xs text-gray-300">Gold cướp được</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-purple-300">{(raid.members || []).reduce((s: number, m: any) => s + (m.attacks || 0), 0)}</p>
+              <p className="text-xs text-gray-300">Tổng attack</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-300">{raid.members?.length || 0}/50</p>
+              <p className="text-xs text-gray-300">Tham gia</p>
+            </div>
+          </div>
+        </Link>
       )}
 
       {/* Top members */}

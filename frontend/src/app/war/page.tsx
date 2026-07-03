@@ -63,9 +63,18 @@ export default function WarPage() {
   const [war, setWar] = useState<any>(null);
   const [cwlNext, setCwlNext] = useState<any>(null);
   const [warLog, setWarLog] = useState<any[]>([]);
+  const [logSubTab, setLogSubTab] = useState<"random" | "cwl">("random");
+  const [cwlHistory, setCwlHistory] = useState<any[]>([]);
+  const [cwlHistoryLoading, setCwlHistoryLoading] = useState(false);
   const [cwl, setCwl] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
-  const [tab, setTab] = useState<"current" | "log" | "cwl">("current");
+  const [tab, setTab] = useState<"current" | "log" | "cwl">(() => {
+    if (typeof window !== "undefined") {
+      const q = new URLSearchParams(window.location.search).get("tab");
+      if (q === "cwl" || q === "log" || q === "current") return q;
+    }
+    return "current";
+  });
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [loading, setLoading] = useState(true);
   const [copiedMissing, setCopiedMissing] = useState(false);
@@ -102,6 +111,12 @@ export default function WarPage() {
     }
     load();
   }, []);
+
+  useEffect(() => {
+    if (tab !== "log" || logSubTab !== "cwl" || cwlHistory.length > 0) return;
+    setCwlHistoryLoading(true);
+    api.getWarHistoryLog("cwl", 30).then((res: any) => setCwlHistory(res.items || [])).finally(() => setCwlHistoryLoading(false));
+  }, [tab, logSubTab]);
 
   const clanMembers = war?.clan?.members?.sort((a: any, b: any) => a.mapPosition - b.mapPosition) || [];
   const notAttacked = clanMembers.filter((m: any) => (m.attacks || []).length === 0);
@@ -289,28 +304,67 @@ export default function WarPage() {
         </>
       ) : tab === "log" ? (
         <div className="card">
-          <h3 className="font-bold text-white mb-4">Lịch sử War ({warLog.length} war)</h3>
-          {warLog.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">Không có lịch sử war</p>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className="font-bold text-white">Lịch sử War</h3>
+            <SlidingTabs
+              tabs={[{ id: "random", label: "War thường" }, { id: "cwl", label: "CWL" }]}
+              active={logSubTab} onChange={(id) => setLogSubTab(id as any)} />
+          </div>
+
+          {logSubTab === "random" ? (
+            warLog.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Không có lịch sử war</p>
+            ) : (
+              <div className="space-y-3">
+                {warLog.map((w: any, i: number) => {
+                  const won = w.clan?.stars > w.opponent?.stars;
+                  const draw = w.clan?.stars === w.opponent?.stars;
+                  return (
+                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-gray-800">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                        won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
+                      }`}>
+                        {won ? "W" : draw ? "D" : "L"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">vs {w.opponent?.name}</p>
+                        <p className="text-xs text-gray-500">{w.teamSize}v{w.teamSize} · {w.endTime?.slice(0, 8)}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-yellow-400">⭐{w.clan?.stars} — {w.opponent?.stars}⭐</p>
+                        <p className="text-xs text-gray-500">{w.clan?.destructionPercentage?.toFixed(1)}% vs {w.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : cwlHistoryLoading ? (
+            <p className="text-gray-500 text-center py-8">Đang tải...</p>
+          ) : cwlHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Chưa có lịch sử CWL nào được ghi nhận</p>
+              <p className="text-[11px] text-gray-600 mt-1">CoC API không cho xem lại các mùa CWL cũ — web chỉ tự lưu lại từ lúc bạn cập nhật tính năng này trở đi.</p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {warLog.map((w: any, i: number) => {
-                const won = w.clan?.stars > w.opponent?.stars;
-                const draw = w.clan?.stars === w.opponent?.stars;
+              {cwlHistory.map((w: any) => {
+                const won = w.result === "win";
+                const draw = w.result === "tie";
                 return (
-                  <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-gray-800">
+                  <div key={w.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-800">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                       won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
                     }`}>
                       {won ? "W" : draw ? "D" : "L"}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">vs {w.opponent?.name}</p>
-                      <p className="text-xs text-gray-500">{w.teamSize}v{w.teamSize} · {w.endTime?.slice(0, 8)}</p>
+                      <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
+                      <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-yellow-400">⭐{w.clan?.stars} — {w.opponent?.stars}⭐</p>
-                      <p className="text-xs text-gray-500">{w.clan?.destructionPercentage?.toFixed(1)}% vs {w.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                      <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
+                      <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
                     </div>
                   </div>
                 );

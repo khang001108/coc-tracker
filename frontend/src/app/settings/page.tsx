@@ -502,6 +502,29 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           className="btn-gold text-sm w-full">Lưu ảnh nền Chat</button>
       </div>
 
+      {/* ── Thẻ hiển thị ở Tổng quan ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">🏠 Thẻ hiển thị ở Tổng quan</h2>
+        <p className="text-xs text-gray-500">Ẩn/hiện các thẻ War, CWL, Clan Capital ở trang Tổng quan (chỉ ẩn khi có sự kiện đang diễn ra, không ảnh hưởng trang riêng của từng mục).</p>
+        {[
+          { key: "overview_show_war", label: "⚔️ Thẻ War đang diễn ra" },
+          { key: "overview_show_cwl", label: "🏆 Thẻ Clan War League" },
+          { key: "overview_show_capital", label: "🏰 Thẻ Clan Capital / Raid Weekend" },
+        ].map(({ key, label }) => (
+          <label key={key} className="flex items-center justify-between text-sm" style={{ color: "var(--py-card-text)" }}>
+            {label}
+            <ToggleSwitch
+              checked={settings[key] !== "false"}
+              onChange={() => {
+                const next = settings[key] === "false" ? "true" : "false";
+                set(key, next);
+                api.saveSetting(key, next).catch(() => {});
+              }}
+            />
+          </label>
+        ))}
+      </div>
+
       {/* ── Dọn dẹp tài sản thành viên rời clan ── */}
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🧹 Dọn dẹp tài sản người rời clan</h2>

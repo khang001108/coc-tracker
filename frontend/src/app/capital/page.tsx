@@ -4,17 +4,30 @@ import { ArtBanner } from "@/components/ui/ArtBanner";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
-import { Castle, TrendingUp, Users, Coins, AlertCircle } from "lucide-react";
+import { Castle, TrendingUp, Users, Coins, AlertCircle, Copy, Check, UserX } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
+
+function CopyLogButton({ getText, label = "Copy log" }: { getText: () => string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(getText()); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-yellow-400 transition-colors px-2 py-1 rounded-lg hover:bg-yellow-500/10 shrink-0">
+      {copied ? <><Check size={11}/> Đã copy</> : <><Copy size={11}/> {label}</>}
+    </button>
+  );
+}
 
 export default function CapitalPage() {
   const [raid, setRaid] = useState<any>(null);
+  const [clan, setClan] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.allSettled([api.getRaidSeasons(), api.getRoster()]).then(([r, roster]) => {
+    Promise.allSettled([api.getRaidSeasons(), api.getRoster(), api.getClan()]).then(([r, roster, c]) => {
       if (r.status === "fulfilled") setRaid(r.value);
+      if (c.status === "fulfilled") setClan(c.value);
       if (roster.status === "fulfilled") {
         const map: Record<string, any> = {};
         (roster.value as any[]).forEach(x => { map[x.tag] = x; });
@@ -23,8 +36,13 @@ export default function CapitalPage() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const allMembers: any[] = clan?.memberList || [];
   const members: any[] = raid?.members || [];
+  const raidTags = new Set(members.map(m => m.tag));
   const notRaided = members.filter(m => m.capitalResourcesLooted === 0);
+  const joinedNoAttack = members.filter(m => (m.attacks || 0) === 0);
+  const notJoined = allMembers.filter(m => !raidTags.has(m.tag) && (m.townHallLevel || 0) >= 6);
+  const belowTH6 = allMembers.filter(m => (m.townHallLevel || 0) < 6);
   const sorted = [...members].sort((a, b) => b.capitalResourcesLooted - a.capitalResourcesLooted);
   const totalLooted = members.reduce((s, m) => s + (m.capitalResourcesLooted || 0), 0);
   const totalAttacks = members.reduce((s, m) => s + (m.attacks || 0), 0);
@@ -81,17 +99,68 @@ export default function CapitalPage() {
             </div>
           </div>
 
-          {/* Not raided warning */}
-          {notRaided.length > 0 && (
+          {/* Chưa tham gia raid (không xuất hiện trong danh sách raid) */}
+          {notJoined.length > 0 && (
             <div className="card border-red-500/30 bg-red-500/5">
-              <p className="text-red-400 font-semibold text-sm mb-2">
-                ⚠️ {notRaided.length} thành viên chưa tham gia Raid
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-red-400 font-semibold text-sm flex items-center gap-2">
+                  <UserX size={15}/> {notJoined.length} thành viên chưa tham gia Raid
+                </p>
+                <CopyLogButton getText={() =>
+                  `🏰 CHƯA THAM GIA RAID (${raid.state === "ongoing" ? "tuần này" : "mùa vừa qua"}):\n` +
+                  notJoined.map((m: any, i: number) => `${i + 1}. ${m.name} (TH${m.townHallLevel})`).join("\n")
+                } />
+              </div>
               <div className="flex flex-wrap gap-2">
-                {notRaided.map((m: any) => (
+                {notJoined.map((m: any) => (
                   <span key={m.tag} className="badge-red"><NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect></span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Tham gia nhưng chưa đánh lượt nào */}
+          {joinedNoAttack.length > 0 && (
+            <div className="card border-orange-500/30 bg-orange-500/5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-orange-400 font-semibold text-sm flex items-center gap-2">
+                  ⚔️ {joinedNoAttack.length} thành viên tham gia nhưng chưa đánh
+                </p>
+                <CopyLogButton getText={() =>
+                  `⚔️ ĐÃ THAM GIA NHƯNG CHƯA ĐÁNH LƯỢT NÀO:\n` +
+                  joinedNoAttack.map((m: any, i: number) => `${i + 1}. ${m.name}`).join("\n")
+                } />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {joinedNoAttack.map((m: any) => (
+                  <span key={m.tag} className="badge" style={{ color: "#fb923c", background: "rgba(251,146,60,0.12)", border: "1px solid rgba(251,146,60,0.3)" }}>
+                    <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TH dưới 6 — chưa đủ điều kiện tham gia Capital */}
+          {belowTH6.length > 0 && (
+            <div className="card border-gray-600/30 bg-gray-800/30">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-400 font-semibold text-sm flex items-center gap-2">
+                  🔒 {belowTH6.length} thành viên chưa đủ điều kiện (TH dưới 6)
+                </p>
+                <CopyLogButton getText={() =>
+                  `🔒 CHƯA ĐỦ ĐIỀU KIỆN THAM GIA CAPITAL (TH<6):\n` +
+                  belowTH6.map((m: any, i: number) => `${i + 1}. ${m.name} (TH${m.townHallLevel})`).join("\n")
+                } />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {belowTH6.map((m: any) => (
+                  <span key={m.tag} className="badge" style={{ color: "#9ca3af", background: "rgba(156,163,175,0.1)", border: "1px solid rgba(156,163,175,0.25)" }}>
+                    {m.name} (TH{m.townHallLevel})
+                  </span>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-2">Lưu ý: TH tối thiểu để tham gia Clan Capital có thể thay đổi theo cập nhật của game — điều chỉnh nếu Supercell đổi mốc này.</p>
             </div>
           )}
 

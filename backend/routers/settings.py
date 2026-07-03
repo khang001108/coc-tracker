@@ -12,7 +12,7 @@ ALLOWED_KEYS = [
     "telegram_bot_token", "telegram_chat_id",
     "notify_war", "notify_raid", "notify_donate", "notify_member",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
-    "chat_background_image",
+    "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital",
 ]
 
 @router.post("/login")
@@ -41,11 +41,13 @@ async def cleanup_stats_now(_: bool = Depends(require_admin)):
 
 @router.get("/public")
 async def get_public_settings():
-    """Vài cấu hình hiển thị KHÔNG nhạy cảm (vd ảnh nền chat) — cho mọi
-    người xem được, không cần đăng nhập admin (khác với GET / ở trên)."""
+    """Vài cấu hình hiển thị KHÔNG nhạy cảm (vd ảnh nền chat, ẩn/hiện thẻ ở
+    Tổng quan) — cho mọi người xem được, không cần đăng nhập admin (khác
+    với GET / ở trên)."""
     sb = get_supabase()
+    keys = ["chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital"]
     try:
-        res = sb.table("settings").select("key,value").eq("key", "chat_background_image").execute()
+        res = sb.table("settings").select("key,value").in_("key", keys).execute()
         return {row["key"]: row["value"] for row in res.data}
     except Exception:
         return {}

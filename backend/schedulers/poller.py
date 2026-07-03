@@ -95,30 +95,98 @@ async def poll_clan():
         except Exception as e:
             log.error(f"poll_clan error (clan_id={c.get('id')}): {e}")
 
+def _best_attack(attacks: list, name_by_tag: dict) -> dict | None:
+    """Đòn đánh 'anh dũng nhất' trong 1 danh sách đòn: sao cao nhất → % phá
+    huỷ cao nhất → thời gian đánh nhanh nhất (CoC API không có sẵn chỉ số
+    này, đây là công thức tự tính theo yêu cầu người dùng)."""
+    if not attacks:
+        return None
+    best = max(attacks, key=lambda a: (a.get("stars", 0), a.get("destructionPercentage", 0), -a.get("duration", 99999)))
+    return {
+        "stars": best.get("stars", 0),
+        "destruction": best.get("destructionPercentage", 0),
+        "duration": best.get("duration", 0),
+        "opponent": name_by_tag.get(best.get("defenderTag"), "?"),
+    }
+
+
+def _best_defense(all_opponent_attacks: list, member_tag: str, name_by_tag: dict) -> dict | None:
+    """Lượt phòng thủ 'anh dũng nhất' của 1 người — trong các đòn đối phương
+    đánh vào căn cứ người đó, chọn đòn mà đối phương đạt ÍT sao/ít % phá huỷ
+    nhất (tức phòng thủ tốt nhất)."""
+    defenses = [a for a in all_opponent_attacks if a.get("defenderTag") == member_tag]
+    if not defenses:
+        return None
+    best = min(defenses, key=lambda a: (a.get("stars", 0), a.get("destructionPercentage", 0)))
+    return {
+        "stars": best.get("stars", 0),
+        "destruction": best.get("destructionPercentage", 0),
+        "attacker": name_by_tag.get(best.get("attackerTag"), "?"),
+    }
+
+
 def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "random"):
     """Ghi lại lượt tham chiến của từng thành viên khi 1 war đã kết thúc (hoặc
     đang ở battle day cuối) — dùng upsert nên gọi lặp lại nhiều lần (mỗi lần
-    poll) vẫn an toàn, không bị nhân đôi dữ liệu."""
+    poll) vẫn an toàn, không bị nhân đôi dữ liệu. Đồng thời tính sẵn đòn đánh/
+    phòng thủ 'anh dũng nhất' của từng người, và ghi tổng kết war vào
+    war_history_log."""
     end_time = war_data.get("endTime")
     if not end_time:
         return
     attacks_allowed = war_data.get("attacksPerMember") or (1 if war_type == "cwl" else 2)
-    members = war_data.get("clan", {}).get("members", [])
+    clan = war_data.get("clan", {})
+    opponent = war_data.get("opponent", {})
+    members = clan.get("members", [])
+
+    name_by_tag = {m.get("tag"): m.get("name", "?") for m in members}
+    name_by_tag.update({m.get("tag"): m.get("name", "?") for m in opponent.get("members", [])})
+    opponent_attacks = [a for m in opponent.get("members", []) for a in m.get("attacks", [])]
+
     rows = []
     for m in members:
         attacks = m.get("attacks", [])
+        ba = _best_attack(attacks, name_by_tag)
+        bd = _best_defense(opponent_attacks, m.get("tag"), name_by_tag)
         rows.append({
             "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
             "player_tag": m.get("tag"), "player_name": m.get("name", "?"),
             "attacks_used": len(attacks), "attacks_allowed": attacks_allowed,
             "stars_earned": sum(a.get("stars", 0) for a in attacks),
+            "best_attack_stars": ba["stars"] if ba else None,
+            "best_attack_destruction": ba["destruction"] if ba else None,
+            "best_attack_duration": ba["duration"] if ba else None,
+            "best_attack_opponent": ba["opponent"] if ba else None,
+            "best_defense_stars": bd["stars"] if bd else None,
+            "best_defense_destruction": bd["destruction"] if bd else None,
+            "best_defense_attacker": bd["attacker"] if bd else None,
         })
-    if not rows:
-        return
+    if rows:
+        try:
+            sb.table("war_participation_log").upsert(rows, on_conflict="clan_id,war_end_time,player_tag").execute()
+        except Exception as e:
+            # Cột best_attack_*/best_defense_* có thể chưa tồn tại (chưa chạy
+            # migration PART 7) — thử lại chỉ với các cột cũ để không chặn hẳn.
+            try:
+                basic_rows = [{k: v for k, v in r.items() if not k.startswith("best_")} for r in rows]
+                sb.table("war_participation_log").upsert(basic_rows, on_conflict="clan_id,war_end_time,player_tag").execute()
+            except Exception as e2:
+                log.error(f"_log_war_participation error (clan_id={clan_id}): {e2}")
+
+    clan_stars, opp_stars = clan.get("stars", 0), opponent.get("stars", 0)
+    result = "win" if clan_stars > opp_stars else ("lose" if clan_stars < opp_stars else "tie")
     try:
-        sb.table("war_participation_log").upsert(rows, on_conflict="clan_id,war_end_time,player_tag").execute()
+        sb.table("war_history_log").upsert({
+            "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
+            "opponent_name": opponent.get("name"), "opponent_tag": opponent.get("tag"),
+            "team_size": war_data.get("teamSize"),
+            "clan_stars": clan_stars, "opponent_stars": opp_stars,
+            "clan_destruction": clan.get("destructionPercentage"),
+            "opponent_destruction": opponent.get("destructionPercentage"),
+            "result": result,
+        }, on_conflict="clan_id,war_end_time").execute()
     except Exception as e:
-        log.error(f"_log_war_participation error (clan_id={clan_id}): {e}")
+        log.error(f"_log_war_history error (clan_id={clan_id}): {e}")
 
 
 async def _log_cwl_participation(sb, clan_id: int, tag: str):
@@ -430,6 +498,10 @@ async def poll_stats_cleanup():
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
         sb.table("war_participation_log").delete().lt("created_at", cutoff).execute()
         sb.table("donation_snapshot_log").delete().lt("snapshot_at", cutoff).execute()
+        try:
+            sb.table("war_history_log").delete().lt("created_at", cutoff).execute()
+        except Exception:
+            pass  # chưa chạy migration PART 7 — bỏ qua bảng này
         log.info(f"Stats cleanup: removed records older than {days} days")
     except Exception as e:
         log.error(f"poll_stats_cleanup error: {e}")

@@ -24,16 +24,41 @@ def _period_cutoff(period: str) -> str | None:
 async def war_activity(request: Request, period: str = Query("all", pattern="^(week|month|all)$")):
     clan_id = get_clan_id(request)
     sb = get_supabase()
-    q = sb.table("war_participation_log").select(
-        "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at"
-    ).eq("clan_id", clan_id)
     cutoff = _period_cutoff(period)
-    if cutoff:
-        q = q.gte("created_at", cutoff)
-    res = q.execute()
+    try:
+        q = sb.table("war_participation_log").select(
+            "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type,"
+            "best_attack_stars,best_attack_destruction,best_attack_duration,best_attack_opponent,"
+            "best_defense_stars,best_defense_destruction,best_defense_attacker"
+        ).eq("clan_id", clan_id)
+        if cutoff:
+            q = q.gte("created_at", cutoff)
+        res = q.execute()
+    except Exception:
+        # Chưa chạy MIGRATION PART 7 — vẫn trả về phần war yếu/hay bỏ war,
+        # chỉ bỏ qua MVP tấn công/phòng thủ.
+        q = sb.table("war_participation_log").select(
+            "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type"
+        ).eq("clan_id", clan_id)
+        if cutoff:
+            q = q.gte("created_at", cutoff)
+        res = q.execute()
+    rows = res.data or []
 
     per_player: dict[str, dict] = {}
-    for r in res.data or []:
+    best_attack_overall = None   # đòn đánh anh dũng nhất trong cả khoảng thời gian
+    best_defense_overall = None  # phòng thủ anh dũng nhất trong cả khoảng thời gian
+
+    def _attack_key(r):
+        return (r.get("best_attack_stars") or 0, r.get("best_attack_destruction") or 0, -(r.get("best_attack_duration") or 99999))
+
+    def _defense_key(r):
+        # Phòng thủ tốt = đối phương ăn ÍT sao/ít % — nên "tốt nhất" là nhỏ nhất,
+        # ta đảo dấu để dùng chung logic "lớn nhất là tốt nhất" khi so sánh.
+        return (-(r.get("best_defense_stars") if r.get("best_defense_stars") is not None else 99),
+                -(r.get("best_defense_destruction") if r.get("best_defense_destruction") is not None else 100))
+
+    for r in rows:
         p = per_player.setdefault(r["player_tag"], {
             "tag": r["player_tag"], "name": r["player_name"],
             "wars": 0, "skipped": 0, "stars": 0, "attacks_used": 0, "attacks_allowed": 0,
@@ -46,6 +71,13 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
         if (r["attacks_used"] or 0) < (r["attacks_allowed"] or 0):
             p["skipped"] += 1
 
+        if r.get("best_attack_stars") is not None:
+            if best_attack_overall is None or _attack_key(r) > _attack_key(best_attack_overall):
+                best_attack_overall = r
+        if r.get("best_defense_stars") is not None:
+            if best_defense_overall is None or _defense_key(r) > _defense_key(best_defense_overall):
+                best_defense_overall = r
+
     players = list(per_player.values())
     for p in players:
         p["avg_stars"] = round(p["stars"] / p["wars"], 2) if p["wars"] else 0
@@ -54,15 +86,48 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
     weakest = sorted([p for p in players if p["wars"] > 0], key=lambda p: p["avg_stars"])[:10]
     most_skips = sorted([p for p in players if p["skipped"] > 0], key=lambda p: (-p["skipped"], -p["skip_rate"]))[:10]
 
+    def _fmt_attack(r):
+        if not r:
+            return None
+        return {
+            "player_name": r["player_name"], "player_tag": r["player_tag"],
+            "stars": r.get("best_attack_stars"), "destruction": r.get("best_attack_destruction"),
+            "duration": r.get("best_attack_duration"), "opponent": r.get("best_attack_opponent"),
+            "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
+        }
+
+    def _fmt_defense(r):
+        if not r:
+            return None
+        return {
+            "player_name": r["player_name"], "player_tag": r["player_tag"],
+            "stars": r.get("best_defense_stars"), "destruction": r.get("best_defense_destruction"),
+            "attacker": r.get("best_defense_attacker"),
+            "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
+        }
+
     return {
         "period": period,
-        "total_wars_tracked": len(set(r["created_at"] for r in (res.data or []))),  # xấp xỉ
+        "total_wars_tracked": len(set(r["war_end_time"] for r in rows)),
         "weakest_war": weakest,
         "most_skips": most_skips,
+        "mvp_attack": _fmt_attack(best_attack_overall),
+        "mvp_defense": _fmt_defense(best_defense_overall),
     }
 
 
-@router.get("/donation-trend")
+@router.get("/war-history")
+async def war_history(request: Request, war_type: str = Query("random", pattern="^(random|cwl)$"), limit: int = Query(20, le=100)):
+    """Lịch sử war tự tích luỹ (kể cả CWL — CoC API không cho xem lại các mùa
+    CWL cũ nên chỉ có dữ liệu từ lúc app bắt đầu ghi nhận trở đi)."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    try:
+        res = sb.table("war_history_log").select("*").eq("clan_id", clan_id).eq("war_type", war_type) \
+            .order("created_at", desc=True).limit(limit).execute()
+        return {"items": res.data or []}
+    except Exception:
+        return {"items": [], "error": "chưa chạy migration PART 7"}
 async def donation_trend(request: Request, period: str = Query("all", pattern="^(week|month|all)$")):
     clan_id = get_clan_id(request)
     sb = get_supabase()

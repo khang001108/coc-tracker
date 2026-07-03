@@ -25,7 +25,7 @@ from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin, verify_admin_token
 from member_auth import verify_member_token
-from services.coc_api import get_current_war, get_war_log, get_clan_members
+from services.coc_api import get_current_war, get_war_log, get_clan_members, get_cwl_group, get_cwl_war, get_raid_seasons
 from services.push_service import send_push_to_clan
 import uuid
 
@@ -38,6 +38,8 @@ CONDITION_LABELS = {
     "most_attacks_used": "Dùng hết lượt tấn công",
     "fewest_stars_conceded": "Phòng thủ tốt nhất (mất ít sao nhất)",
     "top_donations": "Donate cao nhất hiện tại",
+    "capital_most_loot": "Clan Capital: Gold cướp được nhiều nhất",
+    "capital_most_attacks": "Clan Capital: Số lượt tấn công nhiều nhất",
     "manual": "Admin tự chọn thủ công",
 }
 
@@ -420,11 +422,54 @@ def _fmt_metric(condition_type: str, score: float) -> str:
     return str(score)
 
 
-async def _war_members_for_clan(clan_id: int) -> list:
-    """Lấy danh sách member trong war hiện tại/gần nhất của 1 clan cụ thể."""
+async def _cwl_current_war_members(tag: str, clan_id: int) -> list:
+    """Tìm war CWL đang 'inWar' (hoặc 'warEnded' gần nhất) của clan — dùng khi
+    sự kiện loại CWL/War giải cần biết thành viên đã tham chiến."""
+    try:
+        group = await get_cwl_group(tag, clan_id=clan_id)
+    except Exception:
+        return []
+    best = None
+    for round_data in group.get("rounds", []):
+        for war_tag in round_data.get("warTags", []):
+            if war_tag == "#0":
+                continue
+            try:
+                w = await get_cwl_war(war_tag, clan_id=clan_id)
+            except Exception:
+                continue
+            our_side = None
+            if w.get("clan", {}).get("tag") == tag:
+                our_side = "clan"
+            elif w.get("opponent", {}).get("tag") == tag:
+                our_side = "opponent"
+            if not our_side:
+                continue
+            if our_side == "opponent":
+                w["clan"], w["opponent"] = w["opponent"], w["clan"]
+            if w.get("state") == "inWar":
+                best = w  # ưu tiên vòng đang đánh, ghi đè các vòng cũ hơn
+            elif best is None and w.get("state") == "warEnded":
+                best = w
+    return best.get("clan", {}).get("members", []) if best else []
+
+
+async def _war_members_for_clan(clan_id: int, event_type: str = "war") -> list:
+    """Lấy danh sách member trong war hiện tại/gần nhất của 1 clan cụ thể.
+    event_type == 'cwl' → ưu tiên tìm trong CWL trước (trước đây chỉ tìm ở
+    war thường nên sự kiện loại CWL luôn báo nhầm 'không ai tham gia' dù
+    thành viên đang đánh CWL thật)."""
     tag = await get_tag_by_clan_id(clan_id)
     if not tag:
         return []
+
+    if event_type == "cwl":
+        members = await _cwl_current_war_members(tag, clan_id)
+        if members:
+            return members
+        # Không tìm được vòng CWL nào — fallback thử war thường (phòng khi
+        # admin gắn nhầm loại sự kiện) trước khi chịu thua.
+
     war = None
     try:
         cur = await get_current_war(tag, clan_id=clan_id)
@@ -435,6 +480,12 @@ async def _war_members_for_clan(clan_id: int) -> list:
     if war is None:
         log = await get_war_log(tag, clan_id=clan_id)
         war = log[0] if log else None
+    if war is None and event_type != "cwl":
+        # Chưa thử CWL (vì event không khai là loại cwl) — thử luôn cho chắc,
+        # vì war thường lẫn CWL đều hợp lệ để tính "top sao/perfect war".
+        members = await _cwl_current_war_members(tag, clan_id)
+        if members:
+            return members
     if war is None:
         return []
     return war.get("clan", {}).get("members", [])
@@ -445,6 +496,21 @@ async def _donation_members_for_clan(clan_id: int) -> list:
     if not tag:
         return []
     return await get_clan_members(tag, clan_id=clan_id)
+
+
+async def _capital_members_for_clan(clan_id: int) -> list:
+    """Thành viên + số liệu Raid Weekend mới nhất của 1 clan (dùng cho sự
+    kiện loại Clan Capital)."""
+    tag = await get_tag_by_clan_id(clan_id)
+    if not tag:
+        return []
+    try:
+        seasons = await get_raid_seasons(tag, clan_id=clan_id)
+    except Exception:
+        return []
+    if not seasons:
+        return []
+    return seasons[0].get("members", [])
 
 
 @router.get("/{event_id}/leaderboard")
@@ -505,11 +571,39 @@ async def get_leaderboard(event_id: int):
         ]
         return {"event": event, "leaderboard": leaderboard, "participant_count": len(participants)}
 
+    # Điều kiện Clan Capital: gộp raid mới nhất của từng clan liên quan
+    if condition_type in ("capital_most_loot", "capital_most_attacks"):
+        all_capital_members: list = []
+        for cid in clan_ids_involved:
+            try:
+                all_capital_members += await _capital_members_for_clan(cid)
+            except Exception:
+                continue
+        members = [m for m in all_capital_members if m["tag"] in participant_tags]
+        # Người tham gia nhưng chưa raid lượt nào (0 gold, 0 attack) tự động
+        # bị loại vì điểm = 0, sẽ rơi xuống cuối bảng — không xét vào top N
+        # nếu top N nhỏ hơn số người tham gia.
+        key = "capitalResourcesLooted" if condition_type == "capital_most_loot" else "attacks"
+        ranked = sorted(members, key=lambda m: m.get(key, 0), reverse=True)
+        ranked = [m for m in ranked if m.get(key, 0) > 0]
+        unit = "gold" if condition_type == "capital_most_loot" else "lượt tấn công"
+        leaderboard = [
+            {
+                "player_tag": m["tag"],
+                "player_name": m["name"],
+                "rank": i + 1,
+                "metric_value": f"{m.get(key, 0)} {unit}",
+            }
+            for i, m in enumerate(ranked[:top_n])
+        ]
+        note = None if leaderboard else "Chưa có ai raid Clan Capital trong mùa gần nhất."
+        return {"event": event, "leaderboard": leaderboard, "note": note, "participant_count": len(participants)}
+
     # Điều kiện war — gộp war hiện tại/gần nhất của từng clan liên quan
     war_members: list = []
     for cid in clan_ids_involved:
         try:
-            war_members += await _war_members_for_clan(cid)
+            war_members += await _war_members_for_clan(cid, event.get("event_type", "war"))
         except Exception:
             continue
 

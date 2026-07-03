@@ -564,3 +564,50 @@ UPDATE clans SET
   coc_api_key = COALESCE(NULLIF(coc_api_key, ''), (SELECT value FROM settings WHERE key = 'coc_api_key')),
   clan_tag    = COALESCE(NULLIF(clan_tag, ''), (SELECT value FROM settings WHERE key = 'clan_tag'))
 WHERE id = 1;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 7 (Tấn công/Phòng thủ anh dũng nhất, Lịch sử WCL tích
+-- luỹ, Sự kiện loại Clan Capital, ẩn/hiện thẻ ở Tổng quan)
+-- ════════════════════════════════════════════════════════════════
+
+-- Thêm cột lưu "đòn đánh tốt nhất" / "phòng thủ tốt nhất" của từng người mỗi
+-- war — dùng để tính "Tấn công/Phòng thủ anh dũng nhất" tích luỹ theo
+-- tuần/tháng (CoC API không có sẵn 2 chỉ số này, tự tính theo: sao cao nhất
+-- → % phá hủy cao nhất → thời gian đánh nhanh nhất).
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_attack_stars       INTEGER;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_attack_destruction NUMERIC;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_attack_duration    INTEGER;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_attack_opponent    TEXT;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_defense_stars       INTEGER;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_defense_destruction NUMERIC;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS best_defense_attacker    TEXT;
+
+-- Lịch sử war tổng quan theo từng war (kể cả CWL) — ghi mỗi khi 1 war kết
+-- thúc, dùng cho tab "Lịch sử" (bao gồm cả CWL, vì CoC API không cho xem lại
+-- lịch sử CWL mùa cũ, chỉ có thể tự tích luỹ từ đây trở đi).
+CREATE TABLE IF NOT EXISTS war_history_log (
+  id                    SERIAL PRIMARY KEY,
+  clan_id               INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  war_end_time          TEXT NOT NULL,
+  war_type              TEXT NOT NULL DEFAULT 'random',
+  opponent_name         TEXT,
+  opponent_tag          TEXT,
+  team_size             INTEGER,
+  clan_stars            INTEGER,
+  opponent_stars        INTEGER,
+  clan_destruction      NUMERIC,
+  opponent_destruction  NUMERIC,
+  result                TEXT,  -- 'win' | 'lose' | 'tie'
+  created_at            TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, war_end_time)
+);
+CREATE INDEX IF NOT EXISTS idx_war_history_clan_time ON war_history_log(clan_id, created_at);
+ALTER TABLE war_history_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON war_history_log;
+CREATE POLICY "service_all" ON war_history_log FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_history_log TO service_role;
+
+-- Cho phép admin ẩn/hiện từng thẻ ở trang Tổng quan (mặc định hiện hết —
+-- đọc trong app: giá trị rỗng/không có = hiện).
+-- (Không cần bảng riêng — dùng chung bảng settings có sẵn với các key:
+--  overview_show_war, overview_show_cwl, overview_show_capital)

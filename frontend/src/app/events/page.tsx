@@ -23,7 +23,7 @@ const CONDITION_LABELS: Record<string, { label: string; icon: string; desc: stri
 };
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
-  war: "War thường", cwl: "CWL / War giải", custom: "Tự viết",
+  war: "War thường", cwl: "CWL / War giải", capital: "Clan Capital", custom: "Tự viết",
 };
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   pending:        { label: "⏳ Chờ duyệt",         cls: "badge-purple" },
@@ -678,6 +678,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
           <select className="input" value={form.event_type} onChange={e => setForm({...form,event_type:e.target.value})}>
             <option value="war">War thường</option>
             <option value="cwl">CWL / War giải</option>
+            <option value="capital">Clan Capital</option>
             <option value="custom">Tự viết</option>
           </select>
         </div>

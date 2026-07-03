@@ -74,6 +74,7 @@ export const api = {
   getWarLog:      () => apiFetch("/api/war/log"),
   getCWL:         () => apiFetch("/api/war/cwl"),
   getWarActivity: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/war-activity?period=${period}`),
+  getWarHistoryLog: (war_type: "random" | "cwl" = "random", limit = 20) => apiFetch(`/api/insights/war-history?war_type=${war_type}&limit=${limit}`),
   getDonationTrend: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/donation-trend?period=${period}`),
   cleanupStatsNow: () => apiFetch("/api/settings/cleanup-stats-now", { method: "POST" }),
   getCWLCurrentWar: () => apiFetch("/api/war/cwl/current"),
