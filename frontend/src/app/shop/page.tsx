@@ -9,12 +9,12 @@ export default function ShopPage() {
   const member = getMemberAuth();
 
   return (
-    <div className="space-y-5 animate-fade-up max-w-5xl">
-      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
+    <div className="space-y-5 animate-fade-up max-w-7xl">
+      <div className="relative rounded-2xl overflow-hidden p-6 md:p-10"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/wizard-fireball-goblins.jpg" opacity={0.3} objectPosition="center 35%" />
+        <ArtBanner src="/art/wizard-fireball-goblins.jpg" opacity={0.4} objectPosition="center 35%" />
         <EmberField count={16} />
-        <div className="relative flex items-center gap-4">
+        <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">
               <Store size={22} className="text-yellow-400" /> Cửa hàng vật phẩm

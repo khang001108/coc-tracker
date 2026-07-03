@@ -289,7 +289,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   );
 
   return (
-    <div className={embedded ? "contents" : "space-y-6 max-w-5xl animate-fade-up"}>
+    <div className={embedded ? "contents" : "space-y-6 max-w-7xl animate-fade-up"}>
       {!embedded && (
         <div>
           <h1 className="page-title flex items-center gap-2">
@@ -987,7 +987,7 @@ function PushNotificationSettings() {
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6 max-w-5xl animate-fade-up">
+    <div className="space-y-6 max-w-7xl animate-fade-up">
       <div>
         <h1 className="page-title flex items-center gap-2">
           <Settings size={22} className="text-yellow-400" /> Cài đặt
@@ -1001,7 +1001,7 @@ export default function SettingsPage() {
       <PushNotificationSettings />
 
       <AdminGate>
-        <div className="columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
+        <div className="columns-1 lg:columns-2 xl:columns-3 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
           <SettingsPageInner embedded />
           <MusicSettings />
           <MemberAccountsSettings />

@@ -31,10 +31,10 @@ export default function CapitalPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="relative rounded-2xl overflow-hidden p-5"
+      <div className="relative rounded-2xl overflow-hidden p-6 md:p-9"
         style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(100,50,150,0.08))" }}>
-        <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.4} objectPosition="center 40%" />
-        <div className="flex items-center gap-4">
+        <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.45} objectPosition="center 40%" />
+        <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">
               <Castle size={22} className="text-purple-400" /> Clan Capital

@@ -94,12 +94,12 @@ export default function LoginPage() {
   const filtered = roster.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-5 animate-fade-up max-w-3xl">
-      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
+    <div className="space-y-5 animate-fade-up max-w-4xl">
+      <div className="relative rounded-2xl overflow-hidden p-6 md:p-10"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/archer-queen-army.jpg" opacity={0.3} objectPosition="center 30%" />
+        <ArtBanner src="/art/archer-queen-army.jpg" opacity={0.4} objectPosition="center 30%" />
         <EmberField count={16} />
-        <div className="relative flex items-center gap-4">
+        <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">
               <UserCheck size={22} className="text-green-400" /> Nhận diện thành viên

@@ -43,6 +43,11 @@
 }
 
 @layer components {
+  /* ── Ảnh nền trang trí (ArtBanner) — chữ đè lên cần sáng + có bóng đổ để
+       luôn đọc rõ, bất kể ảnh nền sáng/tối/nhiều chi tiết ── */
+  .banner-content { text-shadow: 0 1px 4px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.55); }
+  .banner-content .page-subtitle { color: #e5e7eb; }
+
   /* ── Cards ── */
   .card {
     @apply rounded-2xl border p-5;

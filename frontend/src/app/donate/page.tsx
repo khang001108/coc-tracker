@@ -66,10 +66,10 @@ export default function DonatePage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="relative rounded-2xl overflow-hidden p-5 md:p-7"
+      <div className="relative rounded-2xl overflow-hidden p-6 md:p-9"
         style={{ background: "linear-gradient(135deg, rgba(236,72,153,0.14), rgba(139,69,19,0.08))" }}>
-        <ArtBanner src="/art/balloon-swarm-skulls.jpg" opacity={0.26} objectPosition="center 25%" />
-        <div className="relative">
+        <ArtBanner src="/art/balloon-swarm-skulls.jpg" opacity={0.38} objectPosition="center 25%" />
+        <div className="relative banner-content">
           <h1 className="page-title flex items-center gap-2">
             <Heart size={22} className="text-pink-400" /> Donate & Clan Games
           </h1>
