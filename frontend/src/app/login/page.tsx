@@ -97,7 +97,7 @@ export default function LoginPage() {
     <div className="space-y-5 animate-fade-up max-w-4xl">
       <div className="relative rounded-2xl overflow-hidden p-6 md:p-10"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/archer-queen-army.jpg" opacity={0.4} objectPosition="center 30%" />
+        <ArtBanner src="/art/skeleton-king.jpg" opacity={0.4} objectPosition="center 25%" />
         <EmberField count={16} />
         <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">

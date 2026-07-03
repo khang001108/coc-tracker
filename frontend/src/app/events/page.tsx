@@ -847,7 +847,7 @@ export default function EventsPage() {
       {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden p-6 md:p-9"
         style={{ background:"linear-gradient(135deg,rgba(244,161,48,0.18),rgba(236,72,153,0.12),rgba(139,69,19,0.15))" }}>
-        <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.4} objectPosition="center 35%" />
+        <ArtBanner src="/art/prince-celebration.jpg" opacity={0.4} objectPosition="center 30%" />
         <FireworkField bursts={4}/>
         <div className="relative flex items-center gap-4 banner-content">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 animate-gold-pulse"

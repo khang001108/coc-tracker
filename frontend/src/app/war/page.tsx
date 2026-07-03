@@ -140,7 +140,7 @@ export default function WarPage() {
             <>
               {/* War header */}
               <div className="card relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: war.isCWL ? "#5C2A00" : "#5C1E1E" }}>
-                <ArtBanner src="/art/giants-balloons-desert.jpg" opacity={0.3} objectPosition="center 30%" />
+                <ArtBanner src="/art/pekka-lava.jpg" opacity={0.35} objectPosition="center 25%" />
                 <EmberField count={22} speed={1.4} />
                 {/* CWL badge */}
                 {war.isCWL && (
