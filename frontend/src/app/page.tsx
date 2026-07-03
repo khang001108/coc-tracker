@@ -277,7 +277,7 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-300">Tổng attack</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-blue-300">{raid.members?.length || 0}/50</p>
+              <p className="text-2xl font-bold text-blue-300">{raid.members?.length || 0}/{clan?.members || 50}</p>
               <p className="text-xs text-gray-300">Tham gia</p>
             </div>
           </div>

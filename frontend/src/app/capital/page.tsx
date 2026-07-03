@@ -87,7 +87,7 @@ export default function CapitalPage() {
               {[
                 { label: "Gold cướp được", value: formatNumber(totalLooted), icon: Coins, color: "text-yellow-400" },
                 { label: "Tổng attack",   value: totalAttacks, icon: TrendingUp, color: "text-green-400" },
-                { label: "Tham gia",      value: `${members.length}/50`, icon: Users, color: "text-blue-400" },
+                { label: "Tham gia",      value: `${members.length}/${clan?.members || 50}`, icon: Users, color: "text-blue-400" },
                 { label: "Chưa raid",     value: notRaided.length, icon: AlertCircle, color: notRaided.length > 0 ? "text-red-400" : "text-gray-500" },
               ].map(({ label, value, icon: Icon, color }) => (
                 <div key={label} className="bg-gray-800 rounded-xl p-3">

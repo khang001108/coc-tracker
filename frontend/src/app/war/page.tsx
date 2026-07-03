@@ -10,6 +10,24 @@ import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, C
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
 
+/** Top 3 đòn đánh hay nhất của 1 war cụ thể — sao cao nhất → % phá huỷ cao
+ * nhất → nhanh nhất (giống công thức 'anh dũng nhất' dùng ở CWL/Thống kê). */
+function computeTop3(clanMembers: any[], opponentMembers: any[]) {
+  const nameByTag: Record<string, string> = {};
+  opponentMembers.forEach((m: any) => { nameByTag[m.tag] = m.name; });
+  const best: { tag: string; name: string; stars: number; destruction: number; duration: number }[] = [];
+  clanMembers.forEach((m: any) => {
+    const attacks = m.attacks || [];
+    if (attacks.length === 0) return;
+    const top = attacks.reduce((a: any, b: any) =>
+      (b.stars > a.stars || (b.stars === a.stars && b.destructionPercentage > a.destructionPercentage) ||
+       (b.stars === a.stars && b.destructionPercentage === a.destructionPercentage && b.duration < a.duration)) ? b : a
+    );
+    best.push({ tag: m.tag, name: m.name, stars: top.stars, destruction: top.destructionPercentage, duration: top.duration });
+  });
+  return best.sort((a, b) => b.stars - a.stars || b.destruction - a.destruction || a.duration - b.duration).slice(0, 3);
+}
+
 function AttackBar({ attacks, maxAttacks = 2 }: { attacks: any[]; maxAttacks?: number }) {
   return (
     <div className="flex gap-1">
@@ -66,6 +84,10 @@ export default function WarPage() {
   const [logSubTab, setLogSubTab] = useState<"random" | "cwl">("random");
   const [cwlHistory, setCwlHistory] = useState<any[]>([]);
   const [cwlHistoryLoading, setCwlHistoryLoading] = useState(false);
+  const [cwlStandings, setCwlStandings] = useState<any>(null);
+  const [cwlTop, setCwlTop] = useState<any>(null);
+  const [cwlExtraLoading, setCwlExtraLoading] = useState(false);
+  const [expandedWar, setExpandedWar] = useState<number | null>(null);
   const [cwl, setCwl] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"current" | "log" | "cwl">(() => {
@@ -118,6 +140,15 @@ export default function WarPage() {
     api.getWarHistoryLog("cwl", 30).then((res: any) => setCwlHistory(res.items || [])).finally(() => setCwlHistoryLoading(false));
   }, [tab, logSubTab]);
 
+  useEffect(() => {
+    if (tab !== "cwl" || cwlStandings) return;
+    setCwlExtraLoading(true);
+    Promise.allSettled([api.getCWLStandings(), api.getCWLTopWarriors()]).then(([s, t]) => {
+      if (s.status === "fulfilled") setCwlStandings(s.value);
+      if (t.status === "fulfilled") setCwlTop(t.value);
+    }).finally(() => setCwlExtraLoading(false));
+  }, [tab]);
+
   const clanMembers = war?.clan?.members?.sort((a: any, b: any) => a.mapPosition - b.mapPosition) || [];
   const notAttacked = clanMembers.filter((m: any) => (m.attacks || []).length === 0);
   const maxAttacks = war?.attacksPerMember || (war?.isCWL ? 1 : 2);
@@ -131,7 +162,7 @@ export default function WarPage() {
 
       {/* Tabs */}
       <SlidingTabs
-        tabs={[{id:"current",label:"War hiện tại"},{id:"log",label:"Lịch sử"},{id:"cwl",label:"CWL"}]}
+        tabs={[{id:"current",label:"War hiện tại"},{id:"cwl",label:"CWL"},{id:"log",label:"Lịch sử"}]}
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
@@ -319,21 +350,44 @@ export default function WarPage() {
                 {warLog.map((w: any, i: number) => {
                   const won = w.clan?.stars > w.opponent?.stars;
                   const draw = w.clan?.stars === w.opponent?.stars;
+                  const ringColor = won ? "ring-green-400" : draw ? "ring-yellow-400" : "ring-red-400";
+                  const expanded = expandedWar === i;
+                  const top3 = expanded ? computeTop3(w.clan?.members || [], w.opponent?.members || []) : [];
                   return (
-                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-gray-800">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                        won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
-                      }`}>
-                        {won ? "W" : draw ? "D" : "L"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">vs {w.opponent?.name}</p>
-                        <p className="text-xs text-gray-500">{w.teamSize}v{w.teamSize} · {w.endTime?.slice(0, 8)}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-yellow-400">⭐{w.clan?.stars} — {w.opponent?.stars}⭐</p>
-                        <p className="text-xs text-gray-500">{w.clan?.destructionPercentage?.toFixed(1)}% vs {w.opponent?.destructionPercentage?.toFixed(1)}%</p>
-                      </div>
+                    <div key={i} className="rounded-xl bg-gray-800 overflow-hidden">
+                      <button onClick={() => setExpandedWar(expanded ? null : i)} className="w-full flex items-center gap-4 p-3 text-left">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-2 ${ringColor} overflow-hidden bg-gray-900`}>
+                          {w.opponent?.badgeUrls?.small ? (
+                            <img src={w.opponent.badgeUrls.small} alt="" className="w-full h-full object-contain" />
+                          ) : (
+                            <span className={`font-bold text-sm ${won ? "text-green-400" : draw ? "text-yellow-400" : "text-red-400"}`}>
+                              {won ? "W" : draw ? "D" : "L"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">vs {w.opponent?.name}</p>
+                          <p className="text-xs text-gray-500">{w.teamSize}v{w.teamSize} · {w.endTime?.slice(0, 8)}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-yellow-400">⭐{w.clan?.stars} — {w.opponent?.stars}⭐</p>
+                          <p className="text-xs text-gray-500">{w.clan?.destructionPercentage?.toFixed(1)}% vs {w.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                        </div>
+                      </button>
+                      {expanded && (
+                        <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
+                          <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
+                          {top3.length === 0 ? (
+                            <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh</p>
+                          ) : top3.map((m, idx) => (
+                            <div key={m.tag} className="flex items-center gap-2 text-sm">
+                              <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
+                              <span className="flex-1 text-gray-200 truncate">{m.name}</span>
+                              <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -374,27 +428,89 @@ export default function WarPage() {
         </div>
       ) : (
         // CWL tab
-        <div className="card">
-          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-            <Trophy size={18} className="text-yellow-400" /> Clan War League
-          </h3>
-          {!cwl || cwl.error ? (
-            <p className="text-gray-500 text-center py-8">Không có CWL đang diễn ra</p>
-          ) : (
-            <div className="space-y-2">
-              {(cwl.clans || []).map((c: any, i: number) => (
-                <div key={c.tag} className={`flex items-center gap-3 p-3 rounded-xl ${c.tag === cwl.clan?.tag ? "bg-yellow-500/10 border border-yellow-500/20" : "bg-gray-800"}`}>
-                  <span className="text-gray-500 w-5 text-right text-sm shrink-0">{i + 1}</span>
-                  {c.badgeUrls?.small && <img src={c.badgeUrls.small} alt="" className="w-8 h-8 shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{c.name}</p>
-                    <p className="text-xs text-gray-500">Level {c.clanLevel}</p>
-                  </div>
-                  {c.tag === cwl.clan?.tag && <span className="badge-gold text-xs">Clan mình</span>}
+        <div className="space-y-4">
+          {/* Đang đấu với ai / sắp đấu với ai */}
+          {cwl?.current && (
+            <div className="card">
+              <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                <Trophy size={18} className="text-yellow-400" /> Đang đấu với
+              </h3>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {cwl.current.clan?.badgeUrl && <img src={cwl.current.clan.badgeUrl} className="w-9 h-9 shrink-0" alt="" />}
+                  <p className="text-sm font-semibold text-white truncate">{cwl.current.clan?.name}</p>
                 </div>
-              ))}
+                <span className="text-gray-500 font-bold text-sm shrink-0">
+                  {cwl.current.clan?.stars ?? 0} — {cwl.current.opponent?.stars ?? 0}
+                </span>
+                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right">
+                  <p className="text-sm font-semibold text-white truncate">{cwl.current.opponent?.name}</p>
+                  {cwl.current.opponent?.badgeUrl && <img src={cwl.current.opponent.badgeUrl} className="w-9 h-9 shrink-0" alt="" />}
+                </div>
+              </div>
+              {cwl.next?.opponent?.name && (
+                <p className="text-xs text-gray-500 text-center mt-3 pt-3 border-t border-gray-800">
+                  Vòng tiếp theo: vs {cwl.next.opponent.name}
+                </p>
+              )}
             </div>
           )}
+
+          {/* Top thành viên anh dũng nhất cả mùa CWL */}
+          <div className="card">
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">🔥 Top 3 anh dũng nhất mùa này</h3>
+            {cwlExtraLoading ? (
+              <p className="text-gray-500 text-center py-6 text-sm">Đang tải...</p>
+            ) : !cwlTop?.top?.length ? (
+              <p className="text-gray-500 text-center py-6 text-sm">Chưa có dữ liệu (cần ít nhất 1 vòng đã đánh)</p>
+            ) : (
+              <div className="space-y-2">
+                {cwlTop.top.map((m: any, i: number) => (
+                  <div key={m.tag} className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800">
+                    <span className="text-lg shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-xs text-gray-500">Đánh {m.opponent} · Vòng {m.round}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-yellow-400">⭐{m.stars} · {m.destruction}%</p>
+                      <p className="text-xs text-gray-500">{Math.floor(m.duration / 60)}p{m.duration % 60}s</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Bảng xếp hạng các clan trong nhóm CWL */}
+          <div className="card">
+            <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+              <Trophy size={18} className="text-yellow-400" /> Bảng xếp hạng CWL{cwlStandings?.season ? ` · ${cwlStandings.season}` : ""}
+            </h3>
+            {cwlExtraLoading ? (
+              <p className="text-gray-500 text-center py-8">Đang tải...</p>
+            ) : !cwlStandings?.clans?.length ? (
+              <p className="text-gray-500 text-center py-8">Không có CWL đang diễn ra</p>
+            ) : (
+              <div className="space-y-2">
+                {cwlStandings.clans.map((c: any) => (
+                  <div key={c.tag} className={`flex items-center gap-3 p-3 rounded-xl ${c.tag === cwlStandings.my_tag ? "bg-yellow-500/10 border border-yellow-500/20" : "bg-gray-800"}`}>
+                    <span className="text-gray-500 w-5 text-right text-sm shrink-0">{c.rank}</span>
+                    {c.badge && <img src={c.badge} alt="" className="w-8 h-8 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{c.name}</p>
+                      <p className="text-xs text-gray-500">{c.wins}T-{c.losses}B-{c.ties}H · {c.wars_played} war</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-yellow-400">⭐{c.stars}</p>
+                      <p className="text-xs text-gray-500">{c.avg_destruction}% TB</p>
+                    </div>
+                    {c.tag === cwlStandings.my_tag && <span className="badge-gold text-xs shrink-0">Clan mình</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

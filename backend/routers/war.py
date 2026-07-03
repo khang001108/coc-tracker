@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from supabase_client import get_supabase
 from clan_context import get_tag_for_request
-from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war
+from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war, get_cwl_season_rounds, summarize_cwl_season_members
 import httpx
 import json
 
@@ -130,3 +130,89 @@ async def cwl_current_war(request: Request):
         # Giữ tương thích ngược: nơi nào đọc thẳng field ở gốc vẫn có current
         **current["war"],
     }
+
+
+@router.get("/cwl/standings")
+async def cwl_standings(request: Request):
+    """Bảng xếp hạng TẤT CẢ clan trong nhóm CWL — cộng dồn sao/% phá huỷ/thắng
+    thua qua các vòng đã đánh, xếp theo đúng luật CWL thật (số trận thắng →
+    tổng sao → % phá huỷ)."""
+    clan_id, tag = await get_tag_for_request(request)
+    try:
+        group = await get_cwl_group(tag, clan_id=clan_id)
+    except Exception:
+        return {"clans": [], "error": "Không có CWL đang diễn ra"}
+
+    clans = group.get("clans", [])
+    table = {
+        c["tag"]: {
+            "tag": c["tag"], "name": c["name"], "badge": c.get("badgeUrls", {}).get("medium", ""),
+            "wins": 0, "losses": 0, "ties": 0, "stars": 0, "destruction": 0.0, "wars_played": 0,
+        }
+        for c in clans
+    }
+
+    for round_data in group.get("rounds", []):
+        for war_tag in round_data.get("warTags", []):
+            if war_tag == "#0":
+                continue
+            try:
+                w = await get_cwl_war(war_tag, clan_id=clan_id)
+            except Exception:
+                continue
+            if w.get("state") not in ("inWar", "warEnded"):
+                continue
+            a, b = w.get("clan", {}), w.get("opponent", {})
+            for side, other in ((a, b), (b, a)):
+                row = table.get(side.get("tag"))
+                if not row:
+                    continue
+                row["wars_played"] += 1
+                row["stars"] += side.get("stars", 0)
+                row["destruction"] += side.get("destructionPercentage", 0)
+                if w.get("state") == "warEnded":
+                    if side.get("stars", 0) > other.get("stars", 0):
+                        row["wins"] += 1
+                    elif side.get("stars", 0) < other.get("stars", 0):
+                        row["losses"] += 1
+                    else:
+                        row["ties"] += 1
+
+    standings = list(table.values())
+    for row in standings:
+        row["avg_destruction"] = round(row["destruction"] / row["wars_played"], 1) if row["wars_played"] else 0
+    standings.sort(key=lambda r: (-r["wins"], -r["stars"], -r["avg_destruction"]))
+    for i, row in enumerate(standings):
+        row["rank"] = i + 1
+
+    return {"season": group.get("season", ""), "clans": standings, "my_tag": tag}
+
+
+@router.get("/cwl/top-warriors")
+async def cwl_top_warriors(request: Request, limit: int = 3):
+    """Top thành viên 'anh dũng nhất' của CẢ MÙA CWL (gộp mọi vòng đã đánh) —
+    xếp theo sao cao nhất → % phá huỷ cao nhất → nhanh nhất."""
+    clan_id, tag = await get_tag_for_request(request)
+    try:
+        rounds = await get_cwl_season_rounds(tag, clan_id=clan_id)
+    except Exception:
+        rounds = []
+    if not rounds:
+        return {"season": "", "top": []}
+
+    members = summarize_cwl_season_members(rounds)
+    ranked = sorted(
+        [m for m in members if m["best_attack"]],
+        key=lambda m: (m["best_attack"]["stars"], m["best_attack"]["destruction"], -m["best_attack"]["duration"]),
+        reverse=True,
+    )
+    top = [
+        {
+            "tag": m["tag"], "name": m["name"],
+            "stars": m["best_attack"]["stars"], "destruction": m["best_attack"]["destruction"],
+            "duration": m["best_attack"]["duration"], "opponent": m["best_attack"]["opponent"],
+            "round": m["best_attack"]["round"], "total_stars": m["total_stars"], "wars": m["wars"],
+        }
+        for m in ranked[:limit]
+    ]
+    return {"season": rounds[0].get("season", "") if rounds else "", "top": top}

@@ -407,6 +407,17 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
       </div>
 
+      {/* ── Cài đặt nâng cao (thu gọn bớt cho đỡ dài) ── */}
+      <details className="group">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-3 rounded-xl mb-3"
+          style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
+          <span className="font-bold text-sm flex items-center gap-2" style={{ color: "var(--py-card-text)" }}>
+            ⚙️ Cài đặt nâng cao
+          </span>
+          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="space-y-6">
+
       {/* ── Notification toggles ── */}
       <div className="card space-y-4">
         <h2 className="font-bold text-white">🔔 Loại thông báo</h2>
@@ -565,6 +576,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           <Send size={16} /> Gửi ngay
         </button>
       </div>
+
+        </div>
+      </details>
 
       </div>
 

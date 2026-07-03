@@ -25,7 +25,7 @@ from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin, verify_admin_token
 from member_auth import verify_member_token
-from services.coc_api import get_current_war, get_war_log, get_clan_members, get_cwl_group, get_cwl_war, get_raid_seasons
+from services.coc_api import get_current_war, get_war_log, get_clan_members, get_cwl_group, get_cwl_war, get_raid_seasons, get_cwl_season_rounds
 from services.push_service import send_push_to_clan
 import uuid
 
@@ -397,7 +397,9 @@ async def get_participants(event_id: int):
 def _compute_war_metric(member: dict, condition_type: str) -> float:
     attacks = member.get("attacks", [])
     if condition_type == "total_stars":
-        return float(member.get("stars", 0))
+        # CoC API không có field "stars" tổng sẵn trên member — phải cộng
+        # dồn từ từng đòn đánh (đây là lỗi cũ khiến điều kiện này luôn ra 0).
+        return float(sum(a.get("stars", 0) for a in attacks))
     if condition_type == "best_destruction":
         return max([a.get("destructionPercentage", 0) for a in attacks], default=0.0)
     if condition_type == "perfect_war":
@@ -423,35 +425,22 @@ def _fmt_metric(condition_type: str, score: float) -> str:
 
 
 async def _cwl_current_war_members(tag: str, clan_id: int) -> list:
-    """Tìm war CWL đang 'inWar' (hoặc 'warEnded' gần nhất) của clan — dùng khi
-    sự kiện loại CWL/War giải cần biết thành viên đã tham chiến."""
+    """Tổng hợp thành viên CWL cho MỌI vòng đã đánh trong mùa hiện tại (không
+    chỉ vòng mới nhất) — mỗi người có 'attacks' gộp từ tất cả các ngày, để
+    điều kiện sự kiện (tổng sao, % phá huỷ...) tính đúng cho cả mùa CWL 7
+    ngày thay vì chỉ 1 ngày (đây là lỗi trước đây khiến sao đã đạt ở ngày cũ
+    không được cập nhật vào sự kiện)."""
     try:
-        group = await get_cwl_group(tag, clan_id=clan_id)
+        rounds = await get_cwl_season_rounds(tag, clan_id=clan_id)
     except Exception:
         return []
-    best = None
-    for round_data in group.get("rounds", []):
-        for war_tag in round_data.get("warTags", []):
-            if war_tag == "#0":
-                continue
-            try:
-                w = await get_cwl_war(war_tag, clan_id=clan_id)
-            except Exception:
-                continue
-            our_side = None
-            if w.get("clan", {}).get("tag") == tag:
-                our_side = "clan"
-            elif w.get("opponent", {}).get("tag") == tag:
-                our_side = "opponent"
-            if not our_side:
-                continue
-            if our_side == "opponent":
-                w["clan"], w["opponent"] = w["opponent"], w["clan"]
-            if w.get("state") == "inWar":
-                best = w  # ưu tiên vòng đang đánh, ghi đè các vòng cũ hơn
-            elif best is None and w.get("state") == "warEnded":
-                best = w
-    return best.get("clan", {}).get("members", []) if best else []
+    merged: dict[str, dict] = {}
+    for w in rounds:
+        for m in w.get("clan", {}).get("members", []):
+            entry = merged.setdefault(m.get("tag"), {"tag": m.get("tag"), "name": m.get("name", "?"), "attacks": []})
+            entry["name"] = m.get("name", "?")
+            entry["attacks"].extend(m.get("attacks", []))
+    return list(merged.values())
 
 
 async def _war_members_for_clan(clan_id: int, event_type: str = "war") -> list:

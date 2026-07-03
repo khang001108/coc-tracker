@@ -61,6 +61,75 @@ async def get_cwl_war(war_tag: str, clan_id: int = 1) -> dict:
 async def get_cwl_group(tag: str, clan_id: int = 1) -> dict:
     return await coc_get(f"/clans/{encode_tag(tag)}/currentwar/leaguegroup", clan_id=clan_id)
 
+
+async def get_cwl_season_rounds(tag: str, clan_id: int = 1) -> list:
+    """Lấy TẤT CẢ war của clan trong mùa CWL hiện tại (mọi vòng đã bắt đầu,
+    không chỉ vòng mới nhất) — trả về list các war đã chuẩn hoá (clan ta luôn
+    ở key 'clan'), kèm round_index. Dùng để tổng hợp thống kê cả mùa CWL
+    (7 ngày) thay vì chỉ nhìn 1 vòng."""
+    try:
+        group = await get_cwl_group(tag, clan_id=clan_id)
+    except Exception:
+        return []
+    clans = group.get("clans", [])
+    badge_map = {c.get("tag"): c.get("badgeUrls", {}).get("medium", "") for c in clans}
+    rounds_out = []
+    for round_index, round_data in enumerate(group.get("rounds", [])):
+        for war_tag in round_data.get("warTags", []):
+            if war_tag == "#0":
+                continue
+            try:
+                w = await get_cwl_war(war_tag, clan_id=clan_id)
+            except Exception:
+                continue
+            our_side = None
+            if w.get("clan", {}).get("tag") == tag:
+                our_side = "clan"
+            elif w.get("opponent", {}).get("tag") == tag:
+                our_side = "opponent"
+            if not our_side:
+                continue
+            if our_side == "opponent":
+                w["clan"], w["opponent"] = w["opponent"], w["clan"]
+            w["clan"]["badgeUrl"] = badge_map.get(w["clan"]["tag"], "")
+            w["opponent"]["badgeUrl"] = badge_map.get(w["opponent"]["tag"], "")
+            w["round_index"] = round_index
+            rounds_out.append(w)
+    return rounds_out
+
+
+def summarize_cwl_season_members(rounds: list) -> list:
+    """Cộng dồn thống kê từng thành viên qua TẤT CẢ vòng CWL đã đánh trong
+    mùa: tổng sao, số war tham gia, đòn đánh tốt nhất (sao cao nhất → % phá
+    huỷ cao nhất → nhanh nhất — công thức 'anh dũng nhất')."""
+    agg: dict[str, dict] = {}
+    for w in rounds:
+        for m in w.get("clan", {}).get("members", []):
+            tag = m.get("tag")
+            a = agg.setdefault(tag, {
+                "tag": tag, "name": m.get("name", "?"), "wars": 0, "attacks_used": 0,
+                "total_stars": 0, "best_destruction": 0, "best_stars": 0,
+                "best_attack": None,
+            })
+            a["name"] = m.get("name", "?")
+            a["wars"] += 1
+            attacks = m.get("attacks", [])
+            a["attacks_used"] += len(attacks)
+            for att in attacks:
+                a["total_stars"] += att.get("stars", 0)
+                a["best_destruction"] = max(a["best_destruction"], att.get("destructionPercentage", 0))
+                a["best_stars"] = max(a["best_stars"], att.get("stars", 0))
+                key = (att.get("stars", 0), att.get("destructionPercentage", 0), -att.get("duration", 99999))
+                cur_key = (a["best_attack"]["stars"], a["best_attack"]["destruction"], -a["best_attack"]["duration"]) if a["best_attack"] else (-1, -1, -99999)
+                if key > cur_key:
+                    a["best_attack"] = {
+                        "stars": att.get("stars", 0), "destruction": att.get("destructionPercentage", 0),
+                        "duration": att.get("duration", 0),
+                        "opponent": next((om.get("name") for om in w.get("opponent", {}).get("members", []) if om.get("tag") == att.get("defenderTag")), "?"),
+                        "round": w.get("round_index", 0) + 1,
+                    }
+    return list(agg.values())
+
 # ── Capital ───────────────────────────────────────────────────────────────────
 async def get_raid_seasons(tag: str, clan_id: int = 1) -> list:
     data = await coc_get(f"/clans/{encode_tag(tag)}/capitalraidseasons?limit=5", clan_id=clan_id)
