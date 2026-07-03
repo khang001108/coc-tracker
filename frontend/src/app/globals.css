@@ -24,11 +24,12 @@
   --player-border: #A07010;
   /* Theme sáng: phủ SÁNG (kem) lên ảnh thay vì phủ tối, vì chữ ở theme này
      màu nâu đậm — phủ tối như bên dark sẽ làm chữ chìm mất, khó đọc.
-     Giảm độ phủ để ảnh vẫn hiện rõ, bù lại bằng viền + bóng chữ đậm hơn. */
+     Giảm độ phủ để ảnh vẫn hiện rõ. Viền + bóng chữ đổi sang màu TỐI (cùng
+     tông với màu chữ nâu đậm) thay vì viền sáng — thử xem đỡ loá hơn không. */
   --art-overlay-wash: rgba(255,251,239,0.03);
   --art-overlay-edge: #FFF3D4;
-  --art-text-shadow: 0 1px 2px rgba(255,255,255,0.55), 0 1px 4px rgba(255,255,255,0.35);
-  --art-text-stroke: rgba(255,251,239,0.4);
+  --art-text-shadow: 0 1px 2px rgba(58,42,15,0.55), 0 1px 5px rgba(0,0,0,0.35);
+  --art-text-stroke: rgba(58,42,15,0.55);
 }
 :root {
   --player-bg: linear-gradient(180deg, #2a2f3a, #161920);
