@@ -3,6 +3,7 @@ Clash of Clans API wrapper.
 Reads API key + clan tag from Supabase settings table.
 """
 import httpx
+import time
 from supabase_client import get_supabase
 from urllib.parse import quote
 
@@ -54,19 +55,50 @@ async def get_war_log(tag: str, clan_id: int = 1) -> list:
     data = await coc_get(f"/clans/{encode_tag(tag)}/warlog?limit=20", clan_id=clan_id)
     return data.get("items", [])
 
+_cwl_war_cache: dict[str, tuple[float, dict]] = {}
+
 async def get_cwl_war(war_tag: str, clan_id: int = 1) -> dict:
-    """Lấy chi tiết 1 war trong CWL theo warTag."""
-    return await coc_get(f"/clanwarleagues/wars/{encode_tag(war_tag)}", clan_id=clan_id)
+    """Lấy chi tiết 1 war trong CWL theo warTag — cache ~3 phút vì đây là lệnh
+    gọi bị lặp lại NHIỀU NHẤT (mỗi vòng x mỗi clan), dùng chung bởi cả
+    /cwl/current, /cwl/standings, /cwl/top-warriors."""
+    cache_key = f"{clan_id}:{war_tag}"
+    cached = _cwl_war_cache.get(cache_key)
+    if cached and (time.time() - cached[0]) < _CWL_CACHE_TTL:
+        return cached[1]
+    data = await coc_get(f"/clanwarleagues/wars/{encode_tag(war_tag)}", clan_id=clan_id)
+    _cwl_war_cache[cache_key] = (time.time(), data)
+    return data
+
+_cwl_group_cache: dict[int, tuple[float, dict]] = {}
 
 async def get_cwl_group(tag: str, clan_id: int = 1) -> dict:
-    return await coc_get(f"/clans/{encode_tag(tag)}/currentwar/leaguegroup", clan_id=clan_id)
+    cached = _cwl_group_cache.get(clan_id)
+    if cached and (time.time() - cached[0]) < _CWL_CACHE_TTL:
+        return cached[1]
+    data = await coc_get(f"/clans/{encode_tag(tag)}/currentwar/leaguegroup", clan_id=clan_id)
+    _cwl_group_cache[clan_id] = (time.time(), data)
+    return data
+
+
+_cwl_rounds_cache: dict[int, tuple[float, list]] = {}
+_CWL_CACHE_TTL = 180  # giây — 3 phút
 
 
 async def get_cwl_season_rounds(tag: str, clan_id: int = 1) -> list:
     """Lấy TẤT CẢ war của clan trong mùa CWL hiện tại (mọi vòng đã bắt đầu,
     không chỉ vòng mới nhất) — trả về list các war đã chuẩn hoá (clan ta luôn
     ở key 'clan'), kèm round_index. Dùng để tổng hợp thống kê cả mùa CWL
-    (7 ngày) thay vì chỉ nhìn 1 vòng."""
+    (7 ngày) thay vì chỉ nhìn 1 vòng.
+
+    Cache trong bộ nhớ ~3 phút — đây là phần TỐN THỜI GIAN NHẤT của cả app
+    (phải gọi CoC API riêng cho từng war trong mùa, có thể 20-30 lượt gọi),
+    và được DÙNG CHUNG bởi cả 3 endpoint (/cwl/current, /cwl/standings,
+    /cwl/top-warriors) — không cache thì mở 1 tab CWL đã tự nhân 3 lần gọi
+    giống hệt nhau cùng lúc."""
+    cached = _cwl_rounds_cache.get(clan_id)
+    if cached and (time.time() - cached[0]) < _CWL_CACHE_TTL:
+        return cached[1]
+
     try:
         group = await get_cwl_group(tag, clan_id=clan_id)
     except Exception:
@@ -94,7 +126,10 @@ async def get_cwl_season_rounds(tag: str, clan_id: int = 1) -> list:
             w["clan"]["badgeUrl"] = badge_map.get(w["clan"]["tag"], "")
             w["opponent"]["badgeUrl"] = badge_map.get(w["opponent"]["tag"], "")
             w["round_index"] = round_index
+            w["season"] = group.get("season", "")
             rounds_out.append(w)
+
+    _cwl_rounds_cache[clan_id] = (time.time(), rounds_out)
     return rounds_out
 
 

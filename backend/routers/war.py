@@ -77,34 +77,12 @@ async def cwl_current_war(request: Request):
     TIẾP THEO (vòng kế đã lên cặp đấu nhưng chưa tới ngày đánh) — tránh nhầm
     lẫn hiển thị dữ liệu vòng sau như thể đang là vòng đang diễn ra."""
     clan_id, tag = await get_tag_for_request(request)
-    try:
-        group = await get_cwl_group(tag, clan_id=clan_id)
-    except Exception:
-        return {"state": "notInWar", "isCWL": True, "current": None, "next": None}
-
-    clans     = group.get("clans", [])
-    rounds    = group.get("rounds", [])
-    season    = group.get("season", "")
-    badge_map = {c_["tag"]: c_.get("badgeUrls", {}).get("medium", "") for c_ in clans}
-
-    # Thu thập TẤT CẢ các vòng có clan ta tham gia, theo đúng thứ tự vòng
-    # (không đảo ngược) — mỗi phần tử biết rõ mình thuộc vòng thứ mấy.
-    matches = []
-    for round_index, round_data in enumerate(rounds):
-        for war_tag in round_data.get("warTags", []):
-            if war_tag == "#0":
-                continue
-            try:
-                w = await get_cwl_war(war_tag, clan_id=clan_id)
-            except Exception:
-                continue
-            normalized = _normalize_cwl_war(w, tag, badge_map)
-            if normalized:
-                matches.append({"round_index": round_index, "state": normalized.get("state"), "war": normalized})
-                break  # chỉ có đúng 1 war của ta mỗi vòng
+    matches = [{"round_index": w["round_index"], "state": w.get("state"), "war": w}
+               for w in await get_cwl_season_rounds(tag, clan_id=clan_id)]
 
     if not matches:
-        return {"state": "notInWar", "isCWL": True, "current": None, "next": None, "season": season}
+        return {"state": "notInWar", "isCWL": True, "current": None, "next": None}
+    season = matches[0]["war"].get("season", "")
 
     # Ưu tiên vòng đang "inWar" (đang đánh) làm HIỆN TẠI; nếu không có (giữa
     # các vòng, hoặc mùa đã hết) thì lấy vòng gần nhất theo thứ tự.
@@ -117,10 +95,6 @@ async def cwl_current_war(request: Request):
         candidate = matches[current_idx_in_matches + 1]
         if candidate["round_index"] == current["round_index"] + 1:
             nxt = candidate
-
-    current["war"]["season"] = season
-    if nxt:
-        nxt["war"]["season"] = season
 
     return {
         "isCWL": True,
@@ -152,6 +126,9 @@ async def cwl_standings(request: Request):
         for c in clans
     }
 
+    # Dùng lại dữ liệu đã cache (get_cwl_season_rounds) cho phía clan MÌNH —
+    # nhưng bảng xếp hạng cần dữ liệu của TẤT CẢ clan trong nhóm (không chỉ
+    # clan mình), nên vẫn phải quét war_tag của mọi clan như cũ.
     for round_data in group.get("rounds", []):
         for war_tag in round_data.get("warTags", []):
             if war_tag == "#0":
