@@ -7,6 +7,7 @@ import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/u
 import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { usePageBanner } from "@/lib/usePageBanner";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 
@@ -96,6 +97,7 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
 
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
+  const bannerSrc = usePageBanner("members", "/art/royal-vista.jpg");
   const [memberLog, setMemberLog] = useState<any[]>([]);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [search, setSearch] = useState("");
@@ -139,7 +141,7 @@ export default function MembersPage() {
     <div className="space-y-5 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,69,19,0.08))" }}>
-        <ArtBanner src="/art/royal-vista.jpg" opacity={0.85} objectPosition="center 45%" />
+        <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 45%" />
         <div className="relative banner-content">
           <h1 className="page-title flex items-center gap-2">
             <Users size={22} className="text-blue-400" /> Thành viên

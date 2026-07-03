@@ -12,7 +12,7 @@ ALLOWED_KEYS = [
     "telegram_bot_token", "telegram_chat_id",
     "notify_war", "notify_raid", "notify_donate", "notify_member",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
-    "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital",
+    "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners",
 ]
 
 @router.post("/login")
@@ -45,7 +45,7 @@ async def get_public_settings():
     Tổng quan) — cho mọi người xem được, không cần đăng nhập admin (khác
     với GET / ở trên)."""
     sb = get_supabase()
-    keys = ["chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital"]
+    keys = ["chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners"]
     try:
         res = sb.table("settings").select("key,value").in_("key", keys).execute()
         return {row["key"]: row["value"] for row in res.data}

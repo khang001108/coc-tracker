@@ -5,6 +5,10 @@ import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { Gamepad2, Trophy, RefreshCw } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
+import { ArtBanner } from "@/components/ui/ArtBanner";
+import { EmberField } from "@/components/ui/EmberField";
+import { useEmberColor } from "@/lib/useEmberColor";
+import { usePageBanner } from "@/lib/usePageBanner";
 
 export default function GamesPage() {
   const [members, setMembers] = useState<any[]>([]);
@@ -12,6 +16,8 @@ export default function GamesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const emberColor = useEmberColor();
+  const bannerSrc = usePageBanner("games", "/art/archer-queen-army.jpg");
 
   async function load(showRefresh = false) {
     if (showRefresh) setRefreshing(true);
@@ -46,18 +52,23 @@ export default function GamesPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Gamepad2 size={22} className="text-purple-400" /> Clan Games
-          </h1>
-          <p className="page-subtitle">Điểm đóng góp của từng thành viên</p>
+      <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
+        style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.14), rgba(139,69,19,0.08))" }}>
+        <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 30%" />
+        <EmberField count={16} speed={1} color={emberColor} />
+        <div className="relative flex items-start justify-between gap-3 banner-content">
+          <div>
+            <h1 className="page-title flex items-center gap-2">
+              <Gamepad2 size={22} className="text-purple-400" /> Clan Games
+            </h1>
+            <p className="page-subtitle">Điểm đóng góp của từng thành viên</p>
+          </div>
+          <button onClick={() => load(true)} disabled={refreshing}
+            className="btn-secondary flex items-center gap-2 text-sm shrink-0">
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            Làm mới
+          </button>
         </div>
-        <button onClick={() => load(true)} disabled={refreshing}
-          className="btn-secondary flex items-center gap-2 text-sm shrink-0">
-          <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-          Làm mới
-        </button>
       </div>
 
       {/* Summary */}

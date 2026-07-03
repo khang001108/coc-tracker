@@ -6,6 +6,9 @@ import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { Castle, TrendingUp, Users, Coins, AlertCircle, Copy, Check, UserX } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { EmberField } from "@/components/ui/EmberField";
+import { useEmberColor } from "@/lib/useEmberColor";
+import { usePageBanner } from "@/lib/usePageBanner";
 
 function CopyLogButton({ getText, label = "Copy log" }: { getText: () => string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -20,6 +23,8 @@ function CopyLogButton({ getText, label = "Copy log" }: { getText: () => string;
 
 export default function CapitalPage() {
   const [raid, setRaid] = useState<any>(null);
+  const emberColor = useEmberColor();
+  const bannerSrc = usePageBanner("capital", "/art/capital-sky-islands.jpg");
   const [clan, setClan] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -51,7 +56,8 @@ export default function CapitalPage() {
     <div className="space-y-5 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(100,50,150,0.08))" }}>
-        <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.85} objectPosition="center 40%" />
+        <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 40%" />
+        <EmberField count={16} speed={1} color={emberColor} />
         <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">

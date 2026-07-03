@@ -5,9 +5,11 @@ import { CastlePreview, CannonPreview } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Coins, Lock, CheckCircle2 } from "lucide-react";
 import { EmberField } from "@/components/ui/EmberField";
+import { useEmberColor } from "@/lib/useEmberColor";
 
 export default function ShopSection() {
   const [items, setItems] = useState<any[]>([]);
+  const emberColor = useEmberColor();
   const [inv, setInv] = useState<{ owned_item_ids: number[]; coins: number; equipped_castle: string; equipped_cannon: string; equipped_effect: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -97,7 +99,7 @@ export default function ShopSection() {
 
   return (
     <div className="relative card space-y-4 overflow-hidden">
-      <EmberField count={14} />
+      <EmberField count={14} color={emberColor} />
       <div className="relative flex items-center justify-between">
         <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
         <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">

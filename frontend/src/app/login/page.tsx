@@ -9,11 +9,15 @@ import { thColor, roleLabel, roleClass } from "@/lib/utils";
 import { UserCheck, Lock, LogOut, Search, CheckCircle2, Crown, Coins } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { EmberField } from "@/components/ui/EmberField";
+import { useEmberColor } from "@/lib/useEmberColor";
+import { usePageBanner } from "@/lib/usePageBanner";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 
 export default function LoginPage() {
   const [roster, setRoster] = useState<any[]>([]);
+  const emberColor = useEmberColor();
+  const bannerSrc = usePageBanner("login", "/art/skeleton-king.jpg");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [me, setMe] = useState<{ token: string; player_tag: string; player_name: string } | null>(null);
@@ -97,8 +101,8 @@ export default function LoginPage() {
     <div className="space-y-5 animate-fade-up max-w-4xl">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-12"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/skeleton-king.jpg" opacity={0.85} objectPosition="center 25%" />
-        <EmberField count={16} />
+        <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 25%" />
+        <EmberField count={16} color={emberColor} />
         <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">

@@ -1,6 +1,8 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
 import { EmberField } from "@/components/ui/EmberField";
+import { useEmberColor } from "@/lib/useEmberColor";
+import { usePageBanner } from "@/lib/usePageBanner";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
@@ -87,6 +89,8 @@ export default function WarPage() {
   const [cwlStandings, setCwlStandings] = useState<any>(null);
   const [cwlTop, setCwlTop] = useState<any>(null);
   const [cwlExtraLoading, setCwlExtraLoading] = useState(false);
+  const emberColor = useEmberColor();
+  const bannerSrc = usePageBanner("war", "/art/pekka-lava.jpg");
   const [expandedWar, setExpandedWar] = useState<number | null>(null);
   const [cwl, setCwl] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
@@ -186,8 +190,8 @@ export default function WarPage() {
             <>
               {/* War header */}
               <div className="card relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0505, #2a0a0a)", borderColor: war.isCWL ? "#5C2A00" : "#5C1E1E" }}>
-                <ArtBanner src="/art/pekka-lava.jpg" opacity={0.8} objectPosition="center 25%" />
-                <EmberField count={22} speed={1.4} />
+                <ArtBanner src={bannerSrc} opacity={0.8} objectPosition="center 25%" />
+                <EmberField count={22} speed={1.4} color={emberColor} />
                 {/* CWL badge */}
                 {war.isCWL && (
                   <div className="relative flex justify-center mb-2 banner-content">

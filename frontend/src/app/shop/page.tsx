@@ -4,16 +4,20 @@ import { EmberField } from "@/components/ui/EmberField";
 import ShopSection from "./ShopSection";
 import { Store, Lock } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { useEmberColor } from "@/lib/useEmberColor";
+import { usePageBanner } from "@/lib/usePageBanner";
 
 export default function ShopPage() {
   const member = getMemberAuth();
+  const emberColor = useEmberColor();
+  const bannerSrc = usePageBanner("shop", "/art/wizard-fireball-goblins.jpg");
 
   return (
     <div className="space-y-5 animate-fade-up max-w-7xl">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-12"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/wizard-fireball-goblins.jpg" opacity={0.85} objectPosition="center 35%" />
-        <EmberField count={16} />
+        <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 35%" />
+        <EmberField count={16} color={emberColor} />
         <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">

@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel } from "@/lib/utils";
 import { BarChart3, TrendingUp, AlertTriangle, ShieldOff, HeartCrack, Copy, Check } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { usePageBanner } from "@/lib/usePageBanner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -26,6 +27,7 @@ function CopyButton({ getText }: { getText: () => string }) {
 
 export default function StatsPage() {
   const [members, setMembers] = useState<any[]>([]);
+  const bannerSrc = usePageBanner("stats", "/art/ruins-aftermath.jpg");
   const [war, setWar] = useState<any>(null);
   const [warLog, setWarLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function StatsPage() {
     <div className="space-y-6 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/ruins-aftermath.jpg" opacity={0.8} objectPosition="center 35%" />
+        <ArtBanner src={bannerSrc} opacity={0.8} objectPosition="center 35%" />
         <div className="relative banner-content">
           <h1 className="page-title flex items-center gap-2">
             <BarChart3 size={22} className="text-yellow-400" /> Thống kê

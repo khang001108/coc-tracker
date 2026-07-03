@@ -1,5 +1,6 @@
 "use client";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { usePageBanner } from "@/lib/usePageBanner";
 import { useEffect, useRef, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
@@ -599,6 +600,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [error, setError]           = useState("");
   const [loadingWarTime, setLoadingWarTime] = useState(false);
   const isAdmin = !!getAdminToken();
+  const bannerSrc = usePageBanner("events", "/art/prince-celebration.jpg");
 
   const [form, setForm] = useState({
     title: "", description: "", event_type: "war", condition_type: "total_stars",
@@ -848,7 +850,7 @@ export default function EventsPage() {
       {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background:"linear-gradient(135deg,rgba(244,161,48,0.18),rgba(236,72,153,0.12),rgba(139,69,19,0.15))" }}>
-        <ArtBanner src="/art/prince-celebration.jpg" opacity={0.85} objectPosition="center 30%" />
+        <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 30%" />
         <FireworkField bursts={4}/>
         <div className="relative flex items-center gap-4 banner-content">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 animate-gold-pulse"

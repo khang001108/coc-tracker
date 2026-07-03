@@ -4,6 +4,9 @@ import { ClanSwitcher } from "@/components/ui/ClanSwitcher";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { OrnateFrame } from "@/components/ui/OrnateFrame";
+import { useEmberColor } from "@/lib/useEmberColor";
+import { usePageBanner } from "@/lib/usePageBanner";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
 import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check } from "lucide-react";
@@ -51,6 +54,9 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [tagCopied, setTagCopied] = useState(false);
   const [overviewCfg, setOverviewCfg] = useState<Record<string, string>>({});
+  const emberColor = useEmberColor();
+  const warBannerSrc = usePageBanner("overview_war", "/art/barbarian-fireball.jpg");
+  const cwlBannerSrc = usePageBanner("overview_cwl", "/art/dragon-fire-logo.jpg");
 
   async function load() {
     setLoading(true);
@@ -152,15 +158,9 @@ export default function DashboardPage() {
 
       {/* Clan description — viền hoa văn */}
       {clan?.description && (
+        <OrnateFrame>
         <div className="relative rounded-2xl overflow-hidden"
           style={{ padding: "2px", background: "linear-gradient(135deg, #F4A130 0%, #B87320 40%, #FFD700 60%, #B87320 80%, #F4A130 100%)" }}>
-          {/* Diamond corners */}
-          {["top-[-5px] left-[-5px]","top-[-5px] right-[-5px]","bottom-[-5px] left-[-5px]","bottom-[-5px] right-[-5px]"].map((pos, i) => (
-            <svg key={i} className={`absolute ${pos} w-[14px] h-[14px] pointer-events-none z-10`} viewBox="0 0 14 14">
-              <polygon points="7,0 14,7 7,14 0,7" fill="#F4A130" stroke="#FFD700" strokeWidth="1"/>
-              <polygon points="7,3 11,7 7,11 3,7" fill="#FFD700" opacity={0.6}/>
-            </svg>
-          ))}
           {/* Inner content */}
           <div className="relative rounded-[14px] px-5 py-3.5"
             style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
@@ -176,6 +176,7 @@ export default function DashboardPage() {
               style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clan.description}"</p>
           </div>
         </div>
+        </OrnateFrame>
       )}
 
       {/* Stats grid */}
@@ -190,8 +191,8 @@ export default function DashboardPage() {
       {/* War status */}
       {war?.state && war.state !== "notInWar" && overviewCfg.overview_show_war !== "false" && (
         <Link href="/war" className="block card border-red-500/20 bg-red-500/5 relative overflow-hidden transition-transform hover:scale-[1.01] active:scale-[0.99]">
-          <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.8} objectPosition="center 25%" />
-          <EmberField count={18} speed={1.2} />
+          <ArtBanner src={warBannerSrc} opacity={0.8} objectPosition="center 25%" />
+          <EmberField count={18} speed={1.2} color={emberColor} />
           <div className="relative flex items-center justify-between mb-4 banner-content">
             <h2 className="font-bold text-white flex items-center gap-2">
               <Swords size={18} className="text-red-400" />
@@ -224,8 +225,8 @@ export default function DashboardPage() {
           war thường vừa CWL cùng lúc */}
       {cwl?.current?.state && cwl.current.state !== "notInWar" && overviewCfg.overview_show_cwl !== "false" && (
         <Link href="/war?tab=cwl" className="block card relative overflow-hidden transition-transform hover:scale-[1.01] active:scale-[0.99]" style={{ borderColor: "rgba(244,161,48,0.3)", background: "rgba(244,161,48,0.04)" }}>
-          <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.75} objectPosition="center 30%" />
-          <EmberField count={18} speed={1.2} />
+          <ArtBanner src={cwlBannerSrc} opacity={0.75} objectPosition="center 30%" />
+          <EmberField count={18} speed={1.2} color={emberColor} />
           <div className="relative flex items-center justify-between mb-4 banner-content">
             <h2 className="font-bold text-white flex items-center gap-2">
               <Trophy size={18} className="text-yellow-400" />

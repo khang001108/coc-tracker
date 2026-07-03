@@ -103,11 +103,15 @@ function MusicSettings() {
   }
 
   return (
-    <div className="card space-y-4">
+    <details className="card !p-0 group">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+        <span className="font-bold text-white flex items-center gap-2">
+          <Music2 size={18} className="text-purple-400" /> Nhạc nền
+        </span>
+        <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div className="px-4 pb-4 space-y-4">
       <audio ref={previewRef} onEnded={() => setPlayingId(null)} />
-      <h3 className="font-bold text-white flex items-center gap-2">
-        <Music2 size={18} className="text-purple-400" /> Nhạc nền
-      </h3>
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-300">Bật nhạc nền cho website</p>
@@ -173,7 +177,8 @@ function MusicSettings() {
         <p className="text-[11px] text-gray-600 mt-1.5">Hỗ trợ MP3, WAV, OGG, M4A — tối đa 20MB mỗi file.</p>
         {msg && <div className="mt-1.5"><MiniToast msg={msg.text} type={msg.type} /></div>}
       </div>
-    </div>
+      </div>
+    </details>
   );
 }
 
@@ -205,6 +210,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [saving, setSaving] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [bannerPage, setBannerPage] = useState("login");
 
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
@@ -303,10 +309,12 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       {/* ── Quản lý Clan (đã gộp chung với cấu hình CoC API — mỗi clan, kể cả
            clan chính, đều sửa Tag + API Key ngay trong danh sách bên dưới) ── */}
-      <div className="card space-y-4">
-        <h2 className="font-bold text-white flex items-center gap-2">
-          🏰 Quản lý Clan
-        </h2>
+      <details className="card !p-0 group" open>
+        <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+          <span className="font-bold text-white flex items-center gap-2">🏰 Quản lý Clan</span>
+          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
         <p className="text-xs text-gray-500">Thêm/sửa/xoá clan. Mỗi clan cần CoC API key riêng.</p>
 
         <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
@@ -320,16 +328,18 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
 
         <ClanManagement />
-      </div>
+        </div>
+      </details>
 
       {/* ── Discord ── */}
-      <div className="card space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-            <MessageSquare size={16} className="text-indigo-400" />
-          </div>
-          <h2 className="font-bold text-white">Discord Webhook</h2>
-        </div>
+      <details className="card !p-0 group">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+          <span className="font-bold text-white flex items-center gap-2">
+            <MessageSquare size={16} className="text-indigo-400" /> Discord Webhook
+          </span>
+          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
 
         <div className="p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-xs text-indigo-300 space-y-1">
           <p className="font-semibold">📌 Cách lấy Webhook:</p>
@@ -356,16 +366,18 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           </button>
           <LoadBtn k="discord_webhook" label="Lưu" />
         </div>
-      </div>
+        </div>
+      </details>
 
       {/* ── Telegram ── */}
-      <div className="card space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
-            <Send size={16} className="text-blue-400" />
-          </div>
-          <h2 className="font-bold text-white">Telegram Bot</h2>
-        </div>
+      <details className="card !p-0 group">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+          <span className="font-bold text-white flex items-center gap-2">
+            <Send size={16} className="text-blue-400" /> Telegram Bot
+          </span>
+          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="px-4 pb-4 space-y-4">
 
         <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
           <p className="font-semibold">📌 Cách tạo Bot Telegram:</p>
@@ -405,7 +417,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             Lưu
           </button>
         </div>
-      </div>
+        </div>
+      </details>
 
       {/* ── Cài đặt nâng cao (thu gọn bớt cho đỡ dài) ── */}
       <details className="group">
@@ -534,6 +547,92 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             />
           </label>
         ))}
+      </div>
+
+      {/* ── Màu tia lửa hiệu ứng ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">✨ Màu tia lửa hiệu ứng</h2>
+        <p className="text-xs text-gray-500">Đổi màu tia lửa bay ở các khung có hiệu ứng lửa (Đăng nhập, Cửa hàng, War, Tổng quan, Clan Capital, Clan Games...) — áp dụng chung cho toàn bộ web.</p>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { key: "gold", label: "Vàng lửa", swatch: "linear-gradient(135deg,#FFED8A,#FF6A00)" },
+            { key: "blue", label: "Xanh dương", swatch: "linear-gradient(135deg,#C9F0FF,#0288D1)" },
+            { key: "purple", label: "Tím", swatch: "linear-gradient(135deg,#E9D5FF,#6D28D9)" },
+            { key: "pink", label: "Hồng", swatch: "linear-gradient(135deg,#FFD6EC,#BE185D)" },
+          ].map(o => (
+            <button key={o.key}
+              onClick={() => { set("ember_color", o.key); api.saveSetting("ember_color", o.key).catch(() => {}); }}
+              className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-colors ${
+                (settings.ember_color || "gold") === o.key ? "border-yellow-500" : "border-transparent"}`}>
+              <span className="w-8 h-8 rounded-full" style={{ background: o.swatch, boxShadow: "0 0 8px rgba(0,0,0,0.3)" }} />
+              <span className="text-[10px] text-gray-400">{o.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Ảnh nền từng mục ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">🖼️ Ảnh nền từng mục</h2>
+        <p className="text-xs text-gray-500">Đổi ảnh nền riêng cho từng trang — chọn trang, rồi chọn ảnh (hoặc dán link ảnh khác), Lưu là áp dụng ngay.</p>
+
+        <select className="input text-sm" value={bannerPage} onChange={e => setBannerPage(e.target.value)}>
+          <option value="login">Nhận diện thành viên</option>
+          <option value="shop">Cửa hàng</option>
+          <option value="events">Sự kiện</option>
+          <option value="capital">Clan Capital</option>
+          <option value="members">Thành viên</option>
+          <option value="donate">Donate &amp; Clan Games</option>
+          <option value="games">Clan Games (trang riêng)</option>
+          <option value="stats">Thống kê</option>
+          <option value="war">War &amp; CWL</option>
+          <option value="overview_war">Tổng quan · thẻ War</option>
+          <option value="overview_cwl">Tổng quan · thẻ CWL</option>
+        </select>
+
+        {(() => {
+          let banners: Record<string, string> = {};
+          try { banners = settings.page_banners ? JSON.parse(settings.page_banners) : {}; } catch {}
+          const current = banners[bannerPage] || "";
+          const ART_OPTIONS = [
+            "archer-queen-army", "balloon-swarm-skulls", "barbarian-fireball", "capital-sky-islands",
+            "dragon-fire-logo", "giant-sunset", "giants-balloons-desert", "pekka-lava",
+            "prince-celebration", "royal-vista", "ruins-aftermath", "skeleton-king", "wizard-fireball-goblins",
+          ];
+          function pick(src: string) {
+            const next = { ...banners, [bannerPage]: src };
+            const json = JSON.stringify(next);
+            set("page_banners", json);
+            api.saveSetting("page_banners", json).then(() => showToast("Đã đổi ảnh nền!")).catch(() => {});
+          }
+          function reset() {
+            const next = { ...banners };
+            delete next[bannerPage];
+            const json = JSON.stringify(next);
+            set("page_banners", json);
+            api.saveSetting("page_banners", json).then(() => showToast("Đã đưa về ảnh mặc định")).catch(() => {});
+          }
+          return (
+            <>
+              <div className="grid grid-cols-5 gap-1.5">
+                {ART_OPTIONS.map(name => (
+                  <button key={name} onClick={() => pick(`/art/${name}.jpg`)}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 ${
+                      current === `/art/${name}.jpg` ? "border-yellow-500" : "border-transparent"}`}>
+                    <img src={`/art/${name}.jpg`} alt={name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input className="input text-xs flex-1" placeholder="Hoặc dán link ảnh khác (URL)"
+                  defaultValue={current.startsWith("/art/") ? "" : current}
+                  onKeyDown={e => { if (e.key === "Enter") pick((e.target as HTMLInputElement).value); }} />
+                <button onClick={reset} className="btn-secondary text-xs shrink-0">Mặc định</button>
+              </div>
+              {current && <p className="text-[10px] text-gray-600">Đang dùng: {current}</p>}
+            </>
+          );
+        })()}
       </div>
 
       {/* ── Dọn dẹp tài sản thành viên rời clan ── */}
@@ -694,8 +793,12 @@ function ShopPricingSettings() {
   }, {});
 
   return (
-    <div className="card space-y-4">
-      <h3 className="font-bold text-white">🏷️ Giá Cửa hàng vật phẩm</h3>
+    <details className="card !p-0 group">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+        <span className="font-bold text-white">🏷️ Giá Cửa hàng vật phẩm</span>
+        <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div className="px-4 pb-4 space-y-4">
       <p className="text-xs text-gray-500">Chỉnh giá Coins cho từng vật phẩm trong Cửa hàng. Đặt 0 = miễn phí mặc định.</p>
       {toastMsg && <p className="text-xs text-green-400">{toastMsg}</p>}
       {toastErr && <MiniToast msg={toastErr} type="error" />}
@@ -720,7 +823,8 @@ function ShopPricingSettings() {
           </div>
         ))
       )}
-    </div>
+      </div>
+    </details>
   );
 }
 

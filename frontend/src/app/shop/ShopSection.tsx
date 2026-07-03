@@ -6,6 +6,7 @@ import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { Coins, Lock, CheckCircle2 } from "lucide-react";
 import { EmberField } from "@/components/ui/EmberField";
+import { useEmberColor } from "@/lib/useEmberColor";
 
 function SectionTitle({ emoji, label }: { emoji: string; label: string }) {
   return (
@@ -21,6 +22,7 @@ function SectionTitle({ emoji, label }: { emoji: string; label: string }) {
 
 export default function ShopSection() {
   const [items, setItems] = useState<any[]>([]);
+  const emberColor = useEmberColor();
   const [inv, setInv] = useState<{ owned_item_ids: number[]; coins: number; equipped_castle: string; equipped_cannon: string; equipped_effect: string | null; equipped_number_effect: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -121,7 +123,7 @@ export default function ShopSection() {
         style={{ backgroundImage: "repeating-linear-gradient(45deg,#F4A130 0,#F4A130 1px,transparent 0,transparent 50%)", backgroundSize: "8px 8px" }}/>
 
       <div className="relative p-5 space-y-5">
-        <EmberField count={14} />
+        <EmberField count={14} color={emberColor} />
         <div className="relative flex items-center justify-between">
           <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
           <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">

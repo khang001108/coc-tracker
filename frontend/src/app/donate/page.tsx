@@ -8,11 +8,13 @@ import { Heart, Gamepad2, ArrowUpDown } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { usePageBanner } from "@/lib/usePageBanner";
 
 type SortKey = "donations" | "donationsReceived" | "ratio" | "name" | "th";
 
 export default function DonatePage() {
   const [members, setMembers] = useState<any[]>([]);
+  const bannerSrc = usePageBanner("donate", "/art/balloon-swarm-skulls.jpg");
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"donate" | "games">("donate");
   const [sortKey, setSortKey] = useState<SortKey>("donations");
@@ -68,7 +70,7 @@ export default function DonatePage() {
     <div className="space-y-5 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(236,72,153,0.14), rgba(139,69,19,0.08))" }}>
-        <ArtBanner src="/art/balloon-swarm-skulls.jpg" opacity={0.8} objectPosition="center 25%" />
+        <ArtBanner src={bannerSrc} opacity={0.8} objectPosition="center 25%" />
         <div className="relative banner-content">
           <h1 className="page-title flex items-center gap-2">
             <Heart size={22} className="text-pink-400" /> Donate & Clan Games
