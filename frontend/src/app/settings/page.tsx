@@ -910,8 +910,12 @@ function ClanManagement() {
           <div>
             <label className="text-[10px] text-gray-500 mb-1 block">Clan Tag *</label>
             <input className="input" placeholder="#2JRLPQ2UP" value={form.clan_tag}
-              onChange={e => { setForm({ ...form, clan_tag: e.target.value }); setPreview(null); }}
-              disabled={!!editId}/>
+              onChange={e => { setForm({ ...form, clan_tag: e.target.value }); setPreview(null); }} />
+            {editId && (
+              <p className="text-[10px] text-gray-500 mt-1">
+                Đổi tag = chuyển sang theo dõi 1 clan CoC khác hẳn (giữ nguyên API key vẫn được, vì key chỉ gắn với IP server chứ không gắn với clan cụ thể).
+              </p>
+            )}
           </div>
 
           <div>
