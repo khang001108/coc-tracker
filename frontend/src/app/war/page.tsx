@@ -6,7 +6,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatDate, thColor } from "@/lib/utils";
-import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check } from "lucide-react";
+import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check, AlertTriangle } from "lucide-react";
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
 
@@ -124,10 +124,18 @@ export default function WarPage() {
       ) : tab === "current" ? (
         <>
           {!war || war.state === "notInWar" ? (
-            <div className="card text-center py-12">
-              <Shield size={40} className="mx-auto mb-3 text-gray-700" />
-              <p className="text-gray-400">Clan không có War đang diễn ra</p>
-            </div>
+            war?.error === "war_log_private" ? (
+              <div className="card text-center py-12 border-yellow-500/30 bg-yellow-500/5">
+                <AlertTriangle size={40} className="mx-auto mb-3 text-yellow-500" />
+                <p className="text-yellow-400 font-semibold mb-2">Nhật ký chiến tranh đang để riêng tư</p>
+                <p className="text-sm text-gray-400 max-w-md mx-auto">{war.message}</p>
+              </div>
+            ) : (
+              <div className="card text-center py-12">
+                <Shield size={40} className="mx-auto mb-3 text-gray-700" />
+                <p className="text-gray-400">Clan không có War đang diễn ra</p>
+              </div>
+            )
           ) : (
             <>
               {/* War header */}

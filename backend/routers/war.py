@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from supabase_client import get_supabase
 from clan_context import get_tag_for_request
 from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war
+import httpx
 import json
 
 router = APIRouter()
@@ -18,12 +19,31 @@ async def current_war(request: Request):
             return {**json.loads(res.data[0]["data"]), "_cached_at": res.data[0]["updated_at"]}
 
     # Clan khác (hoặc chưa có cache): gọi trực tiếp CoC API với đúng clan đang chọn.
-    return await get_current_war(tag, clan_id=clan_id)
+    try:
+        return await get_current_war(tag, clan_id=clan_id)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 403:
+            # Lỗi RẤT phổ biến khi mới thêm clan: "Nhật ký chiến tranh" (War
+            # Log) của clan đang để RIÊNG TƯ trong game — CoC API chặn hẳn,
+            # không trả về gì cả (khác với việc thật sự không có war).
+            return {
+                "state": "notInWar",
+                "error": "war_log_private",
+                "message": "Nhật ký chiến tranh (War Log) của clan này đang để RIÊNG TƯ trong game. "
+                            "Vào Clash of Clans → Clan → Cài đặt clan → bật 'Nhật ký chiến tranh công khai' "
+                            "thì web mới lấy được dữ liệu war.",
+            }
+        raise HTTPException(e.response.status_code, f"Lỗi CoC API: {e.response.text[:200]}")
 
 @router.get("/log")
 async def war_log(request: Request):
     clan_id, tag = await get_tag_for_request(request)
-    return {"items": await get_war_log(tag, clan_id=clan_id)}
+    try:
+        return {"items": await get_war_log(tag, clan_id=clan_id)}
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 403:
+            return {"items": [], "error": "war_log_private"}
+        raise HTTPException(e.response.status_code, f"Lỗi CoC API: {e.response.text[:200]}")
 
 @router.get("/cwl")
 async def cwl(request: Request):
