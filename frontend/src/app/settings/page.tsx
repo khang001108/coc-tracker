@@ -204,6 +204,36 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
   );
 }
 
+/** Nút "Tải ảnh từ thư viện máy" dùng chung cho mọi chỗ chọn ảnh nền trong
+ * Cài đặt — tận dụng lại API upload ảnh sự kiện đã có sẵn. */
+function UploadFromDeviceButton({ onUploaded }: { onUploaded: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setErr("");
+    try {
+      const res = await api.uploadEventImage(file);
+      onUploaded(res.url);
+    } catch (e: any) { setErr(e.message || "Lỗi tải ảnh lên"); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+
+  return (
+    <div>
+      <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+        className="btn-secondary text-xs w-full flex items-center justify-center gap-1.5">
+        <Upload size={13}/> {uploading ? "Đang tải lên..." : "📷 Thêm ảnh từ thư viện trong máy"}
+      </button>
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      {err && <p className="text-[10px] text-red-400 mt-1">{err}</p>}
+    </div>
+  );
+}
+
 function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -522,6 +552,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             value={settings.chat_background_image?.startsWith("/art/") ? "" : (settings.chat_background_image || "")}
             onChange={e => set("chat_background_image", e.target.value)} />
         </div>
+        <UploadFromDeviceButton onUploaded={url => set("chat_background_image", url)} />
         <button onClick={() => save("chat_background_image")} disabled={!!saving}
           className="btn-gold text-sm w-full">Lưu ảnh nền Chat</button>
       </div>
@@ -629,6 +660,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
                   onKeyDown={e => { if (e.key === "Enter") pick((e.target as HTMLInputElement).value); }} />
                 <button onClick={reset} className="btn-secondary text-xs shrink-0">Mặc định</button>
               </div>
+              <UploadFromDeviceButton onUploaded={pick} />
               {current && <p className="text-[10px] text-gray-600">Đang dùng: {current}</p>}
             </>
           );
@@ -683,6 +715,52 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </div>
+  );
+}
+
+function EventReportsSettings() {
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try { setReports(await api.getEventReports()); } catch {} finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const openReports = reports.filter(r => r.status !== "resolved");
+
+  return (
+    <details className="card !p-0 group">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+        <span className="font-bold text-white flex items-center gap-2">
+          🚩 Báo cáo sự kiện {openReports.length > 0 && <span className="badge-red text-[10px]">{openReports.length} mới</span>}
+        </span>
+        <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div className="px-4 pb-4 space-y-2">
+        <p className="text-xs text-gray-500">Thành viên báo cáo sự kiện sai trái/lừa đảo sẽ hiện ở đây.</p>
+        {loading ? (
+          <p className="text-xs text-gray-600">Đang tải...</p>
+        ) : reports.length === 0 ? (
+          <p className="text-xs text-gray-600">Chưa có báo cáo nào.</p>
+        ) : (
+          reports.map(r => (
+            <div key={r.id} className={`p-3 rounded-xl border ${r.status === "resolved" ? "border-gray-800 opacity-50" : "border-red-500/30 bg-red-500/5"}`}>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-semibold text-white">{r.event_title}</p>
+                {r.status !== "resolved" && (
+                  <button onClick={async () => { await api.resolveEventReport(r.id); load(); }}
+                    className="text-[11px] text-green-400 hover:underline">Đánh dấu đã xử lý</button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400">{r.reason}</p>
+              <p className="text-[10px] text-gray-600 mt-1">Từ {r.reporter_name} · {new Date(r.created_at).toLocaleString("vi-VN")}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -1188,6 +1266,7 @@ export default function SettingsPage() {
       <AdminGate>
         <div className="columns-1 lg:columns-2 xl:columns-3 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
           <SettingsPageInner embedded />
+          <EventReportsSettings />
           <MusicSettings />
           <MemberAccountsSettings />
           <ShopPricingSettings />

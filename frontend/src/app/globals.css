@@ -25,10 +25,10 @@
   /* Theme sáng: phủ SÁNG (kem) lên ảnh thay vì phủ tối, vì chữ ở theme này
      màu nâu đậm — phủ tối như bên dark sẽ làm chữ chìm mất, khó đọc.
      Giảm độ phủ để ảnh vẫn hiện rõ, bù lại bằng viền + bóng chữ đậm hơn. */
-  --art-overlay-wash: rgba(255,251,239,0.1);
+  --art-overlay-wash: rgba(255,251,239,0.03);
   --art-overlay-edge: #FFF3D4;
-  --art-text-shadow: 0 1px 3px rgba(255,255,255,0.95), 0 1px 8px rgba(255,255,255,0.85), 0 0 14px rgba(255,255,255,0.6);
-  --art-text-stroke: #FFFBEF;
+  --art-text-shadow: 0 1px 2px rgba(255,255,255,0.55), 0 1px 4px rgba(255,255,255,0.35);
+  --art-text-stroke: rgba(255,251,239,0.4);
 }
 :root {
   --player-bg: linear-gradient(180deg, #2a2f3a, #161920);
@@ -229,6 +229,7 @@
 @keyframes name-fire { 0%,100% { text-shadow: 0 0 4px #FF6B00, 0 -2px 6px #FFD700; } 50% { text-shadow: 0 0 8px #FF3D00, 0 -3px 10px #FFAA00; } }
 @keyframes name-ice { 0%,100% { text-shadow: 0 0 4px #7DD3FC, 0 0 8px #38BDF8aa; } 50% { text-shadow: 0 0 10px #BAE6FD, 0 0 16px #38BDF8; } }
 @keyframes name-royal-sparkle { 0%,100% { opacity: 0.3; transform: scale(0.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(180deg); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes name-electric { 0%,20%,22%,24%,55%,100% { text-shadow: 0 0 3px #7DD3FF, 0 0 6px #38BDF8aa; opacity: 1; } 21%,23% { text-shadow: 0 0 12px #E0F2FE, 0 0 22px #7DD3FF; opacity: 0.75; } }
 @keyframes name-shadow { 0%,100% { text-shadow: 0 0 6px #7C3AED, 0 2px 4px #00000099; } 50% { text-shadow: 0 0 14px #A855F7, 0 3px 8px #000000cc; } }
 @keyframes name-crystal { 0%,100% { text-shadow: 0 0 4px #E0F7FA, 0 0 8px #67E8F9aa; filter: brightness(1); } 50% { text-shadow: 0 0 12px #FFFFFF, 0 0 20px #A5F3FC; filter: brightness(1.25); } }

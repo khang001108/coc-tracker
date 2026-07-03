@@ -9,7 +9,7 @@ import { FireworkField } from "@/components/ui/FireworkField";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
-  ThumbsUp, ThumbsDown, AlertTriangle, Users, LogIn, LogOut, Lock, Coins,
+  ThumbsUp, ThumbsDown, AlertTriangle, Users, LogIn, LogOut, Lock, Coins, Edit3, Flag, Loader2,
 } from "lucide-react";
 
 /* ─── Constants ───────────────────────────────────────────────────────── */
@@ -24,7 +24,7 @@ const CONDITION_LABELS: Record<string, { label: string; icon: string; desc: stri
 };
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
-  war: "War thường", cwl: "CWL / War giải", capital: "Clan Capital", custom: "Tự viết",
+  war: "War thường", cwl: "CWL / War giải", capital: "Clan Capital", donate: "Donate", custom: "Tự viết",
 };
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   pending:        { label: "⏳ Chờ duyệt",         cls: "badge-purple" },
@@ -41,6 +41,13 @@ const STATUS_BORDER: Record<string, string> = {
   closed:         "from-gray-600 via-gray-500 to-gray-600",
   rejected:       "from-gray-600 via-gray-500 to-gray-600",
 };
+
+function zaloLink(contact: string): string {
+  const trimmed = (contact || "").trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const digits = trimmed.replace(/[^0-9]/g, "");
+  return digits ? `https://zalo.me/${digits}` : "#";
+}
 
 function fmtDateTime(s?: string) {
   if (!s) return "";
@@ -286,6 +293,37 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   const [busy, setBusy]               = useState(false);
   const member = getMemberAuth();
   const gradient = STATUS_BORDER[event.status] || STATUS_BORDER.active;
+  const [showEdit, setShowEdit] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportSent, setReportSent] = useState(false);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: event.title || "", description: event.description || "",
+    reward_name: event.reward_name || "", reward_coins: event.reward_coins || 0,
+    creator_zalo: event.creator_zalo || "", start_time: toDatetimeLocal(event.start_time),
+    end_time: toDatetimeLocal(event.end_time),
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  async function submitReport() {
+    if (!reportReason.trim()) return;
+    try {
+      await api.reportEvent(event.id, reportReason.trim());
+      setReportSent(true);
+    } catch (e: any) { alert(e.message || "Lỗi gửi báo cáo"); }
+  }
+
+  async function saveEdit() {
+    setEditSaving(true); setEditError("");
+    try {
+      await api.updateEvent(event.id, editForm);
+      onChanged?.();
+      setShowEdit(false);
+    } catch (e: any) { setEditError(e.message || "Lỗi lưu sự kiện"); }
+    finally { setEditSaving(false); }
+  }
 
   async function load() {
     setLoading(true);
@@ -347,7 +385,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
     <Portal>
     <div className="modal-overlay" onClick={onClose}>
       {/* Gradient border modal */}
-      <div className={`relative w-full max-w-lg mx-4 rounded-2xl p-[2px] bg-gradient-to-br ${gradient}`}
+      <div className={`relative w-full max-w-lg mx-4 rounded-2xl p-[2px] bg-gradient-to-br ${gradient} animate-scale-in`}
         onClick={e => e.stopPropagation()}>
         {/* Corner diamonds */}
         <DiamondCorner pos="tl"/> <DiamondCorner pos="tr"/>
@@ -369,9 +407,23 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                 <p className="text-xs text-gray-500">{EVENT_TYPE_LABEL[event.event_type]}</p>
                 <span className={`badge text-[10px] mt-1 ${badge.cls}`}>{badge.label}</span>
               </div>
-              <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 shrink-0">
-                <X size={18}/>
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {(isAdmin || isCreator) && (
+                  <button onClick={() => setShowEdit(true)} title="Sửa sự kiện"
+                    className="p-2 rounded-xl hover:bg-gray-800 text-blue-400">
+                    <Edit3 size={16}/>
+                  </button>
+                )}
+                {member && !isCreator && (
+                  <button onClick={() => setShowReport(true)} title="Báo cáo sự kiện sai trái"
+                    className="p-2 rounded-xl hover:bg-gray-800 text-red-400">
+                    <Flag size={16}/>
+                  </button>
+                )}
+                <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400">
+                  <X size={18}/>
+                </button>
+              </div>
             </div>
 
             {/* Admin workflow */}
@@ -419,7 +471,8 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                 style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.12), rgba(236,72,153,0.08))", border: "1px solid rgba(244,161,48,0.25)" }}>
                 <div className="flex items-center gap-3">
                   {event.reward_image_url ? (
-                    <img src={event.reward_image_url} className="w-16 h-16 rounded-xl object-cover ring-2 ring-yellow-500/30" alt=""/>
+                    <img src={event.reward_image_url} onClick={() => setZoomImage(event.reward_image_url)}
+                      className="w-16 h-16 rounded-xl object-cover ring-2 ring-yellow-500/30 cursor-zoom-in" alt=""/>
                   ) : (
                     <div className="w-16 h-16 rounded-xl bg-yellow-500/10 flex items-center justify-center">
                       <Gift size={26} className="text-yellow-400"/>
@@ -447,10 +500,16 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                   <div className="mt-3 pt-3 border-t border-yellow-500/20">
                     <p className="text-xs text-yellow-600 font-semibold mb-1">📦 Cách nhận quà:</p>
                     <ol className="text-xs text-gray-400 space-y-0.5 list-decimal list-inside">
-                      <li>Nhắn Zalo cho người tổ chức: <span className="text-blue-400">{event.creator_zalo}</span></li>
+                      <li>Nhắn Zalo cho người tổ chức: <a href={zaloLink(event.creator_zalo)} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{event.creator_zalo}</a></li>
                       <li>Gửi: Tên · Số điện thoại · Địa chỉ nhận hàng</li>
                       <li>Người tổ chức đặt hàng Shopee & gửi mã vận đơn</li>
                     </ol>
+                    {member && claims.some((c: any) => c.player_tag === member.player_tag) && (
+                      <a href={zaloLink(event.creator_zalo)} target="_blank" rel="noreferrer"
+                        className="btn-gold w-full flex items-center justify-center gap-2 text-sm mt-3 animate-gold-pulse">
+                        🎁 Bạn đã trúng thưởng — Nhận thưởng ngay
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
@@ -458,7 +517,18 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
 
             {/* Join button */}
             <div className="pt-1 border-t border-gray-800/60">
-              <JoinButton event={event} participants={participants} onChanged={load}/>
+              {loading ? (
+                <div className="h-11 rounded-xl overflow-hidden relative"
+                  style={{ background: "linear-gradient(90deg, rgba(244,161,48,0.06), rgba(244,161,48,0.16), rgba(244,161,48,0.06))", backgroundSize: "200% 100%", animation: "shimmer 1.3s ease-in-out infinite" }}>
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-yellow-500/70">
+                    <Loader2 size={14} className="animate-spin" /> Đang tải trạng thái tham gia...
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-fade-up">
+                  <JoinButton event={event} participants={participants} onChanged={load}/>
+                </div>
+              )}
             </div>
 
             {/* Participants */}
@@ -477,7 +547,12 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                 <Users size={11}/> Chỉ người đã <strong>tham gia sự kiện</strong> mới được xét điều kiện nhận thưởng.
               </p>
               {loading ? (
-                <div className="h-20 bg-gray-800 rounded-xl animate-pulse"/>
+                <div className="space-y-1.5">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="h-9 rounded-xl overflow-hidden"
+                      style={{ background: "linear-gradient(90deg, rgba(120,120,140,0.08), rgba(120,120,140,0.18), rgba(120,120,140,0.08))", backgroundSize: "200% 100%", animation: `shimmer 1.3s ease-in-out infinite ${i * 0.15}s` }} />
+                  ))}
+                </div>
               ) : lbNote ? (
                 <p className="text-sm text-gray-500">{lbNote}</p>
               ) : leaderboard.length === 0 ? (
@@ -547,6 +622,68 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
         </div>
       </div>
     </div>
+
+    {/* Xem ảnh to */}
+    {zoomImage && (
+      <div className="modal-overlay !bg-black/90" style={{ zIndex: 60 }} onClick={() => setZoomImage(null)}>
+        <img src={zoomImage} alt="" className="max-w-[92vw] max-h-[88vh] object-contain rounded-xl" onClick={e => e.stopPropagation()} />
+        <button onClick={() => setZoomImage(null)} className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white"><X size={20}/></button>
+      </div>
+    )}
+
+    {/* Báo cáo sự kiện */}
+    {showReport && (
+      <div className="modal-overlay" style={{ zIndex: 60 }} onClick={() => setShowReport(false)}>
+        <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
+          <div className="p-5 space-y-3">
+            <h3 className="font-bold text-white flex items-center gap-2"><Flag size={16} className="text-red-400"/> Báo cáo sự kiện</h3>
+            {reportSent ? (
+              <>
+                <p className="text-sm text-green-400">✓ Đã gửi báo cáo cho admin, cảm ơn bạn!</p>
+                <button onClick={() => { setShowReport(false); setReportSent(false); setReportReason(""); }} className="btn-secondary w-full text-sm">Đóng</button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500">Cho admin biết vì sao sự kiện này sai trái (lừa đảo, quà giả, Zalo giả...).</p>
+                <textarea className="input" rows={3} placeholder="Lý do báo cáo..." value={reportReason} onChange={e => setReportReason(e.target.value)} />
+                <div className="flex gap-2">
+                  <button onClick={() => setShowReport(false)} className="btn-secondary flex-1 text-sm">Huỷ</button>
+                  <button onClick={submitReport} disabled={!reportReason.trim()} className="btn-danger flex-1 text-sm">Gửi báo cáo</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Sửa sự kiện */}
+    {showEdit && (
+      <div className="modal-overlay" style={{ zIndex: 60 }} onClick={() => setShowEdit(false)}>
+        <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="p-5 space-y-3">
+            <h3 className="font-bold text-white flex items-center gap-2"><Edit3 size={16} className="text-blue-400"/> Sửa sự kiện</h3>
+            <input className="input" placeholder="Tên sự kiện" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})}/>
+            <textarea className="input" rows={2} placeholder="Mô tả" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})}/>
+            <input className="input" placeholder="Tên quà" value={editForm.reward_name} onChange={e => setEditForm({...editForm, reward_name: e.target.value})}/>
+            <div>
+              <label className="text-xs text-gray-500">Thưởng Coins</label>
+              <input type="number" min={0} className="input" value={editForm.reward_coins} onChange={e => setEditForm({...editForm, reward_coins: Number(e.target.value) || 0})}/>
+            </div>
+            <input className="input" placeholder="Số Zalo/nhóm liên hệ" value={editForm.creator_zalo} onChange={e => setEditForm({...editForm, creator_zalo: e.target.value})}/>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="datetime-local" className="input text-xs" value={editForm.start_time} onChange={e => setEditForm({...editForm, start_time: e.target.value})}/>
+              <input type="datetime-local" className="input text-xs" value={editForm.end_time} onChange={e => setEditForm({...editForm, end_time: e.target.value})}/>
+            </div>
+            {editError && <p className="text-xs text-red-400">{editError}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setShowEdit(false)} className="btn-secondary flex-1 text-sm">Huỷ</button>
+              <button onClick={saveEdit} disabled={editSaving} className="btn-gold flex-1 text-sm">{editSaving ? "Đang lưu..." : "Lưu"}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </Portal>
   );
 }
@@ -598,6 +735,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen]             = useState(false);
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loadingWarTime, setLoadingWarTime] = useState(false);
   const isAdmin = !!getAdminToken();
 
@@ -610,6 +748,11 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
     allowed_clan_ids: [] as number[],
   });
   const [allClans, setAllClans] = useState<any[]>([]);
+  const [myCoins, setMyCoins] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.getMyMemberInfo().then((me: any) => { if (me) setMyCoins(me.coins ?? 0); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isAdmin) api.listClans().then(setAllClans).catch(() => {});
@@ -632,7 +775,19 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    const errs: Record<string, string> = {};
+    if (!form.title.trim()) errs.title = "Cần nhập tên sự kiện";
+    if (!form.description.trim()) errs.description = "Cần nhập mô tả để người tham gia hiểu rõ luật chơi";
+    if (!form.reward_name.trim() && form.reward_coins <= 0) errs.reward_name = "Cần có phần quà (vật phẩm) hoặc thưởng Coins";
+    if (!form.start_time) errs.start_time = "Cần chọn thời gian bắt đầu";
+    if (!form.end_time) errs.end_time = "Cần chọn thời gian kết thúc";
+    if (form.start_time && form.end_time && new Date(form.end_time) <= new Date(form.start_time)) errs.end_time = "Thời gian kết thúc phải sau thời gian bắt đầu";
+    if (!form.creator_zalo.trim()) errs.creator_zalo = "Cần có số Zalo/nhóm liên hệ để người thắng nhận thưởng";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError("Vui lòng điền đầy đủ các mục được đánh dấu đỏ bên dưới");
+      return;
+    }
     setSaving(true); setError("");
     try {
       await api.createEvent(form);
@@ -640,6 +795,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         top_n:3, reward_name:"", reward_image_url:"", reward_shop_link:"",
         reward_coins:0, start_time:"", end_time:"", creator_zalo:"",
         visibility:"private", allowed_clan_ids:[] });
+      setFieldErrors({});
       setOpen(false); onCreated();
     } catch (e: any) { setError(e.message || "Lỗi tạo sự kiện"); }
     finally { setSaving(false); }
@@ -668,10 +824,22 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         </p>
       )}
 
-      <input className="input" placeholder="Tên sự kiện"
-        value={form.title} onChange={e => setForm({...form,title:e.target.value})}/>
-      <textarea className="input" placeholder="Mô tả (tuỳ chọn)" rows={2}
-        value={form.description} onChange={e => setForm({...form,description:e.target.value})}/>
+      <p className="text-[11px] text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">
+        ⚠️ Cam kết thông tin quà thưởng và số Zalo/nhóm liên hệ là <b>thật</b>. Nghiêm cấm tạo sự kiện lừa đảo,
+        để số điện thoại/nhóm giả mạo nhằm câu kéo hoặc lừa gạt thành viên khác — sự kiện vi phạm sẽ bị xoá và
+        tài khoản có thể bị khoá vĩnh viễn.
+      </p>
+
+      <div>
+        <input className={`input ${fieldErrors.title ? "!border-red-500" : ""}`} placeholder="Tên sự kiện"
+          value={form.title} onChange={e => setForm({...form,title:e.target.value})}/>
+        {fieldErrors.title && <p className="text-[11px] text-red-400 mt-1">↑ {fieldErrors.title}</p>}
+      </div>
+      <div>
+        <textarea className={`input ${fieldErrors.description ? "!border-red-500" : ""}`} placeholder="Mô tả (thể lệ, cách tính điểm...)" rows={2}
+          value={form.description} onChange={e => setForm({...form,description:e.target.value})}/>
+        {fieldErrors.description && <p className="text-[11px] text-red-400 mt-1">↑ {fieldErrors.description}</p>}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -680,6 +848,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
             <option value="war">War thường</option>
             <option value="cwl">CWL / War giải</option>
             <option value="capital">Clan Capital</option>
+            <option value="donate">Donate</option>
             <option value="custom">Tự viết</option>
           </select>
         </div>
@@ -746,33 +915,51 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input type="datetime-local" className="input text-xs" value={form.start_time} onChange={e => setForm({...form,start_time:e.target.value})}/>
-          <input type="datetime-local" className="input text-xs" value={form.end_time}   onChange={e => setForm({...form,end_time:e.target.value})}/>
+          <input type="datetime-local" className={`input text-xs ${fieldErrors.start_time ? "!border-red-500" : ""}`} value={form.start_time} onChange={e => setForm({...form,start_time:e.target.value})}/>
+          <input type="datetime-local" className={`input text-xs ${fieldErrors.end_time ? "!border-red-500" : ""}`} value={form.end_time}   onChange={e => setForm({...form,end_time:e.target.value})}/>
         </div>
+        {(fieldErrors.start_time || fieldErrors.end_time) && (
+          <p className="text-[11px] text-red-400">↑ {fieldErrors.start_time || fieldErrors.end_time}</p>
+        )}
       </div>
 
       <div className="pt-2 border-t border-gray-800 space-y-3">
         <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5"><Gift size={13}/> Phần quà</p>
-        <input className="input" placeholder="Tên quà (vd: Móc khoá con mực)"
+        <input className={`input ${fieldErrors.reward_name ? "!border-red-500" : ""}`} placeholder="Tên quà (vd: Móc khoá con mực)"
           value={form.reward_name} onChange={e => setForm({...form,reward_name:e.target.value})}/>
+        {fieldErrors.reward_name && <p className="text-[11px] text-red-400 -mt-2">↑ {fieldErrors.reward_name}</p>}
         <ImageUploadField value={form.reward_image_url} onChange={url => setForm({...form,reward_image_url:url})}/>
         <input className="input" placeholder="Link quà Shopee / Lazada (tuỳ chọn)"
           value={form.reward_shop_link} onChange={e => setForm({...form,reward_shop_link:e.target.value})}/>
 
-        {/* Coin reward */}
+        {/* Coin reward — kéo thanh trượt hoặc gõ số, giới hạn theo Coins đang có */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1">
-            <Coins size={12}/> Thưởng Coins mỗi người thắng (từ coins của bạn)
+          <label className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+            <span className="flex items-center gap-1"><Coins size={12}/> Thưởng Coins mỗi người thắng</span>
+            {myCoins !== null && (
+              <span className="text-yellow-500 font-semibold">Bạn đang có: {myCoins.toLocaleString()} 🪙</span>
+            )}
           </label>
-          <input type="number" min={0} step={50} className="input" placeholder="0 = không thưởng coins"
-            value={form.reward_coins || ""} onChange={e => setForm({...form,reward_coins:Number(e.target.value)||0})}/>
+          <div className="flex items-center gap-3">
+            <input type="range" min={0} max={Math.max(myCoins ?? 1000, form.reward_coins, 100)} step={10}
+              className="flex-1 accent-yellow-500"
+              value={form.reward_coins}
+              onChange={e => setForm({...form, reward_coins: Number(e.target.value)})} />
+            <input type="number" min={0} step={10} className="input !w-24 text-center"
+              value={form.reward_coins || ""} placeholder="0"
+              onChange={e => setForm({...form, reward_coins: Math.max(0, Number(e.target.value) || 0)})}/>
+          </div>
+          {myCoins !== null && form.reward_coins > myCoins && (
+            <p className="text-[11px] text-red-400 mt-1">⚠️ Bạn đang đặt thưởng ({form.reward_coins}) nhiều hơn số Coins bạn có ({myCoins}) — hãy kiếm thêm Coins trước khi trao thưởng.</p>
+          )}
           <p className="text-[11px] text-gray-600 mt-1">
-            Coins sẽ tự động trừ của bạn và cộng cho người thắng khi admin xác nhận trao thưởng.
+            Coins sẽ tự động trừ của bạn và cộng cho người thắng khi admin xác nhận trao thưởng. Đặt 0 = không thưởng Coins.
           </p>
         </div>
 
-        <input className="input" placeholder="Số Zalo của bạn để người thắng liên hệ nhận quà"
+        <input className={`input ${fieldErrors.creator_zalo ? "!border-red-500" : ""}`} placeholder="Số Zalo/nhóm của bạn để người thắng liên hệ nhận quà"
           value={form.creator_zalo} onChange={e => setForm({...form,creator_zalo:e.target.value})}/>
+        {fieldErrors.creator_zalo && <p className="text-[11px] text-red-400">↑ {fieldErrors.creator_zalo}</p>}
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}

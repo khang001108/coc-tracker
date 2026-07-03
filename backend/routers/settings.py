@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File
 from supabase_client import get_supabase
 from auth import require_admin, create_token, verify_password
 import httpx
+import uuid
 from urllib.parse import quote
 
 router = APIRouter()
@@ -22,6 +23,27 @@ async def login(request: Request):
     if not verify_password(password):
         raise HTTPException(401, "Sai mật khẩu")
     return {"token": create_token()}
+
+@router.post("/upload-image")
+async def upload_settings_image(file: UploadFile = File(...), _: bool = Depends(require_admin)):
+    """Tải ảnh từ thư viện máy lên — dùng cho ảnh nền Chat / ảnh nền từng
+    mục trong Cài đặt (dùng chung storage bucket với ảnh sự kiện)."""
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(400, "Chỉ chấp nhận ảnh JPEG, PNG, WEBP hoặc GIF")
+    content = await file.read()
+    if len(content) > 6 * 1024 * 1024:
+        raise HTTPException(400, "Ảnh tối đa 6MB")
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "jpg"
+    path = f"banners/{uuid.uuid4().hex}.{ext}"
+    sb = get_supabase()
+    try:
+        sb.storage.from_("event-rewards").upload(path, content, {"content-type": file.content_type})
+    except Exception as e:
+        raise HTTPException(500, f"Lỗi tải ảnh lên: {str(e)}")
+    public_url = sb.storage.from_("event-rewards").get_public_url(path)
+    return {"url": public_url}
+
 
 @router.get("/verify-token")
 async def verify_token(_: bool = Depends(require_admin)):

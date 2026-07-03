@@ -635,3 +635,30 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_history_log TO service_role;
 -- đây dù mua/gắn cũng không hiện gì vì component chưa hỗ trợ).
 -- ════════════════════════════════════════════════════════════════
 UPDATE shop_items SET item_type = 'effect' WHERE item_type = 'name_effect';
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 9 (sự kiện Donate, báo cáo sự kiện, mốc donate lúc tham gia)
+-- ════════════════════════════════════════════════════════════════
+
+-- Lưu số donate của người tham gia NGAY LÚC HỌ JOIN sự kiện loại Donate —
+-- để tính "donate từ lúc bắt đầu sự kiện" = donate hiện tại - mốc này.
+-- (Giới hạn: nếu CoC reset donate hàng tuần ngay giữa lúc sự kiện đang diễn
+-- ra, số sẽ bị lệch — CoC không cho lấy lịch sử donate chi tiết theo giờ).
+ALTER TABLE event_participants ADD COLUMN IF NOT EXISTS baseline_donations INTEGER DEFAULT 0;
+
+-- Report (tố cáo) sự kiện sai trái/lừa đảo — admin xem trong Cài đặt
+CREATE TABLE IF NOT EXISTS event_reports (
+  id            SERIAL PRIMARY KEY,
+  event_id      INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  event_title   TEXT,
+  reporter_tag  TEXT NOT NULL,
+  reporter_name TEXT NOT NULL,
+  reason        TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open',  -- 'open' | 'resolved'
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE event_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON event_reports;
+CREATE POLICY "service_all" ON event_reports FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_reports TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;

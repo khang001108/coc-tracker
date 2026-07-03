@@ -40,6 +40,7 @@ CONDITION_LABELS = {
     "top_donations": "Donate cao nhất hiện tại",
     "capital_most_loot": "Clan Capital: Gold cướp được nhiều nhất",
     "capital_most_attacks": "Clan Capital: Số lượt tấn công nhiều nhất",
+    "donate_total": "Donate: Tổng donate từ lúc tham gia sự kiện",
     "manual": "Admin tự chọn thủ công",
 }
 
@@ -111,6 +112,51 @@ def _event_visible_to(event: dict, clan_id: int) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 # Misc / config
 # ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/{event_id}/report")
+async def report_event(event_id: int, request: Request, x_member_token: str | None = Header(default=None)):
+    """Thành viên tố cáo 1 sự kiện sai trái/lừa đảo — admin xem trong Cài đặt."""
+    member_tag = verify_member_token(x_member_token)
+    if not member_tag:
+        raise HTTPException(401, "Cần đăng nhập thành viên để báo cáo")
+    body = await request.json()
+    reason = (body.get("reason") or "").strip()
+    if not reason:
+        raise HTTPException(400, "Cần nhập lý do báo cáo")
+    sb = get_supabase()
+    acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
+    if not acc.data:
+        raise HTTPException(403, "Tài khoản không tồn tại")
+    ev = sb.table("events").select("title").eq("id", event_id).execute()
+    if not ev.data:
+        raise HTTPException(404, "Không tìm thấy sự kiện")
+    try:
+        sb.table("event_reports").insert({
+            "event_id": event_id, "event_title": ev.data[0]["title"],
+            "reporter_tag": member_tag, "reporter_name": acc.data[0]["player_name"],
+            "reason": reason,
+        }).execute()
+    except Exception as e:
+        raise HTTPException(500, f"Chưa chạy migration PART 9: {str(e)}")
+    return {"ok": True}
+
+
+@router.get("/reports/all")
+async def list_reports(_: bool = Depends(require_admin)):
+    sb = get_supabase()
+    try:
+        res = sb.table("event_reports").select("*").order("created_at", desc=True).execute()
+        return res.data or []
+    except Exception:
+        return []
+
+
+@router.post("/reports/{report_id}/resolve")
+async def resolve_report(report_id: int, _: bool = Depends(require_admin)):
+    sb = get_supabase()
+    sb.table("event_reports").update({"status": "resolved"}).eq("id", report_id).execute()
+    return {"ok": True}
+
 
 @router.get("/conditions")
 async def list_conditions():
@@ -234,20 +280,41 @@ async def create_event(
 
 
 @router.put("/{event_id}")
-async def update_event(event_id: int, request: Request, _: bool = Depends(require_admin)):
+async def update_event(
+    event_id: int,
+    request: Request,
+    x_admin_token: str | None = Header(default=None),
+    x_member_token: str | None = Header(default=None),
+):
+    sb = get_supabase()
+    is_admin = verify_admin_token(x_admin_token)
+    if not is_admin:
+        member_tag = verify_member_token(x_member_token)
+        if not member_tag:
+            raise HTTPException(401, "Cần đăng nhập để sửa sự kiện")
+        existing = sb.table("events").select("creator_tag").eq("id", event_id).execute()
+        if not existing.data:
+            raise HTTPException(404, "Không tìm thấy sự kiện")
+        if existing.data[0]["creator_tag"] != member_tag:
+            raise HTTPException(403, "Chỉ người tạo sự kiện hoặc admin mới được sửa")
+
     body = await request.json()
     allowed = ["title", "description", "reward_name", "reward_image_url",
-               "reward_shop_link", "status", "top_n", "start_time", "end_time", "creator_zalo",
-               "visibility", "allowed_clan_ids"]
+               "reward_shop_link", "reward_coins", "top_n", "start_time", "end_time", "creator_zalo",
+               "condition_type"]
+    # Chỉ admin mới được đổi trạng thái / phạm vi liên clan (tránh người tạo
+    # tự duyệt sự kiện của chính mình hoặc mở rộng sang clan khác tuỳ ý).
+    if is_admin:
+        allowed += ["status", "visibility", "allowed_clan_ids"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
-    sb = get_supabase()
     try:
         res = sb.table("events").update(update).eq("id", event_id).execute()
     except Exception:
         update.pop("visibility", None)
         update.pop("allowed_clan_ids", None)
+        update.pop("reward_coins", None)
         res = sb.table("events").update(update).eq("id", event_id).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy sự kiện")
@@ -351,6 +418,18 @@ async def join_event(
 
     player_name = acc.data[0]["player_name"]
     participant_row = {"event_id": event_id, "player_tag": member_tag, "player_name": player_name}
+
+    # Sự kiện Donate: ghi lại số donate HIỆN TẠI làm mốc — điểm sự kiện sau
+    # này = donate lúc đó - mốc này (chỉ tính donate PHÁT SINH sau khi join).
+    if event.get("event_type") == "donate":
+        try:
+            tag_for_lookup = await get_tag_by_clan_id(member_clan_id)
+            members = await get_clan_members(tag_for_lookup, clan_id=member_clan_id)
+            me = next((m for m in members if m["tag"] == member_tag), None)
+            participant_row["baseline_donations"] = me.get("donations", 0) if me else 0
+        except Exception:
+            participant_row["baseline_donations"] = 0
+
     try:
         sb.table("event_participants").upsert(
             {**participant_row, "clan_id": member_clan_id},
@@ -516,7 +595,10 @@ async def get_leaderboard(event_id: int):
     default_clan_id = event.get("clan_id") or 1
 
     # Lấy danh sách người đã tham gia (kèm clan_id của từng người nếu có)
-    part_res = sb.table("event_participants").select("player_tag, player_name, clan_id").eq("event_id", event_id).execute()
+    try:
+        part_res = sb.table("event_participants").select("player_tag, player_name, clan_id, baseline_donations").eq("event_id", event_id).execute()
+    except Exception:
+        part_res = sb.table("event_participants").select("player_tag, player_name, clan_id").eq("event_id", event_id).execute()
     participants = part_res.data or []
     participant_tags = {p["player_tag"] for p in participants}
     # clan_id của từng participant — mặc định về clan tạo event nếu thiếu (event cũ trước migration)
@@ -586,6 +668,31 @@ async def get_leaderboard(event_id: int):
             for i, m in enumerate(ranked[:top_n])
         ]
         note = None if leaderboard else "Chưa có ai raid Clan Capital trong mùa gần nhất."
+        return {"event": event, "leaderboard": leaderboard, "note": note, "participant_count": len(participants)}
+
+    # Điều kiện Donate: donate hiện tại - mốc donate lúc tham gia sự kiện.
+    # Giới hạn: nếu CoC reset donate hàng tuần giữa lúc sự kiện diễn ra, số
+    # có thể lệch — CoC không có API donate theo mốc thời gian tuỳ chọn.
+    if condition_type == "donate_total":
+        baseline_by_tag = {p["player_tag"]: p.get("baseline_donations", 0) or 0 for p in participants}
+        all_donate_members: list = []
+        for cid in clan_ids_involved:
+            try:
+                all_donate_members += await _donation_members_for_clan(cid)
+            except Exception:
+                continue
+        scored = []
+        for m in all_donate_members:
+            if m["tag"] not in participant_tags:
+                continue
+            earned = max(0, m.get("donations", 0) - baseline_by_tag.get(m["tag"], 0))
+            scored.append({"tag": m["tag"], "name": m["name"], "earned": earned})
+        ranked = sorted([m for m in scored if m["earned"] > 0], key=lambda m: -m["earned"])
+        leaderboard = [
+            {"player_tag": m["tag"], "player_name": m["name"], "rank": i + 1, "metric_value": f"{m['earned']} donate"}
+            for i, m in enumerate(ranked[:top_n])
+        ]
+        note = None if leaderboard else "Chưa ai donate thêm kể từ lúc tham gia sự kiện."
         return {"event": event, "leaderboard": leaderboard, "note": note, "participant_count": len(participants)}
 
     # Điều kiện war — gộp war hiện tại/gần nhất của từng clan liên quan

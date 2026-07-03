@@ -4,7 +4,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
-import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins } from "lucide-react";
+import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins, ShieldCheck } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
@@ -26,6 +26,25 @@ const RANK_STYLE: Record<string, { border: string; glow: string; text: string; l
 
 const CARD_W = 96; // px — cố định để đồng nhất tất cả nhóm
 
+/** Hoa văn trang trí 2 bên toggle — 1 dải hoạ tiết kim cương nhỏ lặp lại
+ * theo đúng màu cấp bậc, để mỗi nhóm (Thủ lĩnh/Đồng thủ lĩnh/...) có 1 "chữ
+ * ký" hình ảnh riêng thay vì chỉ 1 đường kẻ mờ như trước. */
+function RoleFlourish({ color, glow, flip = false }: { color: string; glow: string; flip?: boolean }) {
+  const dots = [0, 1, 2, 3, 4];
+  return (
+    <span className={`flex-1 flex items-center gap-1 min-w-[24px] ${flip ? "flex-row-reverse" : ""}`}
+      style={{ filter: `drop-shadow(0 0 2px ${glow})` }}>
+      <span className="h-px flex-1 opacity-25" style={{ background: `linear-gradient(${flip ? "to left" : "to right"}, transparent, ${color})` }}/>
+      {dots.map(i => (
+        <svg key={i} width={i === 2 ? 7 : 4} height={i === 2 ? 7 : 4} viewBox="0 0 8 8" className="shrink-0"
+          style={{ opacity: 0.3 + i * 0.12 }}>
+          <polygon points="4,0 8,4 4,8 0,4" fill={color} />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
 function PyramidGroupSection({ g, gi, onSelect }: {
   g: { role: string; list: any[] };
   gi: number;
@@ -41,13 +60,23 @@ function PyramidGroupSection({ g, gi, onSelect }: {
     <div className="space-y-3">
       {/* Header */}
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-2">
-        <span className="h-px flex-1 opacity-30" style={{ background: `linear-gradient(to right, transparent, ${rs.border})` }}/>
-        <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 px-4 py-2 rounded-full transition-all select-none"
+        <RoleFlourish color={rs.border} glow={rs.glow} />
+        <svg width="8" height="8" viewBox="0 0 8 8" className="shrink-0" style={{ filter: `drop-shadow(0 0 3px ${rs.glow})` }}>
+          <polygon points="4,0 8,4 4,8 0,4" fill={rs.border} />
+        </svg>
+        <span className="relative text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5 px-4 py-2 rounded-full transition-all select-none overflow-hidden"
           style={{ color: rs.text, background: "var(--py-pill-bg)", border: `1.5px solid ${rs.border}`, boxShadow: `0 0 10px ${rs.glow}` }}>
-          <Crown size={12}/> {rs.label}{ROLE_TITLE[g.role]} ({g.list.length})
-          <span className="opacity-50 ml-1 text-[10px]">{open ? "▲" : "▼"}</span>
+          <span className="absolute inset-0 pointer-events-none" style={{
+            backgroundImage: `radial-gradient(${rs.border} 0.6px, transparent 0.6px)`,
+            backgroundSize: "6px 6px", opacity: 0.12,
+          }} />
+          <Crown size={12} className="relative"/> <span className="relative">{rs.label}{ROLE_TITLE[g.role]} ({g.list.length})</span>
+          <span className="relative opacity-50 ml-1 text-[10px]">{open ? "▲" : "▼"}</span>
         </span>
-        <span className="h-px flex-1 opacity-30" style={{ background: `linear-gradient(to left, transparent, ${rs.border})` }}/>
+        <svg width="8" height="8" viewBox="0 0 8 8" className="shrink-0" style={{ filter: `drop-shadow(0 0 3px ${rs.glow})` }}>
+          <polygon points="4,0 8,4 4,8 0,4" fill={rs.border} />
+        </svg>
+        <RoleFlourish color={rs.border} glow={rs.glow} flip />
       </button>
 
       {/* Cards — grid cố định CARD_W, căn giữa */}
@@ -106,11 +135,12 @@ export default function MembersPage() {
   const [playerDetail, setPlayerDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [war, setWar] = useState<any>(null);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [m, log, roster] = await Promise.allSettled([api.getMembers(), api.getMemberLog(), api.getRoster()]);
+      const [m, log, roster, w] = await Promise.allSettled([api.getMembers(), api.getMemberLog(), api.getRoster(), api.getCurrentWar()]);
       if (m.status === "fulfilled") setMembers((m.value as any).items || []);
       if (log.status === "fulfilled") setMemberLog(log.value as any[]);
       if (roster.status === "fulfilled") {
@@ -118,6 +148,7 @@ export default function MembersPage() {
         (roster.value as any[]).forEach(r => { map[r.tag] = r; });
         setRosterMap(map);
       }
+      if (w.status === "fulfilled") setWar(w.value);
       setLoading(false);
     }
     load();
@@ -133,6 +164,10 @@ export default function MembersPage() {
     setDetailLoading(false);
   }
 
+  const warAttackMap: Record<string, boolean> = {};
+  if (war?.state === "inWar" || war?.state === "warEnded") {
+    (war.clan?.members || []).forEach((m: any) => { warAttackMap[m.tag] = (m.attacks || []).length > 0; });
+  }
   const filtered = members.filter(m =>
     !search || m.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -180,10 +215,26 @@ export default function MembersPage() {
                     <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.townHallLevel}</NumberEffect>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">
+                    <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
                       <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                      {rosterMap[m.tag]?.claimed && (
+                        <span title="Đã xác minh danh tính trên web">
+                          <ShieldCheck size={12} className="text-green-400 shrink-0" />
+                        </span>
+                      )}
                     </p>
-                    <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
+                      {war?.state === "inWar" && (
+                        m.tag in warAttackMap ? (
+                          warAttackMap[m.tag] ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400">⚔️ Đã đánh</span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400">⏳ Chưa đánh</span>
+                          )
+                        ) : null
+                      )}
+                    </div>
                   </div>
                   <div className="text-right shrink-0 space-y-0.5">
                     <p className="text-sm font-bold text-yellow-400">🏆 {formatNumber(m.trophies)}</p>

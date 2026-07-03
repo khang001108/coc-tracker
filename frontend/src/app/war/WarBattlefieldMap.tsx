@@ -153,7 +153,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
       
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">
-        <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Bản đồ chiến trường</h3>
+        <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Chiến trường</h3>
         <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
           <span>⚔ #X = vị trí tấn công</span>
           <span>{"🔫".repeat(maxAttacks)} = {maxAttacks} lượt đánh</span>

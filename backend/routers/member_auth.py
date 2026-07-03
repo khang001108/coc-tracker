@@ -14,15 +14,24 @@ async def roster(request: Request):
     """Danh sách thành viên trong clan (đúng clan đang chọn) kèm trạng thái đã có
     người nhận hay chưa, và icon lâu đài/pháo họ đang trang bị (để bản đồ chiến
     trường và chat hiển thị)."""
-    _, tag = await get_tag_for_request(request)
-    members = await get_clan_members(tag)
+    clan_id, tag = await get_tag_for_request(request)
+    members = await get_clan_members(tag, clan_id=clan_id)
     sb = get_supabase()
-    res = sb.table("member_accounts").select("player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").execute()
+    try:
+        res = sb.table("member_accounts").select(
+            "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
+        ).eq("clan_id", clan_id).execute()
+    except Exception:
+        # Chưa chạy migration clan_id cho member_accounts — fallback không lọc
+        res = sb.table("member_accounts").select(
+            "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
+        ).execute()
     claimed = {r["player_tag"]: r for r in res.data}
     return [
         {
             "tag": m["tag"], "name": m["name"], "role": m.get("role"), "townHallLevel": m.get("townHallLevel"),
             "claimed": m["tag"] in claimed,
+            "claimed_at": claimed.get(m["tag"], {}).get("claimed_at"),
             "coins": claimed.get(m["tag"], {}).get("coins") or 0,
             "equipped_castle": claimed.get(m["tag"], {}).get("equipped_castle") or "castle_classic",
             "equipped_cannon": claimed.get(m["tag"], {}).get("equipped_cannon") or "cannon_basic",

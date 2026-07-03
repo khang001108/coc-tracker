@@ -154,7 +154,41 @@ export const api = {
     }
     return res.json();
   },
-  updateEvent:      (id: number, data: any) => apiFetch(`/api/events/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  updateEvent:      async (id: number, data: any) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/events/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi sửa sự kiện" }));
+      throw new Error(err.detail || "Lỗi sửa sự kiện");
+    }
+    return res.json();
+  },
+  reportEvent: async (id: number, reason: string) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/events/${id}/report`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi gửi báo cáo" }));
+      throw new Error(err.detail || "Lỗi gửi báo cáo");
+    }
+    return res.json();
+  },
+  getEventReports: () => apiFetch("/api/events/reports/all"),
+  resolveEventReport: (id: number) => apiFetch(`/api/events/reports/${id}/resolve`, { method: "POST" }),
   deleteEvent:      async (id: number) => {
     const member = getMemberAuth();
     const res = await fetch(`${API}/api/events/${id}`, {
