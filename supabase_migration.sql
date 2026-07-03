@@ -199,6 +199,18 @@ CREATE TABLE IF NOT EXISTS member_inventory (
   UNIQUE(player_tag, item_id)
 );
 
+-- (Fix thứ tự) Tạo trước bảng member_accounts tối thiểu ở đây — vì các dòng
+-- ALTER TABLE ngay dưới cần bảng này tồn tại. Định nghĩa đầy đủ (thêm cột
+-- pin_hash, coins...) nằm ở phần "Member accounts" phía dưới, IF NOT EXISTS
+-- nên chạy lại không sao. Nếu bạn đã chạy file này trước đây thì bảng đã có
+-- sẵn rồi, dòng này chỉ là no-op, không ảnh hưởng gì dữ liệu cũ.
+CREATE TABLE IF NOT EXISTS member_accounts (
+  player_tag  TEXT PRIMARY KEY,
+  player_name TEXT NOT NULL DEFAULT '',
+  pin_hash    TEXT NOT NULL DEFAULT '',
+  claimed_at  TIMESTAMPTZ DEFAULT now()
+);
+
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_castle TEXT DEFAULT 'castle_classic';
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_cannon TEXT DEFAULT 'cannon_basic';
 ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_effect TEXT;
@@ -611,3 +623,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.war_history_log TO service_role;
 -- đọc trong app: giá trị rỗng/không có = hiện).
 -- (Không cần bảng riêng — dùng chung bảng settings có sẵn với các key:
 --  overview_show_war, overview_show_cwl, overview_show_capital)
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 8 (sửa 4 vật phẩm "mất tích" khỏi Cửa hàng thật)
+-- 4 hiệu ứng tên (ne_rainbow, ne_electric, ne_shadow, ne_crystal) được
+-- insert với item_type='name_effect', nhưng giao diện Cửa hàng chỉ hiểu
+-- 4 loại: castle/cannon/effect/number_effect — nên trước giờ chúng nằm
+-- trong CSDL, admin đặt giá được, nhưng KHÔNG bao giờ hiện ra để mua.
+-- Đổi item_type về 'effect' (đúng nhóm "Hiệu ứng tên") để hiện ra Cửa hàng.
+-- Code cũng đã được bổ sung để 4 hiệu ứng này thật sự chạy hoạt ảnh (trước
+-- đây dù mua/gắn cũng không hiện gì vì component chưa hỗ trợ).
+-- ════════════════════════════════════════════════════════════════
+UPDATE shop_items SET item_type = 'effect' WHERE item_type = 'name_effect';
