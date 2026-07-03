@@ -89,6 +89,7 @@ export default function ChatPage() {
   const [castleMap, setCastleMap] = useState<Record<string, string>>({});
   const [cannonMap, setCannonMap] = useState<Record<string, string>>({});
   const [thMap, setThMap] = useState<Record<string, number>>({});
+  const [chatBg, setChatBg] = useState<string>("");
   const lastIdRef = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -97,6 +98,7 @@ export default function ChatPage() {
   useEffect(() => {
     setMember(getMemberAuth());
     setGuestNameInput(getGuestName());
+    api.getPublicSettings().then((s: any) => setChatBg(s.chat_background_image || "")).catch(() => {});
     api.getRoster().then((roster: any[]) => {
       const effMap: Record<string, string | null> = {};
       const castMap: Record<string, string> = {};
@@ -207,8 +209,13 @@ export default function ChatPage() {
         </button>
       </div>
 
-      <div className="card flex-1 flex flex-col !p-0 overflow-hidden min-h-0">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+      <div className="card flex-1 flex flex-col !p-0 overflow-hidden min-h-0 relative">
+        {chatBg && (
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <img src={chatBg} alt="" className="w-full h-full object-cover" style={{ opacity: 0.16 }} />
+          </div>
+        )}
+        <div ref={scrollRef} className="relative flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
           {messages.length === 0 ? (
             <p className="text-center text-sm text-gray-600 py-8">Chưa có tin nhắn nào — bắt đầu trò chuyện đi!</p>
           ) : (

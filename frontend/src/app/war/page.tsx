@@ -144,7 +144,7 @@ export default function WarPage() {
                 <EmberField count={22} speed={1.4} />
                 {/* CWL badge */}
                 {war.isCWL && (
-                  <div className="relative flex justify-center mb-2">
+                  <div className="relative flex justify-center mb-2 banner-content">
                     <span className="text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5"
                       style={{ background: "rgba(244,161,48,0.15)", border: "1px solid rgba(244,161,48,0.35)", color: "#F4A130" }}>
                       🏆 Clan War League {war.season ? `· ${war.season}` : ""}
@@ -152,7 +152,7 @@ export default function WarPage() {
                   </div>
                 )}
 
-                <div className="relative grid grid-cols-3 gap-2 md:gap-4 text-center mb-2">
+                <div className="relative grid grid-cols-3 gap-2 md:gap-4 text-center mb-2 banner-content">
                   {/* Our clan */}
                   <div className="flex flex-col items-center gap-1">
                     {war.clan?.badgeUrl && (
@@ -162,8 +162,8 @@ export default function WarPage() {
                     {war.state !== "preparation" ? (
                       <>
                         <p className="text-2xl font-bold text-yellow-400">⭐ {war.clan?.stars}</p>
-                        <p className="text-[11px] text-gray-400">{war.clan?.attacks}/{war.teamSize * maxAttacks} atk</p>
-                        <p className="text-[11px] text-gray-500">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
+                        <p className="text-[11px] text-gray-200">{war.clan?.attacks}/{war.teamSize * maxAttacks} atk</p>
+                        <p className="text-[11px] text-gray-300">{war.clan?.destructionPercentage?.toFixed(1)}%</p>
                       </>
                     ) : (
                       <p className="text-xs text-yellow-500 mt-1">⚔️ Đang chuẩn bị</p>
@@ -172,7 +172,7 @@ export default function WarPage() {
 
                   {/* VS center */}
                   <div className="flex flex-col items-center justify-center gap-1">
-                    <span className="text-gray-500 font-bold text-lg">VS</span>
+                    <span className="text-gray-200 font-bold text-lg">VS</span>
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                       war.state === "inWar" ? "bg-green-500/20 text-green-400" :
                       war.state === "preparation" ? "bg-yellow-500/20 text-yellow-400" :
@@ -181,15 +181,15 @@ export default function WarPage() {
                       {{ inWar: "Đang đánh", preparation: "Chuẩn bị", warEnded: "Kết thúc" }[war.state as string] || war.state}
                     </span>
                     {war.startTime && war.state === "preparation" && (
-                      <p className="text-[10px] text-gray-600">Bắt đầu: {formatDate(war.startTime)}</p>
+                      <p className="text-[10px] text-gray-300">Bắt đầu: {formatDate(war.startTime)}</p>
                     )}
                     {war.state === "preparation" && (
-                      <p className="text-[9px] text-gray-700 mt-0.5">📡 Supercell API</p>
+                      <p className="text-[9px] text-gray-400 mt-0.5">📡 Supercell API</p>
                     )}
                     {war.endTime && (
-                      <p className="text-[10px] text-gray-600">{war.state === "preparation" ? "Kết thúc:" : ""}  {formatDate(war.endTime)}</p>
+                      <p className="text-[10px] text-gray-300">{war.state === "preparation" ? "Kết thúc:" : ""}  {formatDate(war.endTime)}</p>
                     )}
-                    <p className="text-[10px] text-gray-700">{war.teamSize}v{war.teamSize}</p>
+                    <p className="text-[10px] text-gray-300">{war.teamSize}v{war.teamSize}</p>
                   </div>
 
                   {/* Opponent — luôn hiện (API Supercell cung cấp data cả 2 bên kể cả ngày chuẩn bị) */}
@@ -205,8 +205,8 @@ export default function WarPage() {
                     ) : (
                       <>
                         <p className="text-2xl font-bold text-red-400">⭐ {war.opponent?.stars}</p>
-                        <p className="text-[11px] text-gray-400">{war.opponent?.attacks}/{war.teamSize * maxAttacks} atk</p>
-                        <p className="text-[11px] text-gray-500">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                        <p className="text-[11px] text-gray-200">{war.opponent?.attacks}/{war.teamSize * maxAttacks} atk</p>
+                        <p className="text-[11px] text-gray-300">{war.opponent?.destructionPercentage?.toFixed(1)}%</p>
                       </>
                     )}
                   </div>

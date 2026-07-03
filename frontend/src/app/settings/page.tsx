@@ -474,6 +474,34 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
       </div>
 
+      {/* ── Ảnh nền Chat ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">🖼️ Ảnh nền Chat</h2>
+        <p className="text-xs text-gray-500">Chọn ảnh nền mờ phía sau khung chat (áp dụng cho mọi người, cả Chat Clan lẫn Chat Toàn Cầu).</p>
+        <div className="grid grid-cols-4 gap-2">
+          <button onClick={() => set("chat_background_image", "")}
+            className={`aspect-square rounded-xl border-2 flex items-center justify-center text-[10px] text-gray-500 ${
+              !settings.chat_background_image ? "border-yellow-500" : "border-gray-700"}`}>
+            Không dùng
+          </button>
+          {["archer-queen-army", "giant-sunset", "giants-balloons-desert"].map(name => (
+            <button key={name} onClick={() => set("chat_background_image", `/art/${name}.jpg`)}
+              className={`aspect-square rounded-xl overflow-hidden border-2 ${
+                settings.chat_background_image === `/art/${name}.jpg` ? "border-yellow-500" : "border-transparent"}`}>
+              <img src={`/art/${name}.jpg`} alt={name} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+        <div>
+          <label className="text-[10px] text-gray-500 mb-1 block">Hoặc dán link ảnh khác (URL)</label>
+          <input className="input text-xs" placeholder="https://..."
+            value={settings.chat_background_image?.startsWith("/art/") ? "" : (settings.chat_background_image || "")}
+            onChange={e => set("chat_background_image", e.target.value)} />
+        </div>
+        <button onClick={() => save("chat_background_image")} disabled={!!saving}
+          className="btn-gold text-sm w-full">Lưu ảnh nền Chat</button>
+      </div>
+
       {/* ── Dọn dẹp tài sản thành viên rời clan ── */}
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🧹 Dọn dẹp tài sản người rời clan</h2>

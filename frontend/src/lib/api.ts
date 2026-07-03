@@ -99,6 +99,7 @@ export const api = {
 
   // Settings
   getSettings:    () => apiFetch("/api/settings/"),
+  getPublicSettings: () => apiFetch("/api/settings/public"),
   saveSetting:    (key: string, value: string) =>
     apiFetch("/api/settings/", {
       method: "POST",

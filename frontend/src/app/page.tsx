@@ -193,23 +193,23 @@ export default function DashboardPage() {
             </h2>
             <span className={`badge font-semibold ${warState.color}`}>{warState.label}</span>
           </div>
-          <div className="relative grid grid-cols-3 gap-4 text-center">
+          <div className="relative grid grid-cols-3 gap-4 text-center banner-content">
             <div>
-              <p className="text-xs text-gray-400 mb-1">{war.clan?.name}</p>
+              <p className="text-xs text-gray-300 mb-1">{war.clan?.name}</p>
               <p className="text-2xl font-bold text-yellow-400">⭐ {clanStars}</p>
-              <p className="text-sm text-gray-400">{war.clan?.destructionPercentage?.toFixed(2)}%</p>
+              <p className="text-sm text-gray-300">{war.clan?.destructionPercentage?.toFixed(2)}%</p>
             </div>
             <div className="flex items-center justify-center">
-              <span className="text-gray-600 font-bold text-xl">VS</span>
+              <span className="text-gray-200 font-bold text-xl">VS</span>
             </div>
             <div>
-              <p className="text-xs text-gray-400 mb-1">{war.opponent?.name}</p>
+              <p className="text-xs text-gray-300 mb-1">{war.opponent?.name}</p>
               <p className="text-2xl font-bold text-red-400">⭐ {oppStars}</p>
-              <p className="text-sm text-gray-400">{war.opponent?.destructionPercentage?.toFixed(2)}%</p>
+              <p className="text-sm text-gray-300">{war.opponent?.destructionPercentage?.toFixed(2)}%</p>
             </div>
           </div>
           {war.endTime && (
-            <p className="text-xs text-gray-500 text-center mt-3">Kết thúc: {formatDate(war.endTime)}</p>
+            <p className="relative text-xs text-gray-300 text-center mt-3 banner-content">Kết thúc: {formatDate(war.endTime)}</p>
           )}
         </div>
       )}
@@ -229,19 +229,19 @@ export default function DashboardPage() {
               {warStateLabel(cwl.current.state).label}
             </span>
           </div>
-          <div className="relative grid grid-cols-3 gap-4 text-center">
+          <div className="relative grid grid-cols-3 gap-4 text-center banner-content">
             <div>
-              <p className="text-xs text-gray-400 mb-1">{cwl.current.clan?.name}</p>
+              <p className="text-xs text-gray-300 mb-1">{cwl.current.clan?.name}</p>
               <p className="text-2xl font-bold text-yellow-400">⭐ {cwl.current.clan?.stars ?? 0}</p>
-              <p className="text-sm text-gray-400">{cwl.current.clan?.destructionPercentage?.toFixed(2)}%</p>
+              <p className="text-sm text-gray-300">{cwl.current.clan?.destructionPercentage?.toFixed(2)}%</p>
             </div>
             <div className="flex items-center justify-center">
-              <span className="text-gray-600 font-bold text-xl">VS</span>
+              <span className="text-gray-200 font-bold text-xl">VS</span>
             </div>
             <div>
-              <p className="text-xs text-gray-400 mb-1">{cwl.current.opponent?.name}</p>
+              <p className="text-xs text-gray-300 mb-1">{cwl.current.opponent?.name}</p>
               <p className="text-2xl font-bold text-red-400">⭐ {cwl.current.opponent?.stars ?? 0}</p>
-              <p className="text-sm text-gray-400">{cwl.current.opponent?.destructionPercentage?.toFixed(2)}%</p>
+              <p className="text-sm text-gray-300">{cwl.current.opponent?.destructionPercentage?.toFixed(2)}%</p>
             </div>
           </div>
           {cwl.next?.opponent?.name && (

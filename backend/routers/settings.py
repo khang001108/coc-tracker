@@ -12,6 +12,7 @@ ALLOWED_KEYS = [
     "telegram_bot_token", "telegram_chat_id",
     "notify_war", "notify_raid", "notify_donate", "notify_member",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
+    "chat_background_image",
 ]
 
 @router.post("/login")
@@ -37,6 +38,17 @@ async def cleanup_stats_now(_: bool = Depends(require_admin)):
     from schedulers.poller import poll_stats_cleanup
     await poll_stats_cleanup()
     return {"ok": True}
+
+@router.get("/public")
+async def get_public_settings():
+    """Vài cấu hình hiển thị KHÔNG nhạy cảm (vd ảnh nền chat) — cho mọi
+    người xem được, không cần đăng nhập admin (khác với GET / ở trên)."""
+    sb = get_supabase()
+    try:
+        res = sb.table("settings").select("key,value").eq("key", "chat_background_image").execute()
+        return {row["key"]: row["value"] for row in res.data}
+    except Exception:
+        return {}
 
 @router.get("/")
 async def get_settings(_: bool = Depends(require_admin)):
