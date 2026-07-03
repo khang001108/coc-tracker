@@ -125,7 +125,7 @@ export default function ChatPage() {
       setMessages(data);
       if (data.length) lastIdRef.current = data[data.length - 1].id;
     } catch {}
-    scrollToBottom();
+    scrollToBottom(true);
   }
 
   async function pollNew() {
@@ -139,10 +139,15 @@ export default function ChatPage() {
     } catch {}
   }
 
-  function scrollToBottom() {
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-    }, 50);
+  function scrollToBottom(instant = false) {
+    // Dùng double requestAnimationFrame thay vì setTimeout ngắn — đảm bảo
+    // trình duyệt đã vẽ xong hết tin nhắn (kể cả ảnh/hiệu ứng tên) rồi mới
+    // đo scrollHeight, tránh bị dừng giữa chừng chưa tới đáy thật.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: instant ? "auto" : "smooth" });
+      });
+    });
   }
 
   useEffect(() => {
@@ -205,7 +210,7 @@ export default function ChatPage() {
           <Users size={13} className="inline mr-1 -mt-0.5" /> Chat Clan
         </button>
         <button onClick={() => setRoom("global")} className={room === "global" ? "tab-pill-active" : "tab-pill"}>
-          <Globe size={13} className="inline mr-1 -mt-0.5" /> Chat Toàn Cầu
+          <Globe size={13} className="inline mr-1 -mt-0.5" /> Chat liên clan
         </button>
       </div>
 

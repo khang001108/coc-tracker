@@ -126,6 +126,7 @@ async def get_cwl_season_rounds(tag: str, clan_id: int = 1) -> list:
             w["clan"]["badgeUrl"] = badge_map.get(w["clan"]["tag"], "")
             w["opponent"]["badgeUrl"] = badge_map.get(w["opponent"]["tag"], "")
             w["round_index"] = round_index
+            w["isCWL"] = True
             w["season"] = group.get("season", "")
             rounds_out.append(w)
 

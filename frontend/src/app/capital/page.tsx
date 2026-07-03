@@ -69,9 +69,7 @@ export default function CapitalPage() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4">
-          <CocLoader text="Đang tải Clan Capital..." minHeight={180} />
-        </div>
+        <CocLoader text="Đang tải Clan Capital..." minHeight={180} />
       ) : !raid || !raid.startTime ? (
         <div className="card text-center py-12">
           <Castle size={40} className="mx-auto mb-3 text-gray-700" />

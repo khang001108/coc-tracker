@@ -156,7 +156,12 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Chiến trường</h3>
         <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
           <span>⚔ #X = vị trí tấn công</span>
-          <span>{"🔫".repeat(maxAttacks)} = {maxAttacks} lượt đánh</span>
+          <span className="flex items-center gap-1">
+            {Array.from({ length: maxAttacks }).map((_, i) => (
+              <CannonIcon key={i} size={11} svgKey="cannon_basic" fired={false} />
+            ))}
+            = {maxAttacks} lượt đánh
+          </span>
           {selected && (
             <button onClick={() => setSelected(null)} className="text-yellow-600 font-bold">✕</button>
           )}

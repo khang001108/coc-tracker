@@ -493,8 +493,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       {/* ── Xoá lịch sử chat tự động ── */}
       <div className="card space-y-3">
-        <h2 className="font-bold text-white">💬 Lịch sử Chat Toàn Cầu</h2>
-        <p className="text-xs text-gray-500">Tin nhắn ở Chat Toàn Cầu (liên clan) cũ hơn số ngày dưới đây sẽ tự động bị xoá. Chat Clan không bị ảnh hưởng, luôn được giữ lại.</p>
+        <h2 className="font-bold text-white">💬 Lịch sử Chat liên clan</h2>
+        <p className="text-xs text-gray-500">Tin nhắn ở Chat liên clan cũ hơn số ngày dưới đây sẽ tự động bị xoá. Chat Clan không bị ảnh hưởng, luôn được giữ lại.</p>
         <div className="flex items-center gap-2">
           <input type="number" min={1} max={365} className="input !w-28"
             value={settings.chat_retention_days ?? "1"}
@@ -531,7 +531,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
       {/* ── Ảnh nền Chat ── */}
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🖼️ Ảnh nền Chat</h2>
-        <p className="text-xs text-gray-500">Chọn ảnh nền mờ phía sau khung chat (áp dụng cho mọi người, cả Chat Clan lẫn Chat Toàn Cầu).</p>
+        <p className="text-xs text-gray-500">Chọn ảnh nền mờ phía sau khung chat (áp dụng cho mọi người, cả Chat Clan lẫn Chat liên clan).</p>
         <div className="grid grid-cols-4 gap-2">
           <button onClick={() => set("chat_background_image", "")}
             className={`aspect-square rounded-xl border-2 flex items-center justify-center text-[10px] text-gray-500 ${
