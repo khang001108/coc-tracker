@@ -139,7 +139,7 @@ export default function MembersPage() {
     <div className="space-y-5 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,69,19,0.08))" }}>
-        <ArtBanner src="/art/royal-vista.jpg" opacity={0.4} objectPosition="center 45%" />
+        <ArtBanner src="/art/royal-vista.jpg" opacity={0.85} objectPosition="center 45%" />
         <div className="relative banner-content">
           <h1 className="page-title flex items-center gap-2">
             <Users size={22} className="text-blue-400" /> Thành viên

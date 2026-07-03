@@ -101,7 +101,7 @@ export default function StatsPage() {
     <div className="space-y-6 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(244,161,48,0.14), rgba(139,69,19,0.10))" }}>
-        <ArtBanner src="/art/ruins-aftermath.jpg" opacity={0.4} objectPosition="center 35%" />
+        <ArtBanner src="/art/ruins-aftermath.jpg" opacity={0.8} objectPosition="center 35%" />
         <div className="relative banner-content">
           <h1 className="page-title flex items-center gap-2">
             <BarChart3 size={22} className="text-yellow-400" /> Thống kê

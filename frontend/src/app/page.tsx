@@ -184,7 +184,7 @@ export default function DashboardPage() {
       {/* War status */}
       {war?.state && war.state !== "notInWar" && (
         <div className="card border-red-500/20 bg-red-500/5 relative overflow-hidden">
-          <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.3} objectPosition="center 25%" />
+          <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.8} objectPosition="center 25%" />
           <EmberField count={18} speed={1.2} />
           <div className="relative flex items-center justify-between mb-4 banner-content">
             <h2 className="font-bold text-white flex items-center gap-2">
@@ -218,7 +218,7 @@ export default function DashboardPage() {
           war thường vừa CWL cùng lúc */}
       {cwl?.current?.state && cwl.current.state !== "notInWar" && (
         <div className="card relative overflow-hidden" style={{ borderColor: "rgba(244,161,48,0.3)", background: "rgba(244,161,48,0.04)" }}>
-          <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.28} objectPosition="center 30%" />
+          <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.75} objectPosition="center 30%" />
           <EmberField count={18} speed={1.2} />
           <div className="relative flex items-center justify-between mb-4 banner-content">
             <h2 className="font-bold text-white flex items-center gap-2">

@@ -33,7 +33,7 @@ export default function CapitalPage() {
     <div className="space-y-5 animate-fade-up">
       <div className="relative rounded-2xl overflow-hidden p-7 md:p-11"
         style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(100,50,150,0.08))" }}>
-        <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.45} objectPosition="center 40%" />
+        <ArtBanner src="/art/capital-sky-islands.jpg" opacity={0.85} objectPosition="center 40%" />
         <div className="relative flex items-center gap-4 banner-content">
           <div className="flex-1">
             <h1 className="page-title flex items-center gap-2">

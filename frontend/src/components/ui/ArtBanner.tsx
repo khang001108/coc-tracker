@@ -6,7 +6,7 @@
 export function ArtBanner({
   src,
   objectPosition = "center",
-  opacity = 0.35,
+  opacity = 0.8,
 }: {
   src: string;
   objectPosition?: string;
@@ -26,7 +26,7 @@ export function ArtBanner({
       <div className="absolute inset-0" style={{ background: "var(--art-overlay-wash)" }} />
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(180deg, transparent 0%, var(--art-overlay-edge) 92%)" }}
+        style={{ background: "linear-gradient(180deg, transparent 25%, var(--art-overlay-edge) 96%)" }}
       />
     </div>
   );
