@@ -9,6 +9,7 @@ import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate 
 import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
+import { EmberField } from "@/components/ui/EmberField";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -183,15 +184,16 @@ export default function DashboardPage() {
       {/* War status */}
       {war?.state && war.state !== "notInWar" && (
         <div className="card border-red-500/20 bg-red-500/5 relative overflow-hidden">
-          <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.22} objectPosition="center 25%" />
-          <div className="flex items-center justify-between mb-4">
+          <ArtBanner src="/art/barbarian-fireball.jpg" opacity={0.3} objectPosition="center 25%" />
+          <EmberField count={18} speed={1.2} />
+          <div className="relative flex items-center justify-between mb-4 banner-content">
             <h2 className="font-bold text-white flex items-center gap-2">
               <Swords size={18} className="text-red-400" />
               War đang diễn ra
             </h2>
             <span className={`badge font-semibold ${warState.color}`}>{warState.label}</span>
           </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="relative grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-xs text-gray-400 mb-1">{war.clan?.name}</p>
               <p className="text-2xl font-bold text-yellow-400">⭐ {clanStars}</p>
@@ -216,7 +218,9 @@ export default function DashboardPage() {
           war thường vừa CWL cùng lúc */}
       {cwl?.current?.state && cwl.current.state !== "notInWar" && (
         <div className="card relative overflow-hidden" style={{ borderColor: "rgba(244,161,48,0.3)", background: "rgba(244,161,48,0.04)" }}>
-          <div className="flex items-center justify-between mb-4">
+          <ArtBanner src="/art/dragon-fire-logo.jpg" opacity={0.28} objectPosition="center 30%" />
+          <EmberField count={18} speed={1.2} />
+          <div className="relative flex items-center justify-between mb-4 banner-content">
             <h2 className="font-bold text-white flex items-center gap-2">
               <Trophy size={18} className="text-yellow-400" />
               Clan War League{cwl.season ? ` · ${cwl.season}` : ""}
@@ -225,7 +229,7 @@ export default function DashboardPage() {
               {warStateLabel(cwl.current.state).label}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="relative grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-xs text-gray-400 mb-1">{cwl.current.clan?.name}</p>
               <p className="text-2xl font-bold text-yellow-400">⭐ {cwl.current.clan?.stars ?? 0}</p>
@@ -241,7 +245,7 @@ export default function DashboardPage() {
             </div>
           </div>
           {cwl.next?.opponent?.name && (
-            <p className="text-xs text-gray-500 text-center mt-3">Vòng tiếp theo: vs {cwl.next.opponent.name}</p>
+            <p className="relative text-xs text-gray-500 text-center mt-3">Vòng tiếp theo: vs {cwl.next.opponent.name}</p>
           )}
         </div>
       )}
