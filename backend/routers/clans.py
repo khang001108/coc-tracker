@@ -106,16 +106,46 @@ async def get_clan(clan_id: int, _: bool = Depends(require_admin)):
 @router.put("/{clan_id}")
 async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_admin)):
     body = await request.json()
-    allowed = ["clan_name", "coc_api_key", "discord_webhook",
+    allowed = ["clan_name", "clan_tag", "coc_api_key", "discord_webhook",
                "telegram_bot_token", "telegram_chat_id",
                "notify_war", "notify_raid", "notify_join_leave"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
+
+    if "clan_tag" in update:
+        tag = (update["clan_tag"] or "").strip().upper()
+        if not tag:
+            raise HTTPException(400, "Clan Tag không được để trống")
+        if not tag.startswith("#"):
+            tag = "#" + tag
+        update["clan_tag"] = tag
+
     sb = get_supabase()
-    res = sb.table("clans").update(update).eq("id", clan_id).execute()
+    try:
+        res = sb.table("clans").update(update).eq("id", clan_id).execute()
+    except Exception as e:
+        raise HTTPException(400, f"Clan Tag đã được dùng cho clan khác hoặc lỗi: {str(e)}")
     if not res.data:
         raise HTTPException(404, "Không tìm thấy clan")
+
+    # Đổi tag = đổi sang 1 clan CoC khác hẳn — xoá cache cũ (snapshot/tracker)
+    # để không hiện lẫn dữ liệu clan trước đó, rồi lấy lại dữ liệu mới ngay.
+    if "clan_tag" in update:
+        try:
+            sb.table("snapshot_clan").delete().eq("clan_id", clan_id).execute()
+            sb.table("snapshot_war").delete().eq("clan_id", clan_id).execute()
+            sb.table("snapshot_raid").delete().eq("clan_id", clan_id).execute()
+        except Exception:
+            pass
+        try:
+            from services.coc_api import get_clan as fetch_clan_live
+            from schedulers.poller import upsert_snapshot
+            live = await fetch_clan_live(update["clan_tag"], clan_id=clan_id)
+            upsert_snapshot("snapshot_clan", live, clan_id=clan_id)
+        except Exception:
+            pass
+
     return res.data[0]
 
 
