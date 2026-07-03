@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, RefreshCw } from "lucide-react";
+import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
@@ -699,6 +699,7 @@ function ClanManagement() {
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok"|"err"; text: string } | null>(null);
+  const [keyRevealed, setKeyRevealed] = useState(false);
 
   const flash = (type: "ok"|"err", text: string) => {
     setMsg({ type, text });
@@ -722,14 +723,27 @@ function ClanManagement() {
     setForm({ clan_tag: "", coc_api_key: "" });
     setPreview(null);
     setEditId(null);
+    setKeyRevealed(true);
     setShowForm(true);
   }
 
-  function startEdit(cl: any) {
-    setForm({ clan_tag: cl.clan_tag, coc_api_key: cl.coc_api_key || "" });
-    setPreview({ name: cl.clan_name, badge: "" });
+  async function startEdit(cl: any) {
     setEditId(cl.id);
+    setPreview({ name: cl.clan_name, badge: cl.badge_url || "" });
+    setForm({ clan_tag: cl.clan_tag, coc_api_key: "" });
+    setKeyRevealed(false);
     setShowForm(true);
+    // Danh sách công khai (list_clans) không trả về API key thật (tránh lộ
+    // cho người không phải admin) — nên phải gọi riêng endpoint chỉ-admin
+    // này để lấy đúng key đang lưu, hiển thị dạng ẩn (••••) thay vì để trống
+    // bắt gõ lại từ đầu mỗi lần sửa.
+    try {
+      const full = await api.getClanById(cl.id);
+      setForm({ clan_tag: full.clan_tag, coc_api_key: full.coc_api_key || "" });
+      setKeyRevealed(!full.coc_api_key);
+    } catch {
+      setKeyRevealed(true); // không lấy được key cũ — cho gõ tay luôn
+    }
   }
 
   // Kiểm tra clan tag + API key → hiện tên clan nếu thành công
@@ -779,12 +793,6 @@ function ClanManagement() {
     catch (e: any) { flash("err", e?.message || "Không thể xoá clan chính"); }
   }
 
-  async function regen(id: number) {
-    if (!confirm("Tạo lại admin token? Token cũ sẽ hết hiệu lực.")) return;
-    const res = await api.regenToken(id);
-    prompt("Copy token mới:", res.admin_token);
-  }
-
   return (
     <div className="space-y-3">
       {/* Flash message */}
@@ -815,11 +823,6 @@ function ClanManagement() {
                 <p className="text-xs text-gray-500">{cl.clan_tag}</p>
               </div>
               <div className="flex gap-1.5">
-                <button onClick={() => regen(cl.id)} title="Reset token"
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
-                  style={{ background: "rgba(244,161,48,0.1)", border: "1px solid rgba(244,161,48,0.3)", color: "#F4A130" }}>
-                  <RefreshCw size={13}/>
-                </button>
                 <button onClick={() => startEdit(cl)} title="Sửa clan"
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
                   style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", color: "#60a5fa" }}>
@@ -867,10 +870,23 @@ function ClanManagement() {
 
           <div>
             <label className="text-[10px] text-gray-500 mb-1 block">CoC API Key *</label>
-            <input className="input text-xs font-mono" placeholder="eyJ0eXAiOiJKV1QiLC..."
-              value={form.coc_api_key}
-              onChange={e => { setForm({ ...form, coc_api_key: e.target.value }); setPreview(null); }}/>
-            <p className="text-[10px] text-gray-600 mt-0.5">Tạo key tại developer.clashofclans.com với IP của Render</p>
+            {!keyRevealed ? (
+              <div className="flex items-center gap-2">
+                <input className="input text-xs font-mono flex-1" type="password" value={form.coc_api_key} readOnly />
+                <button type="button" onClick={() => setKeyRevealed(true)} title="Sửa API Key"
+                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", color: "#60a5fa" }}>
+                  <Edit3 size={13}/>
+                </button>
+              </div>
+            ) : (
+              <input className="input text-xs font-mono" placeholder="eyJ0eXAiOiJKV1QiLC..."
+                value={form.coc_api_key}
+                onChange={e => { setForm({ ...form, coc_api_key: e.target.value }); setPreview(null); }}/>
+            )}
+            <p className="text-[10px] text-gray-600 mt-0.5">
+              {!keyRevealed ? "Đang giữ nguyên key đã lưu — bấm ✏️ nếu muốn đổi." : "Tạo key tại developer.clashofclans.com với IP của Render"}
+            </p>
           </div>
 
           {/* Nút Kiểm tra */}
