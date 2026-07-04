@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, Plus, Repeat } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import { getCurrentClanId, getCurrentClanInfo, setCurrentClan, onClanChanged, ClanInfo } from "@/lib/clanContext";
 import { api } from "@/lib/api";
 
@@ -18,8 +18,8 @@ function ClanBadge({ clan, size = 28 }: { clan: ClanInfo; size?: number }) {
   );
 }
 
-function PublicAddClanForm({ onAdded }: { onAdded: () => void }) {
-  const [tag, setTag] = useState("");
+function PublicSlotEditForm({ slot, onUpdated }: { slot: { clan_id: number; clan_tag: string; clan_name: string; badge_url?: string }; onUpdated: () => void }) {
+  const [tag, setTag] = useState(slot.clan_tag);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -27,12 +27,11 @@ function PublicAddClanForm({ onAdded }: { onAdded: () => void }) {
     if (!tag.trim()) return;
     setBusy(true); setMsg("");
     try {
-      await api.publicAddClan(tag.trim());
-      setMsg("✅ Đã thêm! Nhắn admin vào Cài đặt gán API Key để xem được dữ liệu clan này.");
-      setTag("");
-      onAdded();
+      const res = await api.updatePublicSlot(tag.trim());
+      setMsg(`✅ Đã đổi sang clan "${res.clan_name}"!`);
+      onUpdated();
     } catch (e: any) {
-      setMsg("❌ " + (e.message || "Lỗi thêm clan"));
+      setMsg("❌ " + (e.message || "Lỗi đổi Tag clan"));
     } finally {
       setBusy(false);
     }
@@ -40,20 +39,20 @@ function PublicAddClanForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="p-3" style={{ borderTop: "1px solid rgba(244,161,48,0.15)" }} onClick={e => e.stopPropagation()}>
-      <p className="text-[11px] text-gray-500 mb-1.5">+ Thêm clan khác (chỉ cần Tag):</p>
+      <p className="text-[11px] text-gray-500 mb-1.5">Đổi Tag clan "{slot.clan_name}" (giữ nguyên API Key):</p>
       <div className="flex gap-1.5">
         <input value={tag} onChange={e => setTag(e.target.value)} placeholder="#ABC123"
           className="input !text-xs !py-1.5 flex-1" onKeyDown={e => { if (e.key === "Enter") submit(); }} />
         <button onClick={submit} disabled={busy || !tag.trim()}
-          className="btn-gold !text-xs !py-1.5 !px-2.5 shrink-0">{busy ? "..." : "Thêm"}</button>
+          className="btn-gold !text-xs !py-1.5 !px-2.5 shrink-0">{busy ? "..." : "Kiểm tra & Lưu"}</button>
       </div>
       {msg && <p className="text-[10px] text-gray-400 mt-1.5">{msg}</p>}
     </div>
   );
 }
 
-function ClanDropdown({ clans, currentId, isAdmin, publicAddEnabled, onClose, onClanAdded }: {
-  clans: ClanInfo[]; currentId: number; isAdmin: boolean; publicAddEnabled: boolean; onClose: () => void; onClanAdded: () => void;
+function ClanDropdown({ clans, currentId, isAdmin, publicSlot, onClose, onSlotUpdated }: {
+  clans: ClanInfo[]; currentId: number; isAdmin: boolean; publicSlot: any; onClose: () => void; onSlotUpdated: () => void;
 }) {
   return (
     <div className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-50 shadow-2xl"
@@ -77,7 +76,7 @@ function ClanDropdown({ clans, currentId, isAdmin, publicAddEnabled, onClose, on
           </a>
         </div>
       )}
-      {!isAdmin && publicAddEnabled && <PublicAddClanForm onAdded={onClanAdded} />}
+      {!isAdmin && publicSlot?.enabled && <PublicSlotEditForm slot={publicSlot} onUpdated={onSlotUpdated} />}
     </div>
   );
 }
@@ -95,11 +94,14 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
   const [open, setOpen]         = useState(false);
   const [currentId, setCurrentId] = useState(1);
   const [currentInfo, setCurrentInfo] = useState<ClanInfo | null>(null);
-  const [publicAddEnabled, setPublicAddEnabled] = useState(false);
+  const [publicSlot, setPublicSlot] = useState<any>(null);
   const isAdmin = typeof window !== "undefined" && !!localStorage.getItem("coc_admin_token");
 
   function reloadClans() {
     api.listClans().then((data: ClanInfo[]) => setClans(data)).catch(() => {});
+  }
+  function reloadPublicSlot() {
+    if (!isAdmin) api.getPublicSlot().then((r: any) => setPublicSlot(r)).catch(() => {});
   }
 
   useEffect(() => {
@@ -109,12 +111,12 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
     }
     refresh();
     reloadClans();
-    if (!isAdmin) api.getPublicClanAddEnabled().then((r: any) => setPublicAddEnabled(r.enabled)).catch(() => {});
+    reloadPublicSlot();
     return onClanChanged(() => refresh());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const switchable = clans.length > 1 || publicAddEnabled;
+  const switchable = clans.length > 1 || !!publicSlot?.enabled;
 
   // ── Chế độ "bọc nội dung có sẵn" (header trang Tổng quan) ─────────────────
   if (children) {
@@ -124,19 +126,19 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
         <button onClick={() => setOpen(o => !o)}
           className="w-full text-left rounded-2xl transition-opacity active:opacity-70 flex items-center gap-2">
           {children}
-          {/* Icon báo hiệu bấm được để đổi clan */}
+          {/* Icon báo hiệu bấm được để đổi clan — mũi tên xổ xuống, khác hẳn icon 🔄 tải lại bên cạnh */}
           <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
             style={{ background: "rgba(244,161,48,0.15)", border: "1px solid rgba(244,161,48,0.35)" }}>
-            <Repeat size={12} className="text-yellow-400" />
+            <ChevronDown size={14} className={`text-yellow-400 transition-transform ${open ? "rotate-180" : ""}`} />
           </span>
         </button>
-        {open && <ClanDropdown clans={clans} currentId={currentId} isAdmin={isAdmin} publicAddEnabled={publicAddEnabled} onClose={() => setOpen(false)} onClanAdded={reloadClans} />}
+        {open && <ClanDropdown clans={clans} currentId={currentId} isAdmin={isAdmin} publicSlot={publicSlot} onClose={() => setOpen(false)} onSlotUpdated={() => { reloadClans(); reloadPublicSlot(); }} />}
       </div>
     );
   }
 
   // ── Chế độ "badge" mặc định (Sidebar desktop) ─────────────────────────────
-  // Ẩn hoàn toàn nếu chỉ có 1 clan VÀ không bật cho phép tự thêm clan
+  // Ẩn hoàn toàn nếu chỉ có 1 clan VÀ không có clan nào bật đổi Tag công khai
   if (!switchable) return null;
 
   const name = currentInfo?.clan_name || "Clan #" + currentId;
@@ -166,7 +168,7 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
 
       {/* Dropdown danh sách clan */}
       {open && (
-        <ClanDropdown clans={clans} currentId={currentId} isAdmin={isAdmin} publicAddEnabled={publicAddEnabled} onClose={() => setOpen(false)} onClanAdded={reloadClans} />
+        <ClanDropdown clans={clans} currentId={currentId} isAdmin={isAdmin} publicSlot={publicSlot} onClose={() => setOpen(false)} onSlotUpdated={() => { reloadClans(); reloadPublicSlot(); }} />
       )}
     </div>
   );

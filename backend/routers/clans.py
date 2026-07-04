@@ -20,7 +20,10 @@ async def list_clans():
     thông tin nhạy cảm (admin_token, API key... vẫn chỉ admin xem được qua
     GET /{clan_id})."""
     sb = get_supabase()
-    res = sb.table("clans").select("id, clan_tag, clan_name, created_at").order("id").execute()
+    try:
+        res = sb.table("clans").select("id, clan_tag, clan_name, created_at, public_editable").order("id").execute()
+    except Exception:
+        res = sb.table("clans").select("id, clan_tag, clan_name, created_at").order("id").execute()
     clans = res.data or []
 
     # Gắn thêm cờ/huy hiệu + tên thật (ưu tiên lấy từ snapshot cache cho
@@ -54,46 +57,65 @@ async def list_clans():
 
 # ─── Create clan ──────────────────────────────────────────────────────────────
 
-@router.get("/public-add-enabled")
-async def public_add_enabled():
-    """Cho biết admin có bật tính năng 'ai cũng thêm được clan (chỉ nhập
-    tag)' hay không — để frontend biết có hiện nút này cho người dùng thường
-    hay không."""
+@router.get("/public-slot")
+async def public_slot():
+    """Clan nao dang duoc admin danh dau 'cong khai cho phep doi Tag' (neu
+    co) -- tra ve Tag/ten/co hien tai, KHONG tra ve API Key. Nguoi ngoai chi
+    doi duoc Tag cua dung clan nay (dung lai API Key da cau hinh san), khong
+    tao clan moi."""
     sb = get_supabase()
-    res = sb.table("settings").select("value").eq("key", "allow_public_clan_add").execute()
-    return {"enabled": bool(res.data and res.data[0]["value"] == "true")}
+    res = sb.table("clans").select("id, clan_tag, clan_name").eq("public_editable", True).limit(1).execute()
+    if not res.data:
+        return {"enabled": False}
+    row = res.data[0]
+    badge_url = None
+    try:
+        snap = sb.table("snapshot_clan").select("data").eq("clan_id", row["id"]).order("id", desc=True).limit(1).execute()
+        if snap.data:
+            badge_url = json.loads(snap.data[0]["data"]).get("badgeUrls", {}).get("medium")
+    except Exception:
+        pass
+    return {"enabled": True, "clan_id": row["id"], "clan_tag": row["clan_tag"], "clan_name": row["clan_name"], "badge_url": badge_url}
 
 
-@router.post("/public-add")
-async def public_add_clan(request: Request):
-    """Cho phép NGƯỜI DÙNG THƯỜNG (không cần admin) tự thêm 1 clan mới —
-    chỉ cần nhập Tag, KHÔNG có ô CoC API Key (để tránh lộ/lạm dụng key).
-    Clan tạo ra ở trạng thái 'chờ' cho tới khi admin vào Cài đặt gán API Key
-    riêng thì mới xem được dữ liệu — chỉ hoạt động khi admin đã bật công tắc
-    'allow_public_clan_add' trong Cài đặt."""
+@router.post("/public-slot/update")
+async def public_slot_update(request: Request):
+    """Nguoi dung thuong doi Tag cua dung clan da duoc admin danh dau cong
+    khai -- dung lai API Key da luu san cua clan do (khong lo ra ngoai), tu
+    kiem tra ket noi truoc khi luu."""
     sb = get_supabase()
-    cfg = sb.table("settings").select("value").eq("key", "allow_public_clan_add").execute()
-    if not (cfg.data and cfg.data[0]["value"] == "true"):
-        raise HTTPException(403, "Admin chưa bật tính năng cho phép tự thêm clan")
+    slot = sb.table("clans").select("id, coc_api_key").eq("public_editable", True).limit(1).execute()
+    if not slot.data:
+        raise HTTPException(403, "Admin chua bat clan nao cho phep doi Tag cong khai")
+    clan_id = slot.data[0]["id"]
+    api_key = slot.data[0].get("coc_api_key") or ""
+    if not api_key:
+        raise HTTPException(400, "Clan nay chua duoc admin gan API Key - bao admin truoc")
 
     body = await request.json()
     clan_tag = (body.get("clan_tag") or "").strip().upper()
     if not clan_tag:
-        raise HTTPException(400, "Cần nhập Tag clan")
+        raise HTTPException(400, "Can nhap Tag clan")
     if not clan_tag.startswith("#"):
         clan_tag = "#" + clan_tag
 
-    row = {
-        "clan_tag": clan_tag,
-        "clan_name": "Clan mới (chờ admin thêm API Key)",
-        "admin_token": secrets.token_hex(24),
-        "coc_api_key": "",
-    }
+    from services.coc_api import get_clan as fetch_clan_live
     try:
-        res = sb.table("clans").insert(row).execute()
+        live = await fetch_clan_live(clan_tag, clan_id=clan_id)
     except Exception as e:
-        raise HTTPException(400, f"Clan tag đã tồn tại hoặc lỗi: {str(e)}")
-    return {"ok": True, "clan": res.data[0]}
+        raise HTTPException(400, f"Khong ket noi duoc voi Tag nay (kiem tra lai Tag, hoac bao admin kiem tra API Key): {str(e)}")
+
+    sb.table("clans").update({"clan_tag": clan_tag, "clan_name": live.get("name", "Clan moi")}).eq("id", clan_id).execute()
+    try:
+        sb.table("snapshot_clan").delete().eq("clan_id", clan_id).execute()
+        sb.table("snapshot_war").delete().eq("clan_id", clan_id).execute()
+        sb.table("snapshot_raid").delete().eq("clan_id", clan_id).execute()
+    except Exception:
+        pass
+    from schedulers.poller import upsert_snapshot
+    upsert_snapshot("snapshot_clan", live, clan_id=clan_id)
+
+    return {"ok": True, "clan_name": live.get("name"), "badge_url": (live.get("badgeUrls") or {}).get("medium")}
 
 
 @router.post("/")
@@ -150,7 +172,7 @@ async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_
     body = await request.json()
     allowed = ["clan_name", "clan_tag", "coc_api_key", "discord_webhook",
                "telegram_bot_token", "telegram_chat_id",
-               "notify_war", "notify_raid", "notify_join_leave"]
+               "notify_war", "notify_raid", "notify_join_leave", "public_editable"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
@@ -164,6 +186,14 @@ async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_
         update["clan_tag"] = tag
 
     sb = get_supabase()
+    # Chỉ 1 clan được đánh dấu "công khai đổi Tag" tại 1 thời điểm — tick clan
+    # này thì tự bỏ tick clan khác (giống radio button).
+    if update.get("public_editable") is True:
+        try:
+            sb.table("clans").update({"public_editable": False}).neq("id", clan_id).execute()
+        except Exception:
+            pass
+
     try:
         res = sb.table("clans").update(update).eq("id", clan_id).execute()
     except Exception as e:

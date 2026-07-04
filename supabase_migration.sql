@@ -693,3 +693,9 @@ INSERT INTO settings (key, value) VALUES ('notify_cwl', 'true') ON CONFLICT (key
 -- Thông báo ngoài app (Push): thêm loại War/Raid bên cạnh Chat/Sự kiện có sẵn
 ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS notify_war  BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS notify_raid BOOLEAN NOT NULL DEFAULT true;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 11 (sửa lại đúng ý: cho phép công khai đổi TAG của 1
+-- clan cụ thể đã có sẵn API Key, thay vì tạo clan mới trống API Key)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clans ADD COLUMN IF NOT EXISTS public_editable BOOLEAN NOT NULL DEFAULT false;

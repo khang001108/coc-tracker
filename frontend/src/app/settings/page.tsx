@@ -1068,36 +1068,6 @@ function ShopPricingSettings() {
 
 
 // ── Clan Management ────────────────────────────────────────────────────────
-function PublicClanAddToggle() {
-  const [enabled, setEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.getPublicClanAddEnabled().then(r => setEnabled(r.enabled)).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  async function toggle() {
-    const next = !enabled;
-    setEnabled(next);
-    try { await api.saveSetting("allow_public_clan_add", next ? "true" : "false"); }
-    catch { setEnabled(!next); }
-  }
-
-  if (loading) return null;
-  return (
-    <label className="flex items-start gap-3 p-3 rounded-xl bg-gray-800 cursor-pointer">
-      <input type="checkbox" checked={enabled} onChange={toggle} className="w-4 h-4 mt-0.5 accent-yellow-500 shrink-0" />
-      <div>
-        <p className="text-sm font-medium text-white">Cho phép ai cũng thêm clan (chỉ cần Tag)</p>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Bật lên sẽ hiện nút "+ Thêm clan" cho MỌI người dùng (không cần đăng nhập admin) ở menu đổi clan —
-          họ chỉ nhập được Tag, không thấy/không nhập được API Key. Clan mới thêm sẽ ở trạng thái chờ tới khi
-          bạn vào đây gán API Key riêng thì mới xem được dữ liệu.
-        </p>
-      </div>
-    </label>
-  );
-}
 
 function ClanManagement() {
   const [clans, setClans] = useState<any[]>([]);
@@ -1231,6 +1201,15 @@ function ClanManagement() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate" style={{ color: "var(--py-card-text)" }}>{cl.clan_name}</p>
                 <p className="text-xs text-gray-500">{cl.clan_tag}</p>
+                <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
+                  <input type="checkbox" checked={!!cl.public_editable}
+                    onChange={async () => {
+                      try { await api.updateClan(cl.id, { public_editable: !cl.public_editable }); load(); }
+                      catch (e: any) { flash("err", e.message); }
+                    }}
+                    className="w-3.5 h-3.5 accent-yellow-500" />
+                  <span className="text-[10px] text-gray-500">🌐 Công khai đổi Tag (ai cũng đổi được, giữ nguyên API Key)</span>
+                </label>
               </div>
               <div className="flex gap-1.5">
                 <button onClick={() => startEdit(cl)} title="Sửa clan"
@@ -1262,7 +1241,8 @@ function ClanManagement() {
         </button>
       )}
 
-      <PublicClanAddToggle />
+      <p className="text-[11px] text-gray-600 text-center">Tick "Công khai đổi Tag" ở clan bạn muốn cho phép người ngoài tự đổi (xem bên dưới danh sách clan).</p>
+
 
       {/* Form thêm/sửa — chỉ cần Tag + Key */}
       {showForm && (
