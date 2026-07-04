@@ -5,6 +5,7 @@ import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music
 import { AdminGate } from "@/components/ui/AdminGate";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
+import { getCurrentClanId } from "@/lib/clanContext";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -285,7 +286,23 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
   useEffect(() => {
     api.getSettings()
-      .then(setSettings)
+      .then(async (s) => {
+        setSettings(s);
+        // Discord/Telegram thật ra được gửi theo CẤU HÌNH RIÊNG CỦA TỪNG CLAN
+        // (bảng clans), không phải theo cấu hình chung này — nạp đè giá trị
+        // đúng của clan đang chọn vào đây để hiện + lưu cho đúng chỗ, tránh
+        // lưu vào chỗ không ai đọc (đây chính là lý do "bấm Test không thấy
+        // gửi gì" — trước đây lưu nhầm vào bảng settings chung).
+        try {
+          const clan = await api.getClanById(getCurrentClanId());
+          setSettings(s2 => ({
+            ...s2,
+            discord_webhook: clan.discord_webhook || "",
+            telegram_bot_token: clan.telegram_bot_token || "",
+            telegram_chat_id: clan.telegram_chat_id || "",
+          }));
+        } catch {}
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -339,6 +356,18 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
       showToast(e.message, "error");
     } finally {
       setTesting(null);
+    }
+  }
+
+  async function saveClanConfig(fields: Record<string, string>, label: string) {
+    setSaving(Object.keys(fields).join(","));
+    try {
+      await api.updateClan(getCurrentClanId(), fields);
+      showToast(`Đã lưu ${label} cho clan đang chọn!`);
+    } catch (e: any) {
+      showToast(e.message, "error");
+    } finally {
+      setSaving(null);
     }
   }
 
@@ -432,7 +461,11 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             {testing === "discord" ? <Loader2 size={14} className="animate-spin" /> : null}
             Gửi test
           </button>
-          <LoadBtn k="discord_webhook" label="Lưu" />
+          <button onClick={() => saveClanConfig({ discord_webhook: settings.discord_webhook || "" }, "Discord Webhook")}
+            disabled={!!saving} className="btn-gold flex items-center gap-2 text-sm px-3 py-2 shrink-0 disabled:opacity-50">
+            {saving?.includes("discord_webhook") ? <Loader2 size={14} className="animate-spin" /> : null}
+            Lưu
+          </button>
         </div>
         </div>
       </details>
@@ -505,7 +538,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             {testing === "telegram" ? <Loader2 size={14} className="animate-spin" /> : null}
             Gửi test
           </button>
-          <button onClick={() => saveMultiple(["telegram_bot_token", "telegram_chat_id"])} disabled={!!saving}
+          <button onClick={() => saveClanConfig({ telegram_bot_token: settings.telegram_bot_token || "", telegram_chat_id: settings.telegram_chat_id || "" }, "Telegram Bot")}
+            disabled={!!saving}
             className="btn-gold flex items-center gap-2 text-sm">
             {saving?.includes("telegram") ? <Loader2 size={14} className="animate-spin" /> : null}
             Lưu
