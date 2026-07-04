@@ -104,7 +104,7 @@ function MusicSettings() {
 
   return (
     <details className="card !p-0 group">
-      <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
         <span className="font-bold text-white flex items-center gap-2">
           <Music2 size={18} className="text-purple-400" /> Nhạc nền
         </span>
@@ -340,7 +340,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
       {/* ── Quản lý Clan (đã gộp chung với cấu hình CoC API — mỗi clan, kể cả
            clan chính, đều sửa Tag + API Key ngay trong danh sách bên dưới) ── */}
       <details className="card !p-0 group" open>
-        <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
           <span className="font-bold text-white flex items-center gap-2">🏰 Quản lý Clan</span>
           <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
         </summary>
@@ -363,7 +363,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       {/* ── Discord ── */}
       <details className="card !p-0 group">
-        <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
           <span className="font-bold text-white flex items-center gap-2">
             <MessageSquare size={16} className="text-indigo-400" /> Discord Webhook
           </span>
@@ -401,7 +401,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       {/* ── Telegram ── */}
       <details className="card !p-0 group">
-        <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+        <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
           <span className="font-bold text-white flex items-center gap-2">
             <Send size={16} className="text-blue-400" /> Telegram Bot
           </span>
@@ -732,7 +732,7 @@ function EventReportsSettings() {
 
   return (
     <details className="card !p-0 group">
-      <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
         <span className="font-bold text-white flex items-center gap-2">
           🚩 Báo cáo sự kiện {openReports.length > 0 && <span className="badge-red text-[10px]">{openReports.length} mới</span>}
         </span>
@@ -872,7 +872,7 @@ function ShopPricingSettings() {
 
   return (
     <details className="card !p-0 group">
-      <summary className="cursor-pointer list-none flex items-center justify-between p-4">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
         <span className="font-bold text-white">🏷️ Giá Cửa hàng vật phẩm</span>
         <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
       </summary>
@@ -1264,7 +1264,7 @@ export default function SettingsPage() {
       <PushNotificationSettings />
 
       <AdminGate>
-        <div className="columns-1 lg:columns-2 xl:columns-3 gap-6 [&_.card]:break-inside-avoid [&_.card]:mb-6">
+        <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">
           <SettingsPageInner embedded />
           <EventReportsSettings />
           <MusicSettings />
