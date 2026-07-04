@@ -210,7 +210,7 @@ export default function ChatPage() {
           <Users size={13} className="inline mr-1 -mt-0.5" /> Chat Clan
         </button>
         <button onClick={() => setRoom("global")} className={room === "global" ? "tab-pill-active" : "tab-pill"}>
-          <Globe size={13} className="inline mr-1 -mt-0.5" /> Chat liên clan
+          <Globe size={13} className="inline mr-1 -mt-0.5" /> Chat công khai
         </button>
       </div>
 
