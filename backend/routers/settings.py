@@ -13,7 +13,8 @@ ALLOWED_KEYS = [
     "coc_api_key", "clan_tag",
     "discord_webhook",
     "telegram_bot_token", "telegram_chat_id",
-    "notify_war", "notify_raid", "notify_donate", "notify_member", "notify_war_coins",
+    "notify_war", "notify_raid", "notify_donate", "notify_member", "notify_war_coins", "notify_cwl",
+    "war_reminder_hours", "raid_reminder_hours",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
     "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners",
 ]
@@ -171,6 +172,15 @@ async def test_telegram(request: Request, _: bool = Depends(require_admin)):
         raise
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+@router.post("/clear-cache")
+async def clear_cache(_: bool = Depends(require_admin)):
+    """Xoá cache tạm CWL trong bộ nhớ server — dùng khi thấy dữ liệu CWL có
+    vẻ cũ/sai và không muốn đợi tối đa 3 phút để tự hết hạn."""
+    from services.coc_api import clear_cwl_caches
+    n = clear_cwl_caches()
+    return {"ok": True, "cleared": n}
 
 
 @router.post("/test-notify-sample")

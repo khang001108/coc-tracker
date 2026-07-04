@@ -179,3 +179,13 @@ async def get_clan_info_for_games(tag: str, clan_id: int = 1) -> dict:
 # ── Player ────────────────────────────────────────────────────────────────────
 async def get_player(player_tag: str, clan_id: int = 1) -> dict:
     return await coc_get(f"/players/{encode_tag(player_tag)}", clan_id=clan_id)
+
+def clear_cwl_caches() -> int:
+    """Xoá sạch cache tạm (CWL group/war/season) trong bộ nhớ — dùng khi admin
+    bấm 'Xoá cache' trong Cài đặt vì thấy dữ liệu có vẻ cũ, không muốn đợi
+    tối đa 3 phút để tự hết hạn. Trả về số mục đã xoá."""
+    n = len(_cwl_war_cache) + len(_cwl_group_cache) + len(_cwl_rounds_cache)
+    _cwl_war_cache.clear()
+    _cwl_group_cache.clear()
+    _cwl_rounds_cache.clear()
+    return n

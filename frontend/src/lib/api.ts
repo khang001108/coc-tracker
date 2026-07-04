@@ -129,6 +129,7 @@ export const api = {
       body: JSON.stringify({ bot_token }),
     }),
   testNotifySample: () => apiFetch("/api/settings/test-notify-sample", { method: "POST" }),
+  clearCache: () => apiFetch("/api/settings/clear-cache", { method: "POST" }),
 
   // Notify
   sendNotify: (message: string, title?: string) =>

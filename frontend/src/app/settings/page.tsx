@@ -564,10 +564,36 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         <h2 className="font-bold text-white">🔔 Loại thông báo</h2>
         <p className="text-xs text-gray-500">Bật/tắt từng loại thông báo gửi qua Discord & Telegram</p>
 
+        {/* Thời gian nhắc nhở — tuỳ chỉnh được, mặc định War/CWL 2h, Raid 24h */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-gray-500 mb-1 block">Nhắc War/CWL trước khi kết thúc</label>
+            <div className="flex items-center gap-1.5">
+              <input type="number" min={0.5} max={24} step={0.5} className="input !w-20 text-center"
+                value={settings.war_reminder_hours || "2"}
+                onChange={e => set("war_reminder_hours", e.target.value)} />
+              <span className="text-xs text-gray-500">giờ</span>
+              <button onClick={() => save("war_reminder_hours")} className="btn-secondary text-xs shrink-0 ml-auto">Lưu</button>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-500 mb-1 block">Nhắc Raid trước khi kết thúc</label>
+            <div className="flex items-center gap-1.5">
+              <input type="number" min={1} max={72} step={1} className="input !w-20 text-center"
+                value={settings.raid_reminder_hours || "24"}
+                onChange={e => set("raid_reminder_hours", e.target.value)} />
+              <span className="text-xs text-gray-500">giờ</span>
+              <button onClick={() => save("raid_reminder_hours")} className="btn-secondary text-xs shrink-0 ml-auto">Lưu</button>
+            </div>
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-600">Mỗi war/raid chỉ nhắc đúng 1 lần trong khoảng thời gian này (không spam lặp lại mỗi 5 phút như trước).</p>
+
         <div className="space-y-3">
           {[
-            { key: "notify_war",       label: "⚔️ Nhắc đánh War",            desc: "Gửi khi còn < 2h kết thúc war và có member chưa đánh" },
-            { key: "notify_raid",      label: "🏰 Nhắc tham gia Raid",       desc: "Gửi khi có member chưa raid trong Raid Weekend" },
+            { key: "notify_war",       label: "⚔️ Nhắc đánh War",            desc: "Gửi 1 lần khi còn đúng số giờ đã đặt ở trên và có member chưa đánh" },
+            { key: "notify_cwl",       label: "🏆 Nhắc đánh CWL",            desc: "Tương tự War thường nhưng áp dụng cho vòng CWL đang diễn ra" },
+            { key: "notify_raid",      label: "🏰 Nhắc tham gia Raid",       desc: "Gửi 1 lần khi còn đúng số giờ đã đặt ở trên và có member chưa raid" },
             { key: "notify_donate",    label: "🎁 Donate nhận Coins",        desc: "Gửi khi có người donate và được cộng Coins (CoC không có API 'xin lính' theo thời gian thực nên chỉ báo được SAU khi đã donate xong)" },
             { key: "notify_war_coins", label: "⚔️ War nhận Coins",           desc: "Gửi khi có người đạt sao trong war và được cộng Coins" },
             { key: "notify_member",    label: "👥 Thành viên vào/rời clan",  desc: "Gửi ngay khi detect member join hoặc leave" },
@@ -578,9 +604,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
                 <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
               </div>
               <ToggleSwitch
-                checked={settings[key] === "true"}
+                checked={settings[key] !== "false"}
                 onChange={async () => {
-                  const newVal = settings[key] === "true" ? "false" : "true";
+                  const newVal = settings[key] === "false" ? "true" : "false";
                   set(key, newVal);
                   await api.saveSetting(key, newVal).catch(() => {});
                 }}
@@ -631,6 +657,22 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           try { await api.cleanupStatsNow(); showToast("Đã dọn dẹp xong!"); }
           catch (e: any) { showToast(e.message, "error"); }
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
+      </div>
+
+      {/* ── Xoá cache tạm để web luôn mượt ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">🧹 Bộ nhớ đệm (Cache)</h2>
+        <p className="text-xs text-gray-500">
+          Dữ liệu CWL (bảng xếp hạng, top đánh hay...) được lưu tạm ~3 phút để web tải nhanh hơn,
+          không phải gọi lại CoC API mỗi lần mở trang. Nếu thấy dữ liệu có vẻ cũ và không muốn đợi tự hết hạn,
+          bấm nút bên dưới để xoá ngay và tải lại dữ liệu mới nhất.
+        </p>
+        <button onClick={async () => {
+          try {
+            const res = await api.clearCache();
+            showToast(`Đã xoá ${res.cleared} mục cache — lần mở CWL tiếp theo sẽ tải mới hoàn toàn.`);
+          } catch (e: any) { showToast(e.message, "error"); }
+        }} className="btn-secondary text-sm w-full">🧹 Xoá cache tạm ngay</button>
       </div>
 
       {/* ── Ảnh nền Chat ── */}
@@ -1255,6 +1297,8 @@ function PushNotificationSettings() {
   const [subscribed, setSubscribed] = useState(false);
   const [notifyChat, setNotifyChat] = useState(true);
   const [notifyEvent, setNotifyEvent] = useState(true);
+  const [notifyWar, setNotifyWar] = useState(true);
+  const [notifyRaid, setNotifyRaid] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
 
@@ -1283,7 +1327,7 @@ function PushNotificationSettings() {
         flashMsg("Đã tắt thông báo ngoài app", "success");
       } else {
         const { enablePush } = await import("@/lib/push");
-        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent });
+        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid });
         if (res.ok) {
           setSubscribed(true);
           flashMsg("Đã bật thông báo ngoài app!", "success");
@@ -1297,8 +1341,11 @@ function PushNotificationSettings() {
     }
   }
 
-  async function updatePref(key: "notify_chat" | "notify_event", val: boolean) {
-    if (key === "notify_chat") setNotifyChat(val); else setNotifyEvent(val);
+  async function updatePref(key: "notify_chat" | "notify_event" | "notify_war" | "notify_raid", val: boolean) {
+    if (key === "notify_chat") setNotifyChat(val);
+    else if (key === "notify_event") setNotifyEvent(val);
+    else if (key === "notify_war") setNotifyWar(val);
+    else setNotifyRaid(val);
     if (!subscribed) return;
     const { getCurrentSubscription } = await import("@/lib/push");
     const sub = await getCurrentSubscription();
@@ -1345,6 +1392,14 @@ function PushNotificationSettings() {
         <label className="flex items-center justify-between text-sm" style={{ color: "var(--py-card-text)" }}>
           🎉 Sự kiện mới
           <input type="checkbox" checked={notifyEvent} onChange={e => updatePref("notify_event", e.target.checked)} className="w-4 h-4 accent-yellow-500" />
+        </label>
+        <label className="flex items-center justify-between text-sm" style={{ color: "var(--py-card-text)" }}>
+          ⚔️ Nhắc đánh War/CWL
+          <input type="checkbox" checked={notifyWar} onChange={e => updatePref("notify_war", e.target.checked)} className="w-4 h-4 accent-yellow-500" />
+        </label>
+        <label className="flex items-center justify-between text-sm" style={{ color: "var(--py-card-text)" }}>
+          🏰 Nhắc Raid Weekend
+          <input type="checkbox" checked={notifyRaid} onChange={e => updatePref("notify_raid", e.target.checked)} className="w-4 h-4 accent-yellow-500" />
         </label>
       </div>
 

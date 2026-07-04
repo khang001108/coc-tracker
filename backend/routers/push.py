@@ -47,12 +47,21 @@ async def subscribe(
         "player_tag": player_tag,
         "notify_chat": bool(body.get("notify_chat", True)),
         "notify_event": bool(body.get("notify_event", True)),
+        "notify_war": bool(body.get("notify_war", True)),
+        "notify_raid": bool(body.get("notify_raid", True)),
     }
     sb = get_supabase()
     try:
         sb.table("push_subscriptions").upsert(row, on_conflict="endpoint").execute()
-    except Exception as e:
-        raise HTTPException(500, f"Lỗi lưu đăng ký thông báo: {str(e)}")
+    except Exception:
+        # Chưa chạy migration PART 10 (thiếu cột notify_war/notify_raid) —
+        # thử lại chỉ với 2 cột cũ để không chặn hẳn tính năng push.
+        row.pop("notify_war", None)
+        row.pop("notify_raid", None)
+        try:
+            sb.table("push_subscriptions").upsert(row, on_conflict="endpoint").execute()
+        except Exception as e:
+            raise HTTPException(500, f"Lỗi lưu đăng ký thông báo: {str(e)}")
     return {"ok": True}
 
 
@@ -74,7 +83,7 @@ async def update_preferences(request: Request):
     endpoint = body.get("endpoint")
     if not endpoint:
         raise HTTPException(400, "Cần endpoint")
-    update = {k: v for k, v in body.items() if k in ("notify_chat", "notify_event")}
+    update = {k: v for k, v in body.items() if k in ("notify_chat", "notify_event", "notify_war", "notify_raid")}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
     sb = get_supabase()

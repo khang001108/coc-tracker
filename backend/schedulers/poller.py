@@ -10,6 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config, get_cwl_group, get_cwl_war
 from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave, notify_donate_coins, notify_war_coins
+from services.push_service import send_push_to_clan
 from supabase_client import get_supabase
 from datetime import datetime, timedelta
 import json, logging
@@ -57,6 +58,32 @@ async def get_tag() -> str | None:
     """Lấy tag của clan chính (id=1) — backward compat cho chỗ nào chưa multi-clan hoá."""
     clans = await get_all_clans()
     return clans[0].get("clan_tag") if clans else None
+
+def _hours_until(coc_time: str) -> float | None:
+    """CoC trả thời gian dạng '20260704T182300.000Z' (không có dấu - hay :) —
+    parse ra rồi tính còn bao nhiêu giờ nữa tới lúc đó. Trả None nếu parse lỗi."""
+    if not coc_time:
+        return None
+    try:
+        dt = datetime.strptime(coc_time, "%Y%m%dT%H%M%S.%fZ")
+        return (dt - datetime.utcnow()).total_seconds() / 3600
+    except Exception:
+        return None
+
+
+def should_notify_once(sb, clan_id: int, notify_type: str, ref_key: str) -> bool:
+    """Chỉ cho gửi thông báo 1 LẦN cho cùng 1 war/raid — trước đây mỗi vòng
+    poll (5 phút/lần) đủ điều kiện là gửi lại, có thể spam hàng chục lần
+    trong 1 war/raid dài. Trả về True nếu ĐÂY LÀ LẦN ĐẦU (nên gửi), False
+    nếu đã gửi rồi (bỏ qua)."""
+    if not ref_key:
+        return True
+    try:
+        sb.table("notify_dedup").insert({"clan_id": clan_id, "notify_type": notify_type, "ref_key": ref_key}).execute()
+        return True
+    except Exception:
+        return False  # đã tồn tại (unique constraint) → đã gửi trước đó rồi
+
 
 def upsert_snapshot(table: str, data: dict, clan_id: int = 1):
     sb = get_supabase()
@@ -220,6 +247,10 @@ async def _log_cwl_participation(sb, clan_id: int, tag: str):
 async def poll_war():
     sb = get_supabase()
     clans = await get_all_clans()
+    rcfg = sb.table("settings").select("value").eq("key", "war_reminder_hours").execute()
+    war_reminder_hours = float(rcfg.data[0]["value"]) if rcfg.data and rcfg.data[0]["value"] else 2
+    ncfg = sb.table("settings").select("value").eq("key", "notify_cwl").execute()
+    notify_cwl_on = not (ncfg.data and ncfg.data[0]["value"] == "false")
     for c in clans:
         try:
             tag = c.get("clan_tag")
@@ -237,9 +268,14 @@ async def poll_war():
                     attacks = m.get("attacks", [])
                     if len(attacks) < 1:
                         missing.append(m.get("name", "?"))
-                if missing and c.get("notify_war", True):
-                    end_time = data.get("endTime", "")
+                end_time = data.get("endTime", "")
+                hours_left = _hours_until(end_time)
+                if (missing and c.get("notify_war", True) and end_time
+                        and hours_left is not None and hours_left <= war_reminder_hours
+                        and should_notify_once(sb, c["id"], "war_reminder", end_time)):
                     await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
+                    await send_push_to_clan(c["id"], "⚔️ Nhắc đánh War",
+                        f"{len(missing)} thành viên chưa đánh, còn {war_reminder_hours}h là kết thúc!", kind="war")
 
             # War đã kết thúc — ghi lại lượt tham chiến từng người cho thống kê tích luỹ
             if state == "warEnded":
@@ -248,12 +284,32 @@ async def poll_war():
             # CWL: ghi lại vòng vừa kết thúc (nếu có)
             await _log_cwl_participation(sb, c["id"], tag)
 
+            # CWL: nhắc đánh vòng đang diễn ra (dùng chung ngưỡng giờ với war thường)
+            try:
+                from services.coc_api import get_cwl_season_rounds
+                cwl_rounds = await get_cwl_season_rounds(tag, clan_id=c["id"])
+                cwl_current = next((w for w in cwl_rounds if w.get("state") == "inWar"), None)
+                if cwl_current and c.get("notify_war", True) and notify_cwl_on:
+                    cwl_end = cwl_current.get("endTime", "")
+                    cwl_hours_left = _hours_until(cwl_end)
+                    cwl_missing = [m.get("name", "?") for m in cwl_current.get("clan", {}).get("members", []) if len(m.get("attacks", [])) < 1]
+                    if (cwl_missing and cwl_end and cwl_hours_left is not None and cwl_hours_left <= war_reminder_hours
+                            and should_notify_once(sb, c["id"], "cwl_reminder", cwl_end)):
+                        await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"])
+                        await send_push_to_clan(c["id"], "🏆 Nhắc đánh CWL",
+                            f"{len(cwl_missing)} thành viên chưa đánh CWL, còn {war_reminder_hours}h là kết thúc!", kind="war")
+            except Exception as e:
+                log.error(f"CWL reminder error (clan_id={c['id']}): {e}")
+
             log.info(f"War snapshot updated (clan_id={c['id']}): {state}")
         except Exception as e:
             log.error(f"poll_war error (clan_id={c.get('id')}): {e}")
 
 async def poll_raid():
     clans = await get_all_clans()
+    sb = get_supabase()
+    rcfg = sb.table("settings").select("value").eq("key", "raid_reminder_hours").execute()
+    raid_reminder_hours = float(rcfg.data[0]["value"]) if rcfg.data and rcfg.data[0]["value"] else 24
     for c in clans:
         try:
             tag = c.get("clan_tag")
@@ -267,8 +323,14 @@ async def poll_raid():
             # Check members who haven't raided
             members = latest.get("members", [])
             missing = [m["name"] for m in members if m.get("capitalResourcesLooted", 0) == 0]
-            if missing and c.get("notify_raid", True):
+            end_time = latest.get("endTime", "")
+            hours_left = _hours_until(end_time)
+            if (missing and c.get("notify_raid", True) and latest.get("state") == "ongoing" and end_time
+                    and hours_left is not None and hours_left <= raid_reminder_hours
+                    and should_notify_once(sb, c["id"], "raid_reminder", end_time)):
                 await notify_raid_reminder(missing, clan_id=c["id"])
+                await send_push_to_clan(c["id"], "🏰 Nhắc Raid Weekend",
+                    f"{len(missing)} thành viên chưa raid, còn {raid_reminder_hours}h là kết thúc!", kind="raid")
 
             log.info(f"Raid snapshot updated (clan_id={c['id']})")
         except Exception as e:

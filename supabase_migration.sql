@@ -662,3 +662,34 @@ DROP POLICY IF EXISTS "service_all" ON event_reports;
 CREATE POLICY "service_all" ON event_reports FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_reports TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 10 (thời gian nhắc nhở tuỳ chỉnh, chống spam thông báo,
+-- thêm loại thông báo ngoài app, xoá cache tạm)
+-- ════════════════════════════════════════════════════════════════
+
+-- Chống gửi lặp lại thông báo War/Raid nhiều lần trong cùng 1 war/raid —
+-- trước đây mỗi lần poll (5 phút/lần) mà còn thiếu người đánh là gửi lại
+-- toàn bộ, có thể spam Discord/Telegram hàng chục lần trong 1 war.
+CREATE TABLE IF NOT EXISTS notify_dedup (
+  id           SERIAL PRIMARY KEY,
+  clan_id      INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  notify_type  TEXT NOT NULL,   -- 'war_reminder' | 'raid_reminder' | 'cwl_reminder'
+  ref_key      TEXT NOT NULL,   -- vd endTime của war/raid đó
+  created_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, notify_type, ref_key)
+);
+ALTER TABLE notify_dedup ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON notify_dedup;
+CREATE POLICY "service_all" ON notify_dedup FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.notify_dedup TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- Thời gian nhắc nhở tuỳ chỉnh (mặc định: nhắc war khi còn 2h, nhắc raid khi còn 24h)
+INSERT INTO settings (key, value) VALUES ('war_reminder_hours', '2') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('raid_reminder_hours', '24') ON CONFLICT (key) DO NOTHING;
+INSERT INTO settings (key, value) VALUES ('notify_cwl', 'true') ON CONFLICT (key) DO NOTHING;
+
+-- Thông báo ngoài app (Push): thêm loại War/Raid bên cạnh Chat/Sự kiện có sẵn
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS notify_war  BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS notify_raid BOOLEAN NOT NULL DEFAULT true;

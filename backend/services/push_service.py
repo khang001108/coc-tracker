@@ -65,20 +65,25 @@ async def send_push_to_clan(
     title: str,
     body: str,
     url: str = "/",
-    kind: str = "chat",  # "chat" | "event" — khớp cột notify_chat/notify_event
+    kind: str = "chat",  # "chat" | "event" | "war" | "raid" — khớp cột notify_*
     exclude_tag: str | None = None,
 ):
     """Gửi push cho mọi subscription của 1 clan (đã bật loại thông báo tương ứng)."""
     if not push_enabled():
         return
     sb = get_supabase()
-    col = "notify_chat" if kind == "chat" else "notify_event"
+    col_map = {"chat": "notify_chat", "event": "notify_event", "war": "notify_war", "raid": "notify_raid"}
+    col = col_map.get(kind, "notify_chat")
     try:
         q = sb.table("push_subscriptions").select("*").eq("clan_id", clan_id).eq(col, True)
         res = q.execute()
-    except Exception as e:
-        log.error(f"send_push_to_clan query error: {e}")
-        return
+    except Exception:
+        # Cột notify_war/notify_raid chưa tồn tại (chưa chạy migration PART 10)
+        try:
+            res = sb.table("push_subscriptions").select("*").eq("clan_id", clan_id).eq("notify_chat", True).execute()
+        except Exception as e:
+            log.error(f"send_push_to_clan query error: {e}")
+            return
 
     stale_ids = []
     for sub in (res.data or []):
