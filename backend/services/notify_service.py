@@ -88,6 +88,10 @@ async def notify_member_leave(name: str, clan_id: int = 1):
     msg = f"🚪 <b>{name}</b> vừa rời clan."
     await notify_all(msg, discord_color=0xEB459E, title="🚪 Thành viên rời", clan_id=clan_id)
 
-async def notify_troop_request(name: str, message: str, clan_id: int = 1):
-    msg = f"🪖 <b>{name}</b> xin lính: {message}"
-    await notify_all(msg, discord_color=0x5865F2, title="🪖 Xin lính", clan_id=clan_id)
+async def notify_donate_coins(name: str, diff: int, total: int, coins: int, clan_id: int = 1):
+    msg = f"🎁 <b>{name}</b> vừa donate thêm {diff} quân (tổng {total}) — nhận +{coins} Coins!"
+    await notify_all(msg, discord_color=0x57F287, title="🎁 Donate nhận Coins", clan_id=clan_id)
+
+async def notify_war_coins(name: str, stars: int, coins: int, clan_id: int = 1):
+    msg = f"⚔️ <b>{name}</b> vừa đạt {stars}⭐ trong war — nhận +{coins} Coins!"
+    await notify_all(msg, discord_color=0xED4245, title="⚔️ War nhận Coins", clan_id=clan_id)

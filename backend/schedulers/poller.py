@@ -9,7 +9,7 @@ donate, và coin thưởng sao war hoạt động độc lập, đúng của cla
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config, get_cwl_group, get_cwl_war
-from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave
+from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave, notify_donate_coins, notify_war_coins
 from supabase_client import get_supabase
 from datetime import datetime, timedelta
 import json, logging
@@ -237,7 +237,7 @@ async def poll_war():
                     attacks = m.get("attacks", [])
                     if len(attacks) < 1:
                         missing.append(m.get("name", "?"))
-                if missing:
+                if missing and c.get("notify_war", True):
                     end_time = data.get("endTime", "")
                     await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
 
@@ -267,7 +267,7 @@ async def poll_raid():
             # Check members who haven't raided
             members = latest.get("members", [])
             missing = [m["name"] for m in members if m.get("capitalResourcesLooted", 0) == 0]
-            if missing:
+            if missing and c.get("notify_raid", True):
                 await notify_raid_reminder(missing, clan_id=c["id"])
 
             log.info(f"Raid snapshot updated (clan_id={c['id']})")
@@ -311,7 +311,8 @@ async def poll_members():
                         sb.table("member_log").insert({**row, "clan_id": clan_id}).execute()
                     except Exception:
                         sb.table("member_log").insert(row).execute()
-                    await notify_member_join(member.get("name", "?"), member.get("townHallLevel", 0), clan_id=clan_id)
+                    if c.get("notify_join_leave", True):
+                        await notify_member_join(member.get("name", "?"), member.get("townHallLevel", 0), clan_id=clan_id)
 
             # Left members
             for tag_id, prev in prev_tags.items():
@@ -324,7 +325,8 @@ async def poll_members():
                         q.eq("clan_id", clan_id).execute()
                     except Exception:
                         q.execute()
-                    await notify_member_leave(prev.get("name", "?"), clan_id=clan_id)
+                    if c.get("notify_join_leave", True):
+                        await notify_member_leave(prev.get("name", "?"), clan_id=clan_id)
 
             log.info(f"Members polled (clan_id={clan_id}): {len(current)} active")
         except Exception as e:
@@ -337,6 +339,8 @@ async def poll_war_stars():
     sb = get_supabase()
     cfg = sb.table("settings").select("value").eq("key", "coins_per_war_star").execute()
     coins_per_star = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 100
+    ncfg = sb.table("settings").select("value").eq("key", "notify_war_coins").execute()
+    notify_war_coins_on = not (ncfg.data and ncfg.data[0]["value"] == "false")
 
     for c in clans:
         clan_id = c["id"]
@@ -368,6 +372,8 @@ async def poll_war_stars():
                 if acc.data:
                     new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
                     sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+                    if notify_war_coins_on:
+                        await notify_war_coins(m.get("name", "?"), stars_gained, coins_awarded, clan_id=clan_id)
                     msg_row = {
                         "room": "clan", "sender_name": "Hệ thống", "sender_tag": None,
                         "message": f"⚔️ {m.get('name','?')} đạt {stars_gained}⭐ trong war — +{coins_awarded} Coins!",
@@ -384,10 +390,13 @@ async def poll_war_stars():
 async def poll_donations():
     """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
     và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng — theo từng clan.
-    (CoC API không có dữ liệu 'xin lính' theo thời gian thực — đây là cách gần
-    nhất có thể làm được: phát hiện SAU khi họ đã donate xong.)"""
+    (CoC API không có dữ liệu 'xin lính' theo thời gian thực nên KHÔNG thể báo lúc ai đó
+    xin lính — chỉ có thể báo SAU KHI họ đã donate xong, tính luôn thành thông báo
+    'vừa nhận Coins từ donate' thay vì 'xin lính'.)"""
     clans = await get_all_clans()
     sb = get_supabase()
+    ncfg = sb.table("settings").select("value").eq("key", "notify_donate").execute()
+    notify_donate_on = not (ncfg.data and ncfg.data[0]["value"] == "false")
     for c in clans:
         clan_id = c["id"]
         try:
@@ -434,6 +443,8 @@ async def poll_donations():
                     if acc.data:
                         new_coins = (acc.data[0].get("coins") or 0) + diff
                         sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+                        if notify_donate_on:
+                            await notify_donate_coins(m.get("name", "?"), diff, cur, diff, clan_id=clan_id)
                 sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur, "last_donations_received": cur_recv}).execute()
 
             log.info(f"Donation deltas checked (clan_id={clan_id})")

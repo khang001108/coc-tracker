@@ -241,6 +241,42 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [testing, setTesting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [bannerPage, setBannerPage] = useState("login");
+  const [testNotifyMsg, setTestNotifyMsg] = useState("");
+
+  async function testNotifySample() {
+    setTesting("notify-sample"); setTestNotifyMsg("");
+    try {
+      await api.testNotifySample();
+      setTestNotifyMsg("✅ Đã gửi 2 tin mẫu (Donate + War nhận Coins) — kiểm tra Discord/Telegram của clan đang chọn.");
+    } catch (e: any) {
+      setTestNotifyMsg("❌ " + (e.message || "Lỗi gửi thông báo mẫu — kiểm tra đã lưu Discord Webhook / Telegram Bot Token & Chat ID chưa."));
+    } finally {
+      setTesting(null);
+    }
+  }
+  const [detectedChats, setDetectedChats] = useState<any[] | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectHint, setDetectHint] = useState("");
+
+  async function detectTelegramChats() {
+    if (!settings.telegram_bot_token?.trim()) {
+      showToast("Cần dán Bot Token vào ô bên trên trước", "error");
+      return;
+    }
+    setDetecting(true); setDetectedChats(null); setDetectHint("");
+    try {
+      const res = await api.telegramDetectChats(settings.telegram_bot_token.trim());
+      if (!res.chats?.length) {
+        setDetectHint(res.hint || "Chưa tìm thấy chat nào.");
+      } else {
+        setDetectedChats(res.chats);
+      }
+    } catch (e: any) {
+      showToast(e.message || "Lỗi lấy Chat ID", "error");
+    } finally {
+      setDetecting(false);
+    }
+  }
 
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
@@ -352,8 +388,10 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           <ol className="list-decimal list-inside space-y-0.5 text-blue-400">
             <li>Vào <a href="https://developer.clashofclans.com" target="_blank" className="underline hover:text-white">developer.clashofclans.com</a></li>
             <li>Đăng nhập bằng tài khoản Supercell</li>
-            <li>Tạo key mới với <strong>IP của server Render</strong> (xem trong Dashboard → Render → Settings → Static IP)</li>
-            <li>Copy key và dán vào đây</li>
+            <li>Tạo API Key mới</li>
+            <li>Trong mục <strong>Allowed IP Addresses</strong>, nhập IP public của server: <strong>45.79.218.79</strong></li>
+            <li>Tạo Key, sau đó sao chép (Copy) API Key</li>
+            <li>Dán API Key vào ô bên dưới</li>
           </ol>
         </div>
 
@@ -412,10 +450,12 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
           <p className="font-semibold">📌 Cách tạo Bot Telegram:</p>
           <ol className="list-decimal list-inside space-y-0.5 text-blue-400">
-            <li>Nhắn @BotFather trên Telegram → /newbot</li>
+            <li>Nhắn tin với @BotFather trên Telegram và gửi lệnh /newbot</li>
             <li>Đặt tên và username cho bot</li>
-            <li>Copy token và dán vào "Bot Token"</li>
-            <li>Thêm bot vào group/channel → lấy Chat ID bằng @userinfobot</li>
+            <li>Sao chép Bot Token và dán vào ô Bot Token bên dưới</li>
+            <li>Thêm bot vào group hoặc channel (nếu sử dụng)</li>
+            <li>Gửi 1 tin nhắn bất kỳ cho bot hoặc trong group có bot</li>
+            <li>Bấm nút <strong>"📡 Lấy Chat ID"</strong> bên dưới — web sẽ tự tìm giúp, không cần làm thủ công qua trình duyệt nữa</li>
           </ol>
         </div>
 
@@ -433,6 +473,30 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             value={settings.telegram_chat_id || ""}
             onChange={e => set("telegram_chat_id", e.target.value)}
             placeholder="-1001234567890 (group) hoặc 123456789 (cá nhân)" />
+        </div>
+
+        <div>
+          <button onClick={detectTelegramChats} disabled={detecting}
+            className="btn-secondary text-sm w-full flex items-center justify-center gap-2">
+            {detecting ? <Loader2 size={14} className="animate-spin"/> : "📡"} {detecting ? "Đang tìm..." : "Lấy Chat ID"}
+          </button>
+          {detectHint && <p className="text-[11px] text-gray-500 mt-1.5">{detectHint}</p>}
+          {detectedChats && detectedChats.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              <p className="text-[11px] text-gray-500">Bấm để chọn đúng nhóm/phiên chat của bạn:</p>
+              {detectedChats.map(c => (
+                <button key={c.chat_id} onClick={() => { set("telegram_chat_id", c.chat_id); setDetectedChats(null); }}
+                  className={`w-full flex items-center justify-between text-left px-3 py-2 rounded-xl text-xs transition-colors ${
+                    settings.telegram_chat_id === c.chat_id ? "bg-yellow-500/20 border border-yellow-500/40" : "bg-gray-800 hover:bg-gray-700"}`}>
+                  <span className="truncate">
+                    <span className="font-semibold text-white">{c.name}</span>
+                    <span className="text-gray-500 ml-1.5">({c.type === "group" || c.type === "supergroup" ? "nhóm" : c.type === "channel" ? "kênh" : "cá nhân"})</span>
+                  </span>
+                  <span className="text-gray-500 shrink-0 ml-2">{c.chat_id}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -468,10 +532,11 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
         <div className="space-y-3">
           {[
-            { key: "notify_war",    label: "⚔️ Nhắc đánh War",            desc: "Gửi khi còn < 2h kết thúc war và có member chưa đánh" },
-            { key: "notify_raid",   label: "🏰 Nhắc tham gia Raid",       desc: "Gửi khi có member chưa raid trong Raid Weekend" },
-            { key: "notify_donate", label: "❤️ Nhắc xin lính",            desc: "Phát hiện request lính mới (poll mỗi 5 phút)" },
-            { key: "notify_member", label: "👥 Thành viên vào/rời clan",  desc: "Gửi ngay khi detect member join hoặc leave" },
+            { key: "notify_war",       label: "⚔️ Nhắc đánh War",            desc: "Gửi khi còn < 2h kết thúc war và có member chưa đánh" },
+            { key: "notify_raid",      label: "🏰 Nhắc tham gia Raid",       desc: "Gửi khi có member chưa raid trong Raid Weekend" },
+            { key: "notify_donate",    label: "🎁 Donate nhận Coins",        desc: "Gửi khi có người donate và được cộng Coins (CoC không có API 'xin lính' theo thời gian thực nên chỉ báo được SAU khi đã donate xong)" },
+            { key: "notify_war_coins", label: "⚔️ War nhận Coins",           desc: "Gửi khi có người đạt sao trong war và được cộng Coins" },
+            { key: "notify_member",    label: "👥 Thành viên vào/rời clan",  desc: "Gửi ngay khi detect member join hoặc leave" },
           ].map(({ key, label, desc }) => (
             <div key={key} className="flex items-center gap-3 p-3 rounded-xl bg-gray-800">
               <div className="flex-1 min-w-0">
@@ -489,6 +554,12 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             </div>
           ))}
         </div>
+
+        <button onClick={testNotifySample} disabled={!!testing}
+          className="btn-secondary w-full flex items-center justify-center gap-2 text-sm">
+          {testing === "notify-sample" ? <Loader2 size={14} className="animate-spin"/> : "🔔"} Test gửi thông báo mẫu
+        </button>
+        {testNotifyMsg && <p className="text-[11px] text-gray-500">{testNotifyMsg}</p>}
       </div>
 
       {/* ── Xoá lịch sử chat tự động ── */}

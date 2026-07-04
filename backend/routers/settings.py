@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File
 from supabase_client import get_supabase
 from auth import require_admin, create_token, verify_password
+from clan_context import get_clan_id
+from services.notify_service import notify_donate_coins, notify_war_coins
 import httpx
 import uuid
 from urllib.parse import quote
@@ -11,7 +13,7 @@ ALLOWED_KEYS = [
     "coc_api_key", "clan_tag",
     "discord_webhook",
     "telegram_bot_token", "telegram_chat_id",
-    "notify_war", "notify_raid", "notify_donate", "notify_member",
+    "notify_war", "notify_raid", "notify_donate", "notify_member", "notify_war_coins",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
     "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners",
 ]
@@ -169,3 +171,53 @@ async def test_telegram(request: Request, _: bool = Depends(require_admin)):
         raise
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+@router.post("/test-notify-sample")
+async def test_notify_sample(request: Request, _: bool = Depends(require_admin)):
+    """Gửi thử 2 loại thông báo mới (Donate nhận Coins / War nhận Coins) qua
+    đúng kênh Discord/Telegram đã lưu của clan đang chọn — để admin xem có
+    hoạt động không mà không cần đợi có donate/war thật."""
+    clan_id = get_clan_id(request)
+    try:
+        await notify_donate_coins("Ví dụ - Thành Viên A", 5, 120, 5, clan_id=clan_id)
+        await notify_war_coins("Ví dụ - Thành Viên B", 3, 300, clan_id=clan_id)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/telegram-detect-chats")
+async def telegram_detect_chats(request: Request, _: bool = Depends(require_admin)):
+    """Tự tìm Chat ID thay vì bắt admin tự vào trình duyệt gõ URL getUpdates
+    thủ công — đọc các tin nhắn gần nhất bot nhận được, trả về danh sách
+    nhóm/kênh/phiên chat kèm tên để admin chọn đúng cái mình cần."""
+    body = await request.json()
+    token = (body.get("bot_token") or "").strip()
+    if not token:
+        raise HTTPException(400, "Cần dán Bot Token vào ô Bot Token trước")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(f"https://api.telegram.org/bot{token}/getUpdates")
+        data = r.json()
+    except Exception as e:
+        raise HTTPException(500, f"Không gọi được Telegram: {str(e)}")
+    if not data.get("ok"):
+        raise HTTPException(400, data.get("description", "Bot Token không hợp lệ"))
+
+    seen: dict[str, dict] = {}
+    for update in data.get("result", []):
+        msg = update.get("message") or update.get("channel_post") or update.get("my_chat_member", {}).get("chat")
+        chat = msg.get("chat") if isinstance(msg, dict) and "chat" in msg else msg
+        if not chat or "id" not in chat:
+            continue
+        cid = str(chat["id"])
+        name = chat.get("title") or " ".join(filter(None, [chat.get("first_name"), chat.get("last_name")])) or chat.get("username") or cid
+        seen[cid] = {"chat_id": cid, "name": name, "type": chat.get("type", "?")}
+
+    if not seen:
+        return {
+            "chats": [],
+            "hint": "Chưa thấy tin nhắn nào — hãy gửi 1 tin bất kỳ cho bot (hoặc trong group đã thêm bot) rồi bấm lại nút này.",
+        }
+    return {"chats": list(seen.values())}

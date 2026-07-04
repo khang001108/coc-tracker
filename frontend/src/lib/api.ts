@@ -123,6 +123,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ bot_token, chat_id }),
     }),
+  telegramDetectChats: (bot_token: string) =>
+    apiFetch("/api/settings/telegram-detect-chats", {
+      method: "POST",
+      body: JSON.stringify({ bot_token }),
+    }),
+  testNotifySample: () => apiFetch("/api/settings/test-notify-sample", { method: "POST" }),
 
   // Notify
   sendNotify: (message: string, title?: string) =>
