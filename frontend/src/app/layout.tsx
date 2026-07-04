@@ -6,6 +6,7 @@ import { PageScope } from "@/components/layout/PageScope";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { MusicProvider } from "@/components/ui/MusicContext";
 import { FloatingMusicWidget } from "@/components/ui/FloatingMusicWidget";
+import { FloatingCacheButton } from "@/components/ui/FloatingCacheButton";
 import { ThemeInitScript } from "@/components/ui/ThemeToggle";
 import { NotificationProvider } from "@/components/ui/NotificationContext";
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <MobileNav />
           <FloatingMusicWidget />
+          <FloatingCacheButton />
         </div>
         </NotificationProvider>
         </MusicProvider>

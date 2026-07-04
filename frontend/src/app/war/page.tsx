@@ -160,15 +160,9 @@ export default function WarPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="page-title flex items-center gap-2"><Swords size={22} className="text-red-400" /> War & CWL</h1>
-          <p className="page-subtitle">Theo dõi chiến tranh clan</p>
-        </div>
-        <button onClick={() => { api.clearCache().catch(() => {}); load(); }} disabled={loading} title="Tải lại dữ liệu mới nhất"
-          className="p-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-yellow-400 transition-colors shrink-0 disabled:opacity-50">
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-        </button>
+      <div>
+        <h1 className="page-title flex items-center gap-2"><Swords size={22} className="text-red-400" /> War & CWL</h1>
+        <p className="page-subtitle">Theo dõi chiến tranh clan</p>
       </div>
 
       {/* Tabs */}

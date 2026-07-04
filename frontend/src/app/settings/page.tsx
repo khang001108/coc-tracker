@@ -235,35 +235,6 @@ function UploadFromDeviceButton({ onUploaded }: { onUploaded: (url: string) => v
   );
 }
 
-/** Xoá cache tạm CWL — ai cũng dùng được (không cần admin), vì đây là thao
- * tác an toàn không đụng dữ liệu thật, chỉ ép web tải lại dữ liệu mới nhất
- * thay vì đợi cache tự hết hạn (tối đa 3 phút). */
-function ClearCacheButton() {
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  return (
-    <div className="card space-y-2">
-      <h2 className="font-bold text-white flex items-center gap-2">🧹 Bộ nhớ đệm (Cache)</h2>
-      <p className="text-xs text-gray-500">
-        Dữ liệu CWL (bảng xếp hạng, top đánh hay...) được lưu tạm ~3 phút để web tải nhanh hơn.
-        Nếu thấy dữ liệu có vẻ cũ (vd vừa đổi tag clan), bấm nút này để xoá ngay, không cần đợi.
-      </p>
-      <button onClick={async () => {
-        setBusy(true); setMsg("");
-        try {
-          const res = await api.clearCache();
-          setMsg(`✅ Đã xoá ${res.cleared} mục cache — mở lại War/CWL sẽ tải mới hoàn toàn.`);
-        } catch (e: any) { setMsg("❌ " + (e.message || "Lỗi xoá cache")); }
-        finally { setBusy(false); }
-      }} disabled={busy} className="btn-secondary text-sm w-full flex items-center justify-center gap-2">
-        {busy ? <Loader2 size={14} className="animate-spin"/> : "🧹"} Xoá cache tạm ngay
-      </button>
-      {msg && <p className="text-[11px] text-gray-500">{msg}</p>}
-    </div>
-  );
-}
-
 function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -1186,6 +1157,20 @@ function ClanManagement() {
       {loading ? (
         <div className="flex justify-center py-3"><Loader2 size={18} className="animate-spin text-yellow-400"/></div>
       ) : clans.length > 0 ? (
+        <>
+        {(() => {
+          const publicClan = clans.find(c => c.public_editable);
+          return publicClan ? (
+            <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/25 text-xs text-green-400">
+              🌐 Đang công khai đổi Tag cho: <strong>{publicClan.clan_name}</strong> ({publicClan.clan_tag}) —
+              người dùng thường sẽ thấy ô đổi Tag này ở menu đổi clan (bạn cần đăng xuất admin để tự xem thử giao diện họ thấy).
+            </div>
+          ) : (
+            <div className="p-2.5 rounded-xl bg-gray-800 text-xs text-gray-500">
+              Chưa có clan nào được đánh dấu công khai đổi Tag — tick vào 1 clan bên dưới để bật.
+            </div>
+          );
+        })()}
         <div className="space-y-2">
           {clans.map(cl => (
             <div key={cl.id} className="flex items-center gap-3 p-3 rounded-xl"
@@ -1228,6 +1213,7 @@ function ClanManagement() {
             </div>
           ))}
         </div>
+        </>
       ) : (
         <p className="text-xs text-gray-500 text-center py-2">Chưa có clan nào. Bấm thêm bên dưới.</p>
       )}
@@ -1448,7 +1434,6 @@ export default function SettingsPage() {
           từng trình duyệt/thiết bị, không phải cấu hình clan. */}
       <InstallAppButton />
       <PushNotificationSettings />
-      <ClearCacheButton />
 
       <AdminGate>
         <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">
