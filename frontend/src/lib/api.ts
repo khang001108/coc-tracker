@@ -306,6 +306,8 @@ export const api = {
   // Clans (multi-clan management)
   listClans:   () => apiFetch("/api/clans/"),
   getClanById: (id: number) => apiFetch(`/api/clans/${id}`),  // multi-clan specific
+  getPublicClanAddEnabled: () => apiFetch("/api/clans/public-add-enabled"),
+  publicAddClan: (clan_tag: string) => apiFetch("/api/clans/public-add", { method: "POST", body: JSON.stringify({ clan_tag }) }),
   createClan:  (data: any) => apiFetch("/api/clans/", { method: "POST", body: JSON.stringify(data) }),
   updateClan:  (id: number, data: any) => apiFetch(`/api/clans/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteClan:  (id: number) => apiFetch(`/api/clans/${id}`, { method: "DELETE" }),

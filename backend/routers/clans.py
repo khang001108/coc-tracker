@@ -54,6 +54,48 @@ async def list_clans():
 
 # ─── Create clan ──────────────────────────────────────────────────────────────
 
+@router.get("/public-add-enabled")
+async def public_add_enabled():
+    """Cho biết admin có bật tính năng 'ai cũng thêm được clan (chỉ nhập
+    tag)' hay không — để frontend biết có hiện nút này cho người dùng thường
+    hay không."""
+    sb = get_supabase()
+    res = sb.table("settings").select("value").eq("key", "allow_public_clan_add").execute()
+    return {"enabled": bool(res.data and res.data[0]["value"] == "true")}
+
+
+@router.post("/public-add")
+async def public_add_clan(request: Request):
+    """Cho phép NGƯỜI DÙNG THƯỜNG (không cần admin) tự thêm 1 clan mới —
+    chỉ cần nhập Tag, KHÔNG có ô CoC API Key (để tránh lộ/lạm dụng key).
+    Clan tạo ra ở trạng thái 'chờ' cho tới khi admin vào Cài đặt gán API Key
+    riêng thì mới xem được dữ liệu — chỉ hoạt động khi admin đã bật công tắc
+    'allow_public_clan_add' trong Cài đặt."""
+    sb = get_supabase()
+    cfg = sb.table("settings").select("value").eq("key", "allow_public_clan_add").execute()
+    if not (cfg.data and cfg.data[0]["value"] == "true"):
+        raise HTTPException(403, "Admin chưa bật tính năng cho phép tự thêm clan")
+
+    body = await request.json()
+    clan_tag = (body.get("clan_tag") or "").strip().upper()
+    if not clan_tag:
+        raise HTTPException(400, "Cần nhập Tag clan")
+    if not clan_tag.startswith("#"):
+        clan_tag = "#" + clan_tag
+
+    row = {
+        "clan_tag": clan_tag,
+        "clan_name": "Clan mới (chờ admin thêm API Key)",
+        "admin_token": secrets.token_hex(24),
+        "coc_api_key": "",
+    }
+    try:
+        res = sb.table("clans").insert(row).execute()
+    except Exception as e:
+        raise HTTPException(400, f"Clan tag đã tồn tại hoặc lỗi: {str(e)}")
+    return {"ok": True, "clan": res.data[0]}
+
+
 @router.post("/")
 async def create_clan(request: Request, _: bool = Depends(require_admin)):
     body = await request.json()

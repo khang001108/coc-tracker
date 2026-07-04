@@ -8,7 +8,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatDate, thColor } from "@/lib/utils";
-import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check, AlertTriangle } from "lucide-react";
+import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check, AlertTriangle, RefreshCw } from "lucide-react";
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
 
@@ -105,36 +105,37 @@ export default function WarPage() {
   const [loading, setLoading] = useState(true);
   const [copiedMissing, setCopiedMissing] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const [w, wl, c, cwlWar, roster] = await Promise.allSettled([
-        api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar(), api.getRoster()
-      ]);
-      if (roster.status === "fulfilled") {
-        const map: Record<string, any> = {};
-        (roster.value as any[]).forEach(r => { map[r.tag] = r; });
-        setRosterMap(map);
-      }
-      let warData = w.status === "fulfilled" ? w.value : null;
-      // Nếu không có war thường, kiểm tra CWL war (vòng hiện tại)
-      if ((!warData || warData.state === "notInWar") && cwlWar.status === "fulfilled") {
-        const cw: any = cwlWar.value;
-        if (cw?.current && cw.current.state && cw.current.state !== "notInWar") {
-          warData = cw.current;
-          setCwlNext(cw.next || null);
-        }
-      }
-      // Gắn badge từ war thường nếu chưa có
-      if (warData && !warData.isCWL) {
-        if (warData.clan?.badgeUrls?.medium) warData.clan.badgeUrl = warData.clan.badgeUrls.medium;
-        if (warData.opponent?.badgeUrls?.medium) warData.opponent.badgeUrl = warData.opponent.badgeUrls.medium;
-      }
-      setWar(warData);
-      if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
-      if (c.status === "fulfilled") setCwl(c.value);
-      setLoading(false);
+  async function load() {
+    setLoading(true);
+    const [w, wl, c, cwlWar, roster] = await Promise.allSettled([
+      api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar(), api.getRoster()
+    ]);
+    if (roster.status === "fulfilled") {
+      const map: Record<string, any> = {};
+      (roster.value as any[]).forEach(r => { map[r.tag] = r; });
+      setRosterMap(map);
     }
+    let warData = w.status === "fulfilled" ? w.value : null;
+    // Nếu không có war thường, kiểm tra CWL war (vòng hiện tại)
+    if ((!warData || warData.state === "notInWar") && cwlWar.status === "fulfilled") {
+      const cw: any = cwlWar.value;
+      if (cw?.current && cw.current.state && cw.current.state !== "notInWar") {
+        warData = cw.current;
+        setCwlNext(cw.next || null);
+      }
+    }
+    // Gắn badge từ war thường nếu chưa có
+    if (warData && !warData.isCWL) {
+      if (warData.clan?.badgeUrls?.medium) warData.clan.badgeUrl = warData.clan.badgeUrls.medium;
+      if (warData.opponent?.badgeUrls?.medium) warData.opponent.badgeUrl = warData.opponent.badgeUrls.medium;
+    }
+    setWar(warData);
+    if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
+    if (c.status === "fulfilled") setCwl(c.value);
+    setLoading(false);
+  }
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -159,9 +160,15 @@ export default function WarPage() {
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div>
-        <h1 className="page-title flex items-center gap-2"><Swords size={22} className="text-red-400" /> War & CWL</h1>
-        <p className="page-subtitle">Theo dõi chiến tranh clan</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="page-title flex items-center gap-2"><Swords size={22} className="text-red-400" /> War & CWL</h1>
+          <p className="page-subtitle">Theo dõi chiến tranh clan</p>
+        </div>
+        <button onClick={() => { api.clearCache().catch(() => {}); load(); }} disabled={loading} title="Tải lại dữ liệu mới nhất"
+          className="p-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-yellow-400 transition-colors shrink-0 disabled:opacity-50">
+          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+        </button>
       </div>
 
       {/* Tabs */}

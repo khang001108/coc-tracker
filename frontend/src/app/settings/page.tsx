@@ -185,11 +185,11 @@ function MusicSettings() {
 
 function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold text-white animate-scale-in ${
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold text-white animate-scale-in max-w-[92vw] ${
       type === "success" ? "bg-green-600" : "bg-red-600"
     }`}>
-      {type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-      {msg}
+      {type === "success" ? <CheckCircle size={16} className="shrink-0" /> : <AlertCircle size={16} className="shrink-0" />}
+      <span className="truncate">{msg}</span>
     </div>
   );
 }
@@ -231,6 +231,35 @@ function UploadFromDeviceButton({ onUploaded }: { onUploaded: (url: string) => v
       </button>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
       {err && <p className="text-[10px] text-red-400 mt-1">{err}</p>}
+    </div>
+  );
+}
+
+/** Xoá cache tạm CWL — ai cũng dùng được (không cần admin), vì đây là thao
+ * tác an toàn không đụng dữ liệu thật, chỉ ép web tải lại dữ liệu mới nhất
+ * thay vì đợi cache tự hết hạn (tối đa 3 phút). */
+function ClearCacheButton() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  return (
+    <div className="card space-y-2">
+      <h2 className="font-bold text-white flex items-center gap-2">🧹 Bộ nhớ đệm (Cache)</h2>
+      <p className="text-xs text-gray-500">
+        Dữ liệu CWL (bảng xếp hạng, top đánh hay...) được lưu tạm ~3 phút để web tải nhanh hơn.
+        Nếu thấy dữ liệu có vẻ cũ (vd vừa đổi tag clan), bấm nút này để xoá ngay, không cần đợi.
+      </p>
+      <button onClick={async () => {
+        setBusy(true); setMsg("");
+        try {
+          const res = await api.clearCache();
+          setMsg(`✅ Đã xoá ${res.cleared} mục cache — mở lại War/CWL sẽ tải mới hoàn toàn.`);
+        } catch (e: any) { setMsg("❌ " + (e.message || "Lỗi xoá cache")); }
+        finally { setBusy(false); }
+      }} disabled={busy} className="btn-secondary text-sm w-full flex items-center justify-center gap-2">
+        {busy ? <Loader2 size={14} className="animate-spin"/> : "🧹"} Xoá cache tạm ngay
+      </button>
+      {msg && <p className="text-[11px] text-gray-500">{msg}</p>}
     </div>
   );
 }
@@ -565,24 +594,24 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         <p className="text-xs text-gray-500">Bật/tắt từng loại thông báo gửi qua Discord & Telegram</p>
 
         {/* Thời gian nhắc nhở — tuỳ chỉnh được, mặc định War/CWL 2h, Raid 24h */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-[10px] text-gray-500 mb-1 block">Nhắc War/CWL trước khi kết thúc</label>
-            <div className="flex items-center gap-1.5">
-              <input type="number" min={0.5} max={24} step={0.5} className="input !w-20 text-center"
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <input type="number" min={0.5} max={24} step={0.5} className="input !w-20 text-center shrink-0"
                 value={settings.war_reminder_hours || "2"}
                 onChange={e => set("war_reminder_hours", e.target.value)} />
-              <span className="text-xs text-gray-500">giờ</span>
+              <span className="text-xs text-gray-500 shrink-0">giờ</span>
               <button onClick={() => save("war_reminder_hours")} className="btn-secondary text-xs shrink-0 ml-auto">Lưu</button>
             </div>
           </div>
           <div>
             <label className="text-[10px] text-gray-500 mb-1 block">Nhắc Raid trước khi kết thúc</label>
-            <div className="flex items-center gap-1.5">
-              <input type="number" min={1} max={72} step={1} className="input !w-20 text-center"
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <input type="number" min={1} max={72} step={1} className="input !w-20 text-center shrink-0"
                 value={settings.raid_reminder_hours || "24"}
                 onChange={e => set("raid_reminder_hours", e.target.value)} />
-              <span className="text-xs text-gray-500">giờ</span>
+              <span className="text-xs text-gray-500 shrink-0">giờ</span>
               <button onClick={() => save("raid_reminder_hours")} className="btn-secondary text-xs shrink-0 ml-auto">Lưu</button>
             </div>
           </div>
@@ -657,22 +686,6 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           try { await api.cleanupStatsNow(); showToast("Đã dọn dẹp xong!"); }
           catch (e: any) { showToast(e.message, "error"); }
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
-      </div>
-
-      {/* ── Xoá cache tạm để web luôn mượt ── */}
-      <div className="card space-y-3">
-        <h2 className="font-bold text-white">🧹 Bộ nhớ đệm (Cache)</h2>
-        <p className="text-xs text-gray-500">
-          Dữ liệu CWL (bảng xếp hạng, top đánh hay...) được lưu tạm ~3 phút để web tải nhanh hơn,
-          không phải gọi lại CoC API mỗi lần mở trang. Nếu thấy dữ liệu có vẻ cũ và không muốn đợi tự hết hạn,
-          bấm nút bên dưới để xoá ngay và tải lại dữ liệu mới nhất.
-        </p>
-        <button onClick={async () => {
-          try {
-            const res = await api.clearCache();
-            showToast(`Đã xoá ${res.cleared} mục cache — lần mở CWL tiếp theo sẽ tải mới hoàn toàn.`);
-          } catch (e: any) { showToast(e.message, "error"); }
-        }} className="btn-secondary text-sm w-full">🧹 Xoá cache tạm ngay</button>
       </div>
 
       {/* ── Ảnh nền Chat ── */}
@@ -1055,6 +1068,37 @@ function ShopPricingSettings() {
 
 
 // ── Clan Management ────────────────────────────────────────────────────────
+function PublicClanAddToggle() {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getPublicClanAddEnabled().then(r => setEnabled(r.enabled)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  async function toggle() {
+    const next = !enabled;
+    setEnabled(next);
+    try { await api.saveSetting("allow_public_clan_add", next ? "true" : "false"); }
+    catch { setEnabled(!next); }
+  }
+
+  if (loading) return null;
+  return (
+    <label className="flex items-start gap-3 p-3 rounded-xl bg-gray-800 cursor-pointer">
+      <input type="checkbox" checked={enabled} onChange={toggle} className="w-4 h-4 mt-0.5 accent-yellow-500 shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-white">Cho phép ai cũng thêm clan (chỉ cần Tag)</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          Bật lên sẽ hiện nút "+ Thêm clan" cho MỌI người dùng (không cần đăng nhập admin) ở menu đổi clan —
+          họ chỉ nhập được Tag, không thấy/không nhập được API Key. Clan mới thêm sẽ ở trạng thái chờ tới khi
+          bạn vào đây gán API Key riêng thì mới xem được dữ liệu.
+        </p>
+      </div>
+    </label>
+  );
+}
+
 function ClanManagement() {
   const [clans, setClans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1217,6 +1261,8 @@ function ClanManagement() {
           <Plus size={15}/> Thêm clan mới
         </button>
       )}
+
+      <PublicClanAddToggle />
 
       {/* Form thêm/sửa — chỉ cần Tag + Key */}
       {showForm && (
@@ -1422,6 +1468,7 @@ export default function SettingsPage() {
           từng trình duyệt/thiết bị, không phải cấu hình clan. */}
       <InstallAppButton />
       <PushNotificationSettings />
+      <ClearCacheButton />
 
       <AdminGate>
         <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">

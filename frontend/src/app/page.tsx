@@ -9,7 +9,7 @@ import { useEmberColor } from "@/lib/useEmberColor";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
-import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check } from "lucide-react";
+import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check, RefreshCw } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
@@ -154,6 +154,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </ClanSwitcher>
+        <button onClick={() => { api.clearCache().catch(() => {}); load(); }} disabled={refreshing} title="Tải lại dữ liệu mới nhất"
+          className="p-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-yellow-400 transition-colors shrink-0 disabled:opacity-50">
+          <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+        </button>
       </div>
 
       {/* Clan description — viền hoa văn */}

@@ -394,9 +394,49 @@ async def poll_members():
         except Exception as e:
             log.error(f"poll_members error (clan_id={clan_id}): {e}")
 
+async def _award_war_star_coins(sb, clan_id: int, war_data: dict, coins_per_star: int, notify_war_coins_on: bool):
+    """Cong Coins cho cac don danh MOI phat hien trong 1 war (dung chung cho
+    ca war thuong va tung vong CWL -- truoc day chi xu ly war thuong nen danh
+    CWL khong duoc cong Coins)."""
+    war_key = war_data.get("endTime") or ""
+    if not war_key:
+        return
+    members = war_data.get("clan", {}).get("members", [])
+    for m in members:
+        attacks = m.get("attacks", [])
+        if not attacks:
+            continue
+        tracker = sb.table("war_star_tracker").select("last_order").eq("war_key", war_key).eq("player_tag", m["tag"]).execute()
+        last_order = tracker.data[0]["last_order"] if tracker.data else 0
+        new_attacks = [a for a in attacks if a.get("order", 0) > last_order]
+        if not new_attacks:
+            continue
+        stars_gained = sum(a.get("stars", 0) for a in new_attacks)
+        max_order = max(a.get("order", 0) for a in new_attacks)
+        sb.table("war_star_tracker").upsert({"war_key": war_key, "player_tag": m["tag"], "last_order": max_order}).execute()
+        if stars_gained <= 0:
+            continue
+        acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
+        coins_awarded = stars_gained * coins_per_star
+        if acc.data:
+            new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
+            sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+            if notify_war_coins_on:
+                await notify_war_coins(m.get("name", "?"), stars_gained, coins_awarded, clan_id=clan_id)
+            msg_row = {
+                "room": "clan", "sender_name": "He thong", "sender_tag": None,
+                "message": f"\u2694\ufe0f {m.get('name','?')} dat {stars_gained}\u2b50 trong war \u2014 +{coins_awarded} Coins!",
+                "is_system": True,
+            }
+            try:
+                sb.table("chat_messages").insert({**msg_row, "clan_id": clan_id}).execute()
+            except Exception:
+                sb.table("chat_messages").insert(msg_row).execute()
+
+
 async def poll_war_stars():
-    """Mỗi sao đạt được trong war (tính theo từng đòn đánh mới phát hiện) cộng
-    Coins cho người đánh (nếu đã có tài khoản), báo trong chat clan — theo từng clan."""
+    """Moi sao dat duoc trong war cong Coins cho nguoi danh -- ap dung cho
+    CA war thuong lan CWL (truoc day CWL bi bo sot, danh CWL khong duoc thuong)."""
     clans = await get_all_clans()
     sb = get_supabase()
     cfg = sb.table("settings").select("value").eq("key", "coins_per_war_star").execute()
@@ -410,45 +450,21 @@ async def poll_war_stars():
             tag = c.get("clan_tag")
             if not tag: continue
             cur = await get_current_war(tag, clan_id=clan_id)
-            if cur.get("state") not in ("inWar", "warEnded"): continue
-            war_key = cur.get("endTime") or ""
-            if not war_key: continue
+            if cur.get("state") in ("inWar", "warEnded"):
+                await _award_war_star_coins(sb, clan_id, cur, coins_per_star, notify_war_coins_on)
 
-            members = cur.get("clan", {}).get("members", [])
-            for m in members:
-                attacks = m.get("attacks", [])
-                if not attacks:
-                    continue
-                tracker = sb.table("war_star_tracker").select("last_order").eq("war_key", war_key).eq("player_tag", m["tag"]).execute()
-                last_order = tracker.data[0]["last_order"] if tracker.data else 0
-                new_attacks = [a for a in attacks if a.get("order", 0) > last_order]
-                if not new_attacks:
-                    continue
-                stars_gained = sum(a.get("stars", 0) for a in new_attacks)
-                max_order = max(a.get("order", 0) for a in new_attacks)
-                sb.table("war_star_tracker").upsert({"war_key": war_key, "player_tag": m["tag"], "last_order": max_order}).execute()
-                if stars_gained <= 0:
-                    continue
-                acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
-                coins_awarded = stars_gained * coins_per_star
-                if acc.data:
-                    new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
-                    sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
-                    if notify_war_coins_on:
-                        await notify_war_coins(m.get("name", "?"), stars_gained, coins_awarded, clan_id=clan_id)
-                    msg_row = {
-                        "room": "clan", "sender_name": "Hệ thống", "sender_tag": None,
-                        "message": f"⚔️ {m.get('name','?')} đạt {stars_gained}⭐ trong war — +{coins_awarded} Coins!",
-                        "is_system": True,
-                    }
-                    try:
-                        sb.table("chat_messages").insert({**msg_row, "clan_id": clan_id}).execute()
-                    except Exception:
-                        sb.table("chat_messages").insert(msg_row).execute()
+            try:
+                from services.coc_api import get_cwl_season_rounds
+                cwl_rounds = await get_cwl_season_rounds(tag, clan_id=clan_id)
+                for w in cwl_rounds:
+                    if w.get("state") in ("inWar", "warEnded"):
+                        await _award_war_star_coins(sb, clan_id, w, coins_per_star, notify_war_coins_on)
+            except Exception as e:
+                log.error(f"CWL star coins error (clan_id={clan_id}): {e}")
+
             log.info(f"War star coins checked (clan_id={clan_id})")
         except Exception as e:
             log.error(f"poll_war_stars error (clan_id={clan_id}): {e}")
-
 async def poll_donations():
     """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
     và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng — theo từng clan.
