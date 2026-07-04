@@ -335,7 +335,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
       )}
 
-      <div className={embedded ? "contents" : "columns-1 lg:columns-2 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6"}>
+      <div className={embedded ? "contents" : "columns-1 lg:columns-2 gap-6 [&_.card]:break-inside-avoid [&_.card]:mb-6"}>
 
       {/* ── Quản lý Clan (đã gộp chung với cấu hình CoC API — mỗi clan, kể cả
            clan chính, đều sửa Tag + API Key ngay trong danh sách bên dưới) ── */}
@@ -1264,7 +1264,7 @@ export default function SettingsPage() {
       <PushNotificationSettings />
 
       <AdminGate>
-        <div className="columns-1 lg:columns-2 xl:columns-3 gap-6 [&>*]:break-inside-avoid [&>*]:mb-6">
+        <div className="columns-1 lg:columns-2 xl:columns-3 gap-6 [&_.card]:break-inside-avoid [&_.card]:mb-6">
           <SettingsPageInner embedded />
           <EventReportsSettings />
           <MusicSettings />
