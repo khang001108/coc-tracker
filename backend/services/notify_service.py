@@ -61,19 +61,31 @@ def _markdown_to_telegram_html(text: str) -> str:
 async def notify_all(message: str, discord_color: int = 0x5865F2, title: str = "", clan_id: int = 1):
     """Gửi cùng 1 nội dung message (viết bằng **in đậm** kiểu Discord) tới cả
     Discord và Telegram — tự chuyển đổi định dạng đúng theo từng nền tảng
-    để nội dung hiển thị ĐỒNG BỘ, không bị lệch giữa 2 bên."""
+    để nội dung hiển thị ĐỒNG BỘ, không bị lệch giữa 2 bên. Tự thêm TÊN CLAN
+    vào đầu tiêu đề — tránh nhầm lẫn khi quản lý nhiều clan có bot khác nhau
+    (không biết tin nhắn đang nói về clan nào nếu chỉ nhìn nội dung)."""
     cfg = await get_notify_config(clan_id)
     webhook = cfg.get("discord_webhook", "")
     tg_token = cfg.get("telegram_bot_token", "")
     tg_chat = cfg.get("telegram_chat_id", "")
 
+    clan_name = ""
+    try:
+        sb = get_supabase()
+        res = sb.table("clans").select("clan_name").eq("id", clan_id).execute()
+        if res.data:
+            clan_name = res.data[0].get("clan_name") or ""
+    except Exception:
+        pass
+    full_title = f"[{clan_name}] {title}" if clan_name and title else title
+
     if webhook:
-        embeds = [{"title": title, "description": message, "color": discord_color}] if title else None
-        await send_discord(webhook, "" if title else message, embeds)
+        embeds = [{"title": full_title, "description": message, "color": discord_color}] if full_title else None
+        await send_discord(webhook, "" if full_title else message, embeds)
 
     if tg_token and tg_chat:
         tg_message = _markdown_to_telegram_html(message)
-        text = f"<b>{title}</b>\n{tg_message}" if title else tg_message
+        text = f"<b>{full_title}</b>\n{tg_message}" if full_title else tg_message
         await send_telegram(tg_token, tg_chat, text)
 
 # ── Specific notification helpers ─────────────────────────────────────────────

@@ -6,7 +6,7 @@ import { AdminGate } from "@/components/ui/AdminGate";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons";
-import { getCurrentClanId } from "@/lib/clanContext";
+import { getCurrentClanId, getCurrentClanInfo } from "@/lib/clanContext";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -438,6 +438,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
           <span className="font-bold text-white flex items-center gap-2">
             <MessageSquare size={16} className="text-indigo-400" /> Discord Webhook
+            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300">
+              {getCurrentClanInfo()?.clan_name || `Clan #${getCurrentClanId()}`}
+            </span>
           </span>
           <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
         </summary>
@@ -493,6 +496,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
           <span className="font-bold text-white flex items-center gap-2">
             <Send size={16} className="text-blue-400" /> Telegram Bot
+            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-300">
+              {getCurrentClanInfo()?.clan_name || `Clan #${getCurrentClanId()}`}
+            </span>
           </span>
           <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
         </summary>

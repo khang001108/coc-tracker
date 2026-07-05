@@ -140,8 +140,13 @@ async def test_discord(request: Request, _: bool = Depends(require_admin)):
         webhook = body.get("webhook_url", "").strip()
         if not webhook:
             raise HTTPException(400, "Cần webhook_url")
+        clan_id = get_clan_id(request)
+        sb = get_supabase()
+        res = sb.table("clans").select("clan_name").eq("id", clan_id).execute()
+        clan_name = res.data[0]["clan_name"] if res.data else ""
+        prefix = f"[{clan_name}] " if clan_name else ""
         async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(webhook, json={"content": "✅ CoC Tracker kết nối Discord thành công! 🏰"})
+            r = await client.post(webhook, json={"content": f"✅ {prefix}CoC Tracker kết nối Discord thành công! 🏰"})
         if r.status_code in (200, 204):
             return {"ok": True}
         raise HTTPException(r.status_code, f"Discord lỗi: {r.text[:200]}")
@@ -158,11 +163,16 @@ async def test_telegram(request: Request, _: bool = Depends(require_admin)):
         chat_id = body.get("chat_id", "").strip()
         if not token or not chat_id:
             raise HTTPException(400, "Cần bot_token và chat_id")
+        clan_id = get_clan_id(request)
+        sb = get_supabase()
+        res = sb.table("clans").select("clan_name").eq("id", clan_id).execute()
+        clan_name = res.data[0]["clan_name"] if res.data else ""
+        prefix = f"[{clan_name}] " if clan_name else ""
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(url, json={
                 "chat_id": chat_id,
-                "text": "✅ CoC Tracker kết nối Telegram thành công! 🏰"
+                "text": f"✅ {prefix}CoC Tracker kết nối Telegram thành công! 🏰"
             })
         data = r.json()
         if data.get("ok"):
