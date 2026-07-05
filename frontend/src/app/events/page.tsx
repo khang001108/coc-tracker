@@ -1057,9 +1057,6 @@ export default function EventsPage() {
         <CreateEventGate>
           <CreateEventForm onCreated={load}/>
         </CreateEventGate>
-        <button onClick={load} className="btn-secondary flex items-center gap-2 text-sm ml-auto">
-          <RefreshCw size={14}/> Làm mới
-        </button>
       </div>
 
       {loading ? (

@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Castle, Gamepad2,
-  Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle, UserCircle2, Store
+  Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle, UserCircle2, Store, RotateCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { GamePlayButton } from "@/components/ui/GamePlayButton";
-import { getMemberAuth } from "@/lib/api";
+import { getMemberAuth, api } from "@/lib/api";
 
 const NAV = [
   { href: "/",          label: "Tổng quan",    icon: LayoutDashboard },
@@ -30,6 +30,21 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname();
   const [memberName, setMemberName] = useState<string | null>(null);
+  const [cacheBusy, setCacheBusy] = useState(false);
+  const [cacheMsg, setCacheMsg] = useState("");
+
+  async function clearCacheNow() {
+    setCacheBusy(true); setCacheMsg("");
+    try {
+      const res = await api.clearCache();
+      setCacheMsg(`Đã xoá ${res.cleared} mục — đang tải lại...`);
+      setTimeout(() => window.location.reload(), 400);
+    } catch {
+      setCacheMsg("Lỗi xoá cache");
+      setCacheBusy(false);
+      setTimeout(() => setCacheMsg(""), 2000);
+    }
+  }
 
   useEffect(() => {
     setMemberName(getMemberAuth()?.player_name || null);
@@ -101,6 +116,11 @@ export function Sidebar() {
 
       <div className="p-3 border-t border-gray-800 space-y-2">
         <ThemeToggle />
+        <button onClick={clearCacheNow} disabled={cacheBusy}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-gray-500 hover:text-yellow-400 hover:bg-gray-800 transition-colors disabled:opacity-60">
+          <RotateCw size={13} className={cacheBusy ? "animate-spin" : ""} /> Xoá cache & tải lại
+        </button>
+        {cacheMsg && <p className="text-[10px] text-gray-600 text-center">{cacheMsg}</p>}
         <GamePlayButton
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-white transition-transform hover:scale-[1.02]"
           style={{ background: "linear-gradient(135deg, #F4A130, #8B4513)" }}>

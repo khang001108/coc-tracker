@@ -5,14 +5,14 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Users, Settings, MoreHorizontal,
   Castle, Gamepad2, Heart, BarChart3, PartyPopper, X, Shield,
-  MessageCircle, UserCheck, UserCircle2, Store,
+  MessageCircle, UserCheck, UserCircle2, Store, RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Portal } from "@/components/ui/Portal";
 import { MusicControls } from "@/components/ui/MusicControls";
 import { GamePlayButton } from "@/components/ui/GamePlayButton";
-import { getMemberAuth } from "@/lib/api";
+import { getMemberAuth, api } from "@/lib/api";
 import { useNotifications } from "@/components/ui/NotificationContext";
 
 const LEFT = [
@@ -64,7 +64,22 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [memberName, setMemberName] = useState<string | null>(null);
   const [pressing, setPressing] = useState(false);
+  const [cacheBusy, setCacheBusy] = useState(false);
+  const [cacheMsg, setCacheMsg] = useState("");
   const moreActive = MORE.some(({ href }) => pathname.startsWith(href));
+
+  async function clearCacheNow() {
+    setCacheBusy(true); setCacheMsg("");
+    try {
+      const res = await api.clearCache();
+      setCacheMsg(`Đã xoá ${res.cleared} mục — đang tải lại...`);
+      setTimeout(() => window.location.reload(), 400);
+    } catch {
+      setCacheMsg("Lỗi xoá cache");
+      setCacheBusy(false);
+      setTimeout(() => setCacheMsg(""), 2000);
+    }
+  }
 
   useEffect(() => {
     setMemberName(getMemberAuth()?.player_name || null);
@@ -200,7 +215,17 @@ export function MobileNav() {
                     </Link>
                   );
                 })}
+                <button onClick={clearCacheNow} disabled={cacheBusy}
+                  className="flex flex-col items-center justify-center gap-2 py-4 rounded-xl border transition-colors border-gray-800 bg-gray-800/40 disabled:opacity-60">
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-800 border border-gray-700">
+                    <RotateCw size={16} className={cn("text-gray-400", cacheBusy && "animate-spin")} />
+                  </span>
+                  <span className="text-[11px] font-medium text-center truncate w-full px-1 text-gray-300">
+                    Xoá cache
+                  </span>
+                </button>
               </div>
+              {cacheMsg && <p className="text-[11px] text-gray-500 text-center -mt-1 mb-3">{cacheMsg}</p>}
               <div className="mb-3"><MusicControls /></div>
               <ThemeToggle />
             </div>

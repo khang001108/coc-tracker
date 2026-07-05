@@ -97,9 +97,31 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
     api.getPublicSettings().then(setOverviewCfg).catch(() => {});
-    // Auto-refresh mỗi 5 phút
-    const t = setInterval(() => load(), 5 * 60 * 1000);
-    return () => clearInterval(t);
+    // Auto-refresh mỗi 5 phút — CHỈ khi tab đang thật sự hiển thị, để không
+    // tốn tải/pin khi tab bị ẩn (chuyển app khác, khoá màn hình...). Khi
+    // quay lại tab, tải mới ngay lập tức thay vì đợi tới mốc 5 phút tiếp theo.
+    let t: ReturnType<typeof setInterval> | null = null;
+    function startInterval() {
+      if (t) return;
+      t = setInterval(() => load(), 5 * 60 * 1000);
+    }
+    function stopInterval() {
+      if (t) { clearInterval(t); t = null; }
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        load();
+        startInterval();
+      } else {
+        stopInterval();
+      }
+    }
+    startInterval();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      stopInterval();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   if (loading) return (

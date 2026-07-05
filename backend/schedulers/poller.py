@@ -8,6 +8,7 @@ donate, và coin thưởng sao war hoạt động độc lập, đúng của cla
 """
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+import asyncio
 from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config, get_cwl_group, get_cwl_war
 from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave, notify_donate_coins, notify_war_coins
 from services.push_service import send_push_to_clan
@@ -244,6 +245,60 @@ async def _log_cwl_participation(sb, clan_id: int, tag: str):
             _log_war_participation(sb, clan_id, w, war_type="cwl")
 
 
+async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
+    """Xu ly 1 clan cho poll_war -- tach rieng de chay SONG SONG nhieu clan
+    cung luc (asyncio.gather) thay vi lan luot tung clan mot, giup 1 vong
+    poll xong nhanh hon nhieu khi co nhieu clan (dac biet la phan CWL)."""
+    try:
+        tag = c.get("clan_tag")
+        if not tag: return
+        data = await get_current_war(tag, clan_id=c["id"])
+        state = data.get("state", "notInWar")
+
+        upsert_snapshot("snapshot_war", data, clan_id=c["id"])
+
+        if state == "inWar":
+            members = data.get("clan", {}).get("members", [])
+            missing = []
+            for m in members:
+                attacks = m.get("attacks", [])
+                if len(attacks) < 1:
+                    missing.append(m.get("name", "?"))
+            end_time = data.get("endTime", "")
+            hours_left = _hours_until(end_time)
+            if (missing and c.get("notify_war", True) and end_time
+                    and hours_left is not None and hours_left <= war_reminder_hours
+                    and should_notify_once(sb, c["id"], "war_reminder", end_time)):
+                await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
+                await send_push_to_clan(c["id"], "\u2694\ufe0f Nhac danh War",
+                    f"{len(missing)} thanh vien chua danh, con {war_reminder_hours}h la ket thuc!", kind="war")
+
+        if state == "warEnded":
+            _log_war_participation(sb, c["id"], data, war_type="random")
+
+        await _log_cwl_participation(sb, c["id"], tag)
+
+        try:
+            from services.coc_api import get_cwl_season_rounds
+            cwl_rounds = await get_cwl_season_rounds(tag, clan_id=c["id"])
+            cwl_current = next((w for w in cwl_rounds if w.get("state") == "inWar"), None)
+            if cwl_current and c.get("notify_war", True) and notify_cwl_on:
+                cwl_end = cwl_current.get("endTime", "")
+                cwl_hours_left = _hours_until(cwl_end)
+                cwl_missing = [m.get("name", "?") for m in cwl_current.get("clan", {}).get("members", []) if len(m.get("attacks", [])) < 1]
+                if (cwl_missing and cwl_end and cwl_hours_left is not None and cwl_hours_left <= war_reminder_hours
+                        and should_notify_once(sb, c["id"], "cwl_reminder", cwl_end)):
+                    await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"])
+                    await send_push_to_clan(c["id"], "\U0001F3C6 Nhac danh CWL",
+                        f"{len(cwl_missing)} thanh vien chua danh CWL, con {war_reminder_hours}h la ket thuc!", kind="war")
+        except Exception as e:
+            log.error(f"CWL reminder error (clan_id={c['id']}): {e}")
+
+        log.info(f"War snapshot updated (clan_id={c['id']}): {state}")
+    except Exception as e:
+        log.error(f"poll_war error (clan_id={c.get('id')}): {e}")
+
+
 async def poll_war():
     sb = get_supabase()
     clans = await get_all_clans()
@@ -251,59 +306,10 @@ async def poll_war():
     war_reminder_hours = float(rcfg.data[0]["value"]) if rcfg.data and rcfg.data[0]["value"] else 2
     ncfg = sb.table("settings").select("value").eq("key", "notify_cwl").execute()
     notify_cwl_on = not (ncfg.data and ncfg.data[0]["value"] == "false")
-    for c in clans:
-        try:
-            tag = c.get("clan_tag")
-            if not tag: continue
-            data = await get_current_war(tag, clan_id=c["id"])
-            state = data.get("state", "notInWar")
-
-            upsert_snapshot("snapshot_war", data, clan_id=c["id"])
-
-            # Check for members who haven't attacked
-            if state == "inWar":
-                members = data.get("clan", {}).get("members", [])
-                missing = []
-                for m in members:
-                    attacks = m.get("attacks", [])
-                    if len(attacks) < 1:
-                        missing.append(m.get("name", "?"))
-                end_time = data.get("endTime", "")
-                hours_left = _hours_until(end_time)
-                if (missing and c.get("notify_war", True) and end_time
-                        and hours_left is not None and hours_left <= war_reminder_hours
-                        and should_notify_once(sb, c["id"], "war_reminder", end_time)):
-                    await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
-                    await send_push_to_clan(c["id"], "⚔️ Nhắc đánh War",
-                        f"{len(missing)} thành viên chưa đánh, còn {war_reminder_hours}h là kết thúc!", kind="war")
-
-            # War đã kết thúc — ghi lại lượt tham chiến từng người cho thống kê tích luỹ
-            if state == "warEnded":
-                _log_war_participation(sb, c["id"], data, war_type="random")
-
-            # CWL: ghi lại vòng vừa kết thúc (nếu có)
-            await _log_cwl_participation(sb, c["id"], tag)
-
-            # CWL: nhắc đánh vòng đang diễn ra (dùng chung ngưỡng giờ với war thường)
-            try:
-                from services.coc_api import get_cwl_season_rounds
-                cwl_rounds = await get_cwl_season_rounds(tag, clan_id=c["id"])
-                cwl_current = next((w for w in cwl_rounds if w.get("state") == "inWar"), None)
-                if cwl_current and c.get("notify_war", True) and notify_cwl_on:
-                    cwl_end = cwl_current.get("endTime", "")
-                    cwl_hours_left = _hours_until(cwl_end)
-                    cwl_missing = [m.get("name", "?") for m in cwl_current.get("clan", {}).get("members", []) if len(m.get("attacks", [])) < 1]
-                    if (cwl_missing and cwl_end and cwl_hours_left is not None and cwl_hours_left <= war_reminder_hours
-                            and should_notify_once(sb, c["id"], "cwl_reminder", cwl_end)):
-                        await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"])
-                        await send_push_to_clan(c["id"], "🏆 Nhắc đánh CWL",
-                            f"{len(cwl_missing)} thành viên chưa đánh CWL, còn {war_reminder_hours}h là kết thúc!", kind="war")
-            except Exception as e:
-                log.error(f"CWL reminder error (clan_id={c['id']}): {e}")
-
-            log.info(f"War snapshot updated (clan_id={c['id']}): {state}")
-        except Exception as e:
-            log.error(f"poll_war error (clan_id={c.get('id')}): {e}")
+    # Chay song song tat ca clan cung luc (truoc day lan luot tung clan, cham
+    # hon nhieu khi co vai clan tro len vi moi clan phai cho CWL xong moi den
+    # clan tiep theo).
+    await asyncio.gather(*[_poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on) for c in clans])
 
 async def poll_raid():
     clans = await get_all_clans()
@@ -434,9 +440,32 @@ async def _award_war_star_coins(sb, clan_id: int, war_data: dict, coins_per_star
                 sb.table("chat_messages").insert(msg_row).execute()
 
 
+async def _poll_war_stars_for_clan(sb, c, coins_per_star, notify_war_coins_on):
+    clan_id = c["id"]
+    try:
+        tag = c.get("clan_tag")
+        if not tag: return
+        cur = await get_current_war(tag, clan_id=clan_id)
+        if cur.get("state") in ("inWar", "warEnded"):
+            await _award_war_star_coins(sb, clan_id, cur, coins_per_star, notify_war_coins_on)
+
+        try:
+            from services.coc_api import get_cwl_season_rounds
+            cwl_rounds = await get_cwl_season_rounds(tag, clan_id=clan_id)
+            for w in cwl_rounds:
+                if w.get("state") in ("inWar", "warEnded"):
+                    await _award_war_star_coins(sb, clan_id, w, coins_per_star, notify_war_coins_on)
+        except Exception as e:
+            log.error(f"CWL star coins error (clan_id={clan_id}): {e}")
+
+        log.info(f"War star coins checked (clan_id={clan_id})")
+    except Exception as e:
+        log.error(f"poll_war_stars error (clan_id={clan_id}): {e}")
+
+
 async def poll_war_stars():
     """Moi sao dat duoc trong war cong Coins cho nguoi danh -- ap dung cho
-    CA war thuong lan CWL (truoc day CWL bi bo sot, danh CWL khong duoc thuong)."""
+    CA war thuong lan CWL. Chay song song tat ca clan cung luc."""
     clans = await get_all_clans()
     sb = get_supabase()
     cfg = sb.table("settings").select("value").eq("key", "coins_per_war_star").execute()
@@ -444,27 +473,8 @@ async def poll_war_stars():
     ncfg = sb.table("settings").select("value").eq("key", "notify_war_coins").execute()
     notify_war_coins_on = not (ncfg.data and ncfg.data[0]["value"] == "false")
 
-    for c in clans:
-        clan_id = c["id"]
-        try:
-            tag = c.get("clan_tag")
-            if not tag: continue
-            cur = await get_current_war(tag, clan_id=clan_id)
-            if cur.get("state") in ("inWar", "warEnded"):
-                await _award_war_star_coins(sb, clan_id, cur, coins_per_star, notify_war_coins_on)
+    await asyncio.gather(*[_poll_war_stars_for_clan(sb, c, coins_per_star, notify_war_coins_on) for c in clans])
 
-            try:
-                from services.coc_api import get_cwl_season_rounds
-                cwl_rounds = await get_cwl_season_rounds(tag, clan_id=clan_id)
-                for w in cwl_rounds:
-                    if w.get("state") in ("inWar", "warEnded"):
-                        await _award_war_star_coins(sb, clan_id, w, coins_per_star, notify_war_coins_on)
-            except Exception as e:
-                log.error(f"CWL star coins error (clan_id={clan_id}): {e}")
-
-            log.info(f"War star coins checked (clan_id={clan_id})")
-        except Exception as e:
-            log.error(f"poll_war_stars error (clan_id={clan_id}): {e}")
 async def poll_donations():
     """So sánh donate hiện tại với lần quét trước, đăng tin hệ thống vào chat clan
     và cộng Coins cho tài khoản (nếu đã được nhận) khi phát hiện donate tăng — theo từng clan.

@@ -40,9 +40,17 @@ export default function GamesPage() {
 
   useEffect(() => {
     load();
-    // Auto-refresh mỗi 5 phút
-    const t = setInterval(() => load(true), 5 * 60 * 1000);
-    return () => clearInterval(t);
+    // Auto-refresh mỗi 5 phút — tạm dừng khi tab bị ẩn để đỡ tốn tải/pin
+    let t: ReturnType<typeof setInterval> | null = null;
+    function startInterval() { if (!t) t = setInterval(() => load(true), 5 * 60 * 1000); }
+    function stopInterval() { if (t) { clearInterval(t); t = null; } }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") { load(true); startInterval(); }
+      else stopInterval();
+    }
+    startInterval();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => { stopInterval(); document.removeEventListener("visibilitychange", onVisibilityChange); };
   }, []);
 
   const sorted = [...members].sort((a, b) => b.donations - a.donations);
@@ -56,18 +64,11 @@ export default function GamesPage() {
         style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.14), rgba(139,69,19,0.08))" }}>
         <ArtBanner src={bannerSrc} opacity={0.85} objectPosition="center 30%" />
         <EmberField count={16} speed={1} color={emberColor} />
-        <div className="relative flex items-start justify-between gap-3 banner-content">
-          <div>
-            <h1 className="page-title flex items-center gap-2">
-              <Gamepad2 size={22} className="text-purple-400" /> Clan Games
-            </h1>
-            <p className="page-subtitle">Điểm đóng góp của từng thành viên</p>
-          </div>
-          <button onClick={() => load(true)} disabled={refreshing}
-            className="btn-secondary flex items-center gap-2 text-sm shrink-0">
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            Làm mới
-          </button>
+        <div className="relative banner-content">
+          <h1 className="page-title flex items-center gap-2">
+            <Gamepad2 size={22} className="text-purple-400" /> Clan Games
+          </h1>
+          <p className="page-subtitle">Điểm đóng góp của từng thành viên</p>
         </div>
       </div>
 
