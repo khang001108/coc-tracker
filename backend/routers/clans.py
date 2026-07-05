@@ -8,6 +8,7 @@ from auth import require_admin
 from clan_context import get_clan_id
 import secrets
 import json
+from datetime import datetime
 
 router = APIRouter()
 
@@ -29,6 +30,27 @@ def _clear_accumulated_stats(sb, clan_id: int):
             sb.table(table).delete().eq(col, clan_id).execute()
         except Exception:
             pass  # bảng/cột chưa tồn tại (chưa chạy đủ migration) — bỏ qua, không chặn việc đổi tag
+
+
+async def _reseed_member_log_silently(sb, clan_id: int, tag: str):
+    """QUAN TRỌNG: sau khi xoá member_log (ở trên) để dọn sạch clan cũ, PHẢI
+    nạp lại ngay danh sách thành viên của clan MỚI vào member_log (không gửi
+    thông báo) — nếu không, poll_members() lần quét tiếp theo sẽ thấy
+    member_log trống trơn, tưởng nhầm CẢ CLAN vừa mới tham gia cùng lúc, gửi
+    tràn ngập thông báo "vừa tham gia clan" cho tất cả mọi người (đây chính
+    xác là lỗi đã xảy ra khi đổi tag xong không dọn lại bước này)."""
+    try:
+        from services.coc_api import get_clan_members
+        members = await get_clan_members(tag, clan_id=clan_id)
+        rows = [{
+            "clan_id": clan_id, "player_tag": m["tag"], "name": m.get("name"),
+            "th_level": m.get("townHallLevel", 0), "status": "active",
+            "joined_at": datetime.utcnow().isoformat(),
+        } for m in members]
+        if rows:
+            sb.table("member_log").insert(rows).execute()
+    except Exception:
+        pass
 
 
 # ─── List all clans ───────────────────────────────────────────────────────────
@@ -146,6 +168,7 @@ async def public_slot_update(request: Request):
     except Exception:
         pass
     _clear_accumulated_stats(sb, clan_id)
+    await _reseed_member_log_silently(sb, clan_id, clan_tag)
     from schedulers.poller import upsert_snapshot
     upsert_snapshot("snapshot_clan", live, clan_id=clan_id)
 
@@ -246,6 +269,7 @@ async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_
         except Exception:
             pass
         _clear_accumulated_stats(sb, clan_id)
+        await _reseed_member_log_silently(sb, clan_id, update["clan_tag"])
         try:
             from services.coc_api import get_clan as fetch_clan_live
             from schedulers.poller import upsert_snapshot

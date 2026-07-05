@@ -330,6 +330,7 @@ export const api = {
     apiFetch("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
   pushPreferences: (endpoint: string, prefs: { notify_chat?: boolean; notify_event?: boolean; notify_war?: boolean; notify_raid?: boolean; clan_ids?: number[] }) =>
     apiFetch("/api/push/preferences", { method: "PUT", body: JSON.stringify({ endpoint, ...prefs }) }),
+  getMySubscription: (endpoint: string) => apiFetch(`/api/push/my-subscription?endpoint=${encodeURIComponent(endpoint)}`),
 
   // Chat
   getMessages: (room: "clan" | "global", afterId = 0) =>

@@ -1446,7 +1446,9 @@ function PushNotificationSettings() {
   const [notifyRaid, setNotifyRaid] = useState(true);
   const [clans, setClans] = useState<any[]>([]);
   const [selectedClanIds, setSelectedClanIds] = useState<number[]>([]);
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
 
   function flashMsg(text: string, type: "error" | "success" = "error") {
@@ -1460,6 +1462,20 @@ function PushNotificationSettings() {
     setPermission(await getPushPermission());
     const sub = await getCurrentSubscription();
     setSubscribed(!!sub);
+    // Đọc lại ĐÚNG cấu hình đã lưu trên server — trước đây không đọc lại nên
+    // tải lại trang là tưởng nhầm về mặc định, mất hết tick đã chọn.
+    if (sub) {
+      try {
+        const saved = await api.getMySubscription(sub.endpoint);
+        if (saved) {
+          setNotifyChat(saved.notify_chat ?? true);
+          setNotifyEvent(saved.notify_event ?? true);
+          setNotifyWar(saved.notify_war ?? true);
+          setNotifyRaid(saved.notify_raid ?? true);
+          if (saved.clan_ids?.length) setSelectedClanIds(saved.clan_ids);
+        }
+      } catch {}
+    }
   }
 
   useEffect(() => {
@@ -1494,43 +1510,43 @@ function PushNotificationSettings() {
     }
   }
 
-  async function updatePref(key: "notify_chat" | "notify_event" | "notify_war" | "notify_raid", val: boolean) {
+  function updatePref(key: "notify_chat" | "notify_event" | "notify_war" | "notify_raid", val: boolean) {
     if (key === "notify_chat") setNotifyChat(val);
     else if (key === "notify_event") setNotifyEvent(val);
     else if (key === "notify_war") setNotifyWar(val);
     else setNotifyRaid(val);
-    if (!subscribed) return;
-    const { getCurrentSubscription } = await import("@/lib/push");
-    const sub = await getCurrentSubscription();
-    if (sub) {
-      try { await api.pushPreferences(sub.endpoint, { [key]: val }); }
-      catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
-    }
+    setDirty(true);
   }
 
-  async function toggleClanSelection(id: number) {
-    const next = selectedClanIds.includes(id) ? selectedClanIds.filter(x => x !== id) : [...selectedClanIds, id];
-    setSelectedClanIds(next);
-    if (!subscribed) return;
-    const { getCurrentSubscription } = await import("@/lib/push");
-    const sub = await getCurrentSubscription();
-    if (sub) {
-      try { await api.pushPreferences(sub.endpoint, { clan_ids: next.length ? next : [getCurrentClanId()] }); }
-      catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
-    }
+  function toggleClanSelection(id: number) {
+    setSelectedClanIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setDirty(true);
   }
 
-  async function selectAllClans() {
+  function selectAllClans() {
     const allIds = clans.map(c => c.id);
-    const isAll = selectedClanIds.length === clans.length;
-    const next = isAll ? [getCurrentClanId()] : allIds;
-    setSelectedClanIds(next);
+    setSelectedClanIds(prev => prev.length === clans.length ? [getCurrentClanId()] : allIds);
+    setDirty(true);
+  }
+
+  async function saveAllPrefs() {
     if (!subscribed) return;
-    const { getCurrentSubscription } = await import("@/lib/push");
-    const sub = await getCurrentSubscription();
-    if (sub) {
-      try { await api.pushPreferences(sub.endpoint, { clan_ids: next }); }
-      catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
+    setSaving(true);
+    try {
+      const { getCurrentSubscription } = await import("@/lib/push");
+      const sub = await getCurrentSubscription();
+      if (sub) {
+        await api.pushPreferences(sub.endpoint, {
+          notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid,
+          clan_ids: selectedClanIds.length ? selectedClanIds : [getCurrentClanId()],
+        });
+        setDirty(false);
+        flashMsg("Đã lưu và áp dụng!", "success");
+      }
+    } catch (e: any) {
+      flashMsg(e.message || "Lỗi lưu");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1596,6 +1612,13 @@ function PushNotificationSettings() {
             </label>
           ))}
         </div>
+      )}
+
+      {subscribed && (
+        <button onClick={saveAllPrefs} disabled={saving || !dirty}
+          className="btn-gold w-full flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+          {saving ? "Đang lưu..." : dirty ? "💾 Lưu & áp dụng ngay" : "✓ Đã lưu"}
+        </button>
       )}
 
       {msg && <MiniToast msg={msg.text} type={msg.type} />}

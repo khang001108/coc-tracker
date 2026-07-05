@@ -22,6 +22,19 @@ async def vapid_public_key():
     return {"key": VAPID_PUBLIC_KEY, "enabled": push_enabled(), "reason": reason}
 
 
+@router.get("/my-subscription")
+async def my_subscription(endpoint: str):
+    """Lấy lại đúng cấu hình đã lưu (loại thông báo + clan đã chọn) của 1
+    subscription — để hiện lại đúng trạng thái khi tải lại trang, thay vì
+    web tưởng nhầm về mặc định ban đầu (đây là lỗi đã gặp: tick chọn clan
+    xong tải lại trang bị mất tick vì trước đó không có cách đọc lại)."""
+    sb = get_supabase()
+    res = sb.table("push_subscriptions").select("notify_chat,notify_event,notify_war,notify_raid,clan_ids,clan_id").eq("endpoint", endpoint).execute()
+    if not res.data:
+        return None
+    return res.data[0]
+
+
 @router.post("/subscribe")
 async def subscribe(
     request: Request,
