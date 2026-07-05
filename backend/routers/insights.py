@@ -12,6 +12,36 @@ from datetime import datetime, timedelta
 router = APIRouter()
 
 
+@router.get("/top-coins")
+async def top_coins(request: Request, limit: int = Query(10, le=50)):
+    """Xếp hạng ai đang có nhiều Coins nhất (chỉ tính người đã đăng nhập/nhận
+    tài khoản trên web, vì Coins chỉ tồn tại cho nhóm này)."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    tag = None
+    try:
+        from clan_context import get_tag_by_clan_id
+        tag = await get_tag_by_clan_id(clan_id)
+    except Exception:
+        pass
+    # Lọc đúng thành viên đang trong clan này (member_accounts không phải lúc
+    # nào cũng có clan_id nếu chưa chạy hết migration — nên đối chiếu qua
+    # roster hiện tại của CoC API cho chắc).
+    try:
+        from services.coc_api import get_clan_members
+        members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+        member_tags = {m["tag"] for m in members}
+    except Exception:
+        member_tags = None
+
+    res = sb.table("member_accounts").select("player_tag,player_name,coins").order("coins", desc=True).execute()
+    rows = res.data or []
+    if member_tags is not None:
+        rows = [r for r in rows if r["player_tag"] in member_tags]
+    rows = [r for r in rows if (r.get("coins") or 0) > 0][:limit]
+    return {"top": [{"tag": r["player_tag"], "name": r["player_name"], "coins": r.get("coins") or 0} for r in rows]}
+
+
 def _period_cutoff(period: str) -> str | None:
     if period == "week":
         return (datetime.utcnow() - timedelta(days=7)).isoformat()

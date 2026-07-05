@@ -20,16 +20,59 @@ log = logging.getLogger("poller")
 scheduler = AsyncIOScheduler()
 
 async def start_scheduler():
+    sb = get_supabase()
+
+    def _cfg_minutes(key: str, default: int) -> int:
+        try:
+            res = sb.table("settings").select("value").eq("key", key).execute()
+            if res.data and res.data[0]["value"].isdigit():
+                return max(1, int(res.data[0]["value"]))
+        except Exception:
+            pass
+        return default
+
+    donate_minutes = _cfg_minutes("poll_interval_donate_minutes", 10)
+    members_minutes = _cfg_minutes("poll_interval_members_minutes", 10)
+
     scheduler.add_job(poll_clan,      IntervalTrigger(minutes=15), id="poll_clan",      replace_existing=True)
     scheduler.add_job(poll_war,       IntervalTrigger(minutes=5),  id="poll_war",       replace_existing=True)
     scheduler.add_job(poll_war_stars, IntervalTrigger(minutes=5),  id="poll_war_stars", replace_existing=True)
     scheduler.add_job(poll_raid,      IntervalTrigger(minutes=10), id="poll_raid",      replace_existing=True)
-    scheduler.add_job(poll_members,   IntervalTrigger(minutes=10), id="poll_members",   replace_existing=True)
-    scheduler.add_job(poll_donations, IntervalTrigger(minutes=10), id="poll_donations", replace_existing=True)
+    scheduler.add_job(poll_members,   IntervalTrigger(minutes=members_minutes), id="poll_members",   replace_existing=True)
+    scheduler.add_job(poll_donations, IntervalTrigger(minutes=donate_minutes),  id="poll_donations", replace_existing=True)
     scheduler.add_job(poll_asset_cleanup, IntervalTrigger(hours=6), id="poll_asset_cleanup", replace_existing=True)
     scheduler.add_job(poll_stats_cleanup, IntervalTrigger(hours=12), id="poll_stats_cleanup", replace_existing=True)
     scheduler.add_job(poll_global_chat_cleanup, IntervalTrigger(hours=1), id="poll_global_chat_cleanup", replace_existing=True)
+    # Job "canh" cấu hình — cho phép đổi chu kỳ quét Donate/Thành viên trong Cài
+    # đặt có hiệu lực NGAY, không cần khởi động lại server.
+    scheduler.add_job(poll_check_intervals, IntervalTrigger(minutes=2), id="poll_check_intervals", replace_existing=True)
     scheduler.start()
+
+async def poll_check_intervals():
+    """Kiểm tra xem admin có vừa đổi chu kỳ quét Donate/Thành viên trong Cài
+    đặt không — nếu có thì áp dụng ngay, không cần khởi động lại server."""
+    sb = get_supabase()
+
+    def _cfg_minutes(key: str, default: int) -> int:
+        try:
+            res = sb.table("settings").select("value").eq("key", key).execute()
+            if res.data and res.data[0]["value"].isdigit():
+                return max(1, int(res.data[0]["value"]))
+        except Exception:
+            pass
+        return default
+
+    for job_id, key, default in [
+        ("poll_donations", "poll_interval_donate_minutes", 10),
+        ("poll_members", "poll_interval_members_minutes", 10),
+    ]:
+        wanted = _cfg_minutes(key, default)
+        job = scheduler.get_job(job_id)
+        if job and getattr(job.trigger, "interval", None):
+            current_minutes = job.trigger.interval.total_seconds() / 60
+            if abs(current_minutes - wanted) >= 1:
+                scheduler.reschedule_job(job_id, trigger=IntervalTrigger(minutes=wanted))
+                log.info(f"Đã đổi chu kỳ {job_id} sang {wanted} phút")
     log.info("Scheduler started")
 
 async def stop_scheduler():
@@ -515,20 +558,27 @@ async def poll_donations():
 
                 if old is not None and cur > old:
                     diff = cur - old
+                    # Chỉ cộng Coins + nhắc "Coins" trong tin nhắn nếu người này ĐÃ
+                    # nhận tài khoản (claim) trên web — trước đây tin nhắn luôn ghi
+                    # "+X Coins!" dù người đó chưa đăng nhập nên chưa hề được cộng gì.
+                    acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
+                    has_account = bool(acc.data)
+                    if has_account:
+                        text = f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur}) — +{diff} Coins!"
+                    else:
+                        text = f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur})"
                     msg_row = {
                         "room": "clan",
                         "sender_name": "Hệ thống",
                         "sender_tag": None,
-                        "message": f"🎁 {m.get('name','?')} vừa donate thêm {diff} quân (tổng {cur}) — +{diff} Coins!",
+                        "message": text,
                         "is_system": True,
                     }
                     try:
                         sb.table("chat_messages").insert({**msg_row, "clan_id": clan_id}).execute()
                     except Exception:
                         sb.table("chat_messages").insert(msg_row).execute()
-                    # Cộng Coins nếu tài khoản player này đã được ai đó nhận (claim)
-                    acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
-                    if acc.data:
+                    if has_account:
                         new_coins = (acc.data[0].get("coins") or 0) + diff
                         sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
                         if notify_donate_on:

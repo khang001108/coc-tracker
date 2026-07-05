@@ -1,4 +1,5 @@
 import httpx
+import re
 from supabase_client import get_supabase
 
 async def get_notify_config(clan_id: int = 1) -> dict:
@@ -49,8 +50,18 @@ async def send_telegram(bot_token: str, chat_id: str, message: str):
             "parse_mode": "HTML"
         })
 
+def _markdown_to_telegram_html(text: str) -> str:
+    """Chuyển **in đậm** (markdown Discord dùng) sang <b>in đậm</b> (HTML mà
+    Telegram cần) — để chỉ cần viết nội dung tin nhắn 1 LẦN DUY NHẤT theo 1
+    kiểu, tự động hiện đúng định dạng ở CẢ 2 nền tảng, không bị lệch nhau
+    (trước đây có chỗ dùng <b> lộ ra chữ thô trên Discord vì Discord không
+    hiểu HTML, có chỗ lại không in đậm gì cả — không đồng bộ)."""
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+
 async def notify_all(message: str, discord_color: int = 0x5865F2, title: str = "", clan_id: int = 1):
-    """Send to both Discord and Telegram using the config of the given clan."""
+    """Gửi cùng 1 nội dung message (viết bằng **in đậm** kiểu Discord) tới cả
+    Discord và Telegram — tự chuyển đổi định dạng đúng theo từng nền tảng
+    để nội dung hiển thị ĐỒNG BỘ, không bị lệch giữa 2 bên."""
     cfg = await get_notify_config(clan_id)
     webhook = cfg.get("discord_webhook", "")
     tg_token = cfg.get("telegram_bot_token", "")
@@ -61,37 +72,40 @@ async def notify_all(message: str, discord_color: int = 0x5865F2, title: str = "
         await send_discord(webhook, "" if title else message, embeds)
 
     if tg_token and tg_chat:
-        text = f"<b>{title}</b>\n{message}" if title else message
+        tg_message = _markdown_to_telegram_html(message)
+        text = f"<b>{title}</b>\n{tg_message}" if title else tg_message
         await send_telegram(tg_token, tg_chat, text)
 
 # ── Specific notification helpers ─────────────────────────────────────────────
+# Tất cả đều viết theo 1 kiểu thống nhất: **in đậm** cho tên/số liệu quan
+# trọng — notify_all() tự lo phần chuyển đổi cho đúng từng nền tảng.
 
 async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: int = 1):
     if not missing:
         return
     names = ", ".join(missing)
-    msg = f"⚔️ Nhắc đánh War!\n{len(missing)} thành viên chưa dùng hết attack:\n{names}\nKết thúc: {war_end}"
+    msg = f"⚔️ Nhắc đánh War!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}\nKết thúc: {war_end}"
     await notify_all(msg, discord_color=0xED4245, title="⚔️ Chưa đánh War", clan_id=clan_id)
 
 async def notify_raid_reminder(missing: list[str], clan_id: int = 1):
     if not missing:
         return
     names = ", ".join(missing)
-    msg = f"🏰 Nhắc Raid Weekend!\n{len(missing)} thành viên chưa tham gia Raid:\n{names}"
+    msg = f"🏰 Nhắc Raid Weekend!\n**{len(missing)} thành viên** chưa tham gia Raid:\n{names}"
     await notify_all(msg, discord_color=0xFEE75C, title="🏰 Chưa tham gia Raid", clan_id=clan_id)
 
 async def notify_member_join(name: str, th: int, clan_id: int = 1):
-    msg = f"👋 <b>{name}</b> (TH{th}) vừa tham gia clan!"
+    msg = f"👋 **{name}** (TH{th}) vừa tham gia clan!"
     await notify_all(msg, discord_color=0x57F287, title="👋 Thành viên mới", clan_id=clan_id)
 
 async def notify_member_leave(name: str, clan_id: int = 1):
-    msg = f"🚪 <b>{name}</b> vừa rời clan."
+    msg = f"🚪 **{name}** vừa rời clan."
     await notify_all(msg, discord_color=0xEB459E, title="🚪 Thành viên rời", clan_id=clan_id)
 
 async def notify_donate_coins(name: str, diff: int, total: int, coins: int, clan_id: int = 1):
-    msg = f"🎁 <b>{name}</b> vừa donate thêm {diff} quân (tổng {total}) — nhận +{coins} Coins!"
+    msg = f"🎁 **{name}** vừa donate thêm {diff} quân (tổng {total}) — nhận **+{coins} Coins**!"
     await notify_all(msg, discord_color=0x57F287, title="🎁 Donate nhận Coins", clan_id=clan_id)
 
 async def notify_war_coins(name: str, stars: int, coins: int, clan_id: int = 1):
-    msg = f"⚔️ <b>{name}</b> vừa đạt {stars}⭐ trong war — nhận +{coins} Coins!"
+    msg = f"⚔️ **{name}** vừa đạt {stars}⭐ trong war — nhận **+{coins} Coins**!"
     await notify_all(msg, discord_color=0xED4245, title="⚔️ War nhận Coins", clan_id=clan_id)

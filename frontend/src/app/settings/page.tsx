@@ -243,6 +243,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [bannerPage, setBannerPage] = useState("login");
   const [testNotifyMsg, setTestNotifyMsg] = useState("");
+  const [discordRevealed, setDiscordRevealed] = useState(false);
+  const [telegramRevealed, setTelegramRevealed] = useState(false);
 
   async function testNotifySample() {
     setTesting("notify-sample"); setTestNotifyMsg("");
@@ -301,6 +303,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             telegram_bot_token: clan.telegram_bot_token || "",
             telegram_chat_id: clan.telegram_chat_id || "",
           }));
+          setDiscordRevealed(!clan.discord_webhook);
+          setTelegramRevealed(!clan.telegram_bot_token && !clan.telegram_chat_id);
         } catch {}
       })
       .catch(() => {})
@@ -448,11 +452,24 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
 
         <div>
-          <label className="label">Webhook URL</label>
-          <input className="input" type="url"
-            value={settings.discord_webhook || ""}
-            onChange={e => set("discord_webhook", e.target.value)}
-            placeholder="https://discord.com/api/webhooks/..." />
+          <label className="label flex items-center justify-between">
+            Webhook URL
+            {!discordRevealed && settings.discord_webhook && (
+              <button onClick={() => setDiscordRevealed(true)} className="text-yellow-500 hover:text-yellow-400 flex items-center gap-1 text-xs">
+                <Edit3 size={12}/> Sửa
+              </button>
+            )}
+          </label>
+          {discordRevealed ? (
+            <input className="input" type="url"
+              value={settings.discord_webhook || ""}
+              onChange={e => set("discord_webhook", e.target.value)}
+              placeholder="https://discord.com/api/webhooks/..." />
+          ) : (
+            <div className="input flex items-center justify-between !cursor-default select-none" style={{ color: "var(--py-card-text)" }}>
+              <span className="truncate">{"•".repeat(28)}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -493,19 +510,38 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
 
         <div>
-          <label className="label">Bot Token</label>
-          <input className="input" type="password"
-            value={settings.telegram_bot_token || ""}
-            onChange={e => set("telegram_bot_token", e.target.value)}
-            placeholder="1234567890:ABCdef..." />
+          <label className="label flex items-center justify-between">
+            Bot Token
+            {!telegramRevealed && (settings.telegram_bot_token || settings.telegram_chat_id) && (
+              <button onClick={() => setTelegramRevealed(true)} className="text-yellow-500 hover:text-yellow-400 flex items-center gap-1 text-xs">
+                <Edit3 size={12}/> Sửa
+              </button>
+            )}
+          </label>
+          {telegramRevealed ? (
+            <input className="input" type="password"
+              value={settings.telegram_bot_token || ""}
+              onChange={e => set("telegram_bot_token", e.target.value)}
+              placeholder="1234567890:ABCdef..." />
+          ) : (
+            <div className="input flex items-center !cursor-default select-none" style={{ color: "var(--py-card-text)" }}>
+              <span className="truncate">{"•".repeat(28)}</span>
+            </div>
+          )}
         </div>
 
         <div>
           <label className="label">Chat ID</label>
-          <input className="input"
-            value={settings.telegram_chat_id || ""}
-            onChange={e => set("telegram_chat_id", e.target.value)}
-            placeholder="-1001234567890 (group) hoặc 123456789 (cá nhân)" />
+          {telegramRevealed ? (
+            <input className="input"
+              value={settings.telegram_chat_id || ""}
+              onChange={e => set("telegram_chat_id", e.target.value)}
+              placeholder="-1001234567890 (group) hoặc 123456789 (cá nhân)" />
+          ) : (
+            <div className="input flex items-center !cursor-default select-none" style={{ color: "var(--py-card-text)" }}>
+              <span className="truncate">{settings.telegram_chat_id || "—"}</span>
+            </div>
+          )}
         </div>
 
         <div>
@@ -588,6 +624,34 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           </div>
         </div>
         <p className="text-[11px] text-gray-600">Mỗi war/raid chỉ nhắc đúng 1 lần trong khoảng thời gian này (không spam lặp lại mỗi 5 phút như trước).</p>
+
+        {/* Chu kỳ quét Donate/Thành viên — trước đây cố định 10 phút, giờ tuỳ chỉnh được */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-gray-500 mb-1 block">Chu kỳ quét Donate</label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <input type="number" min={1} max={60} step={1} className="input !w-20 text-center shrink-0"
+                value={settings.poll_interval_donate_minutes || "10"}
+                onChange={e => set("poll_interval_donate_minutes", e.target.value)} />
+              <span className="text-xs text-gray-500 shrink-0">phút</span>
+              <button onClick={() => save("poll_interval_donate_minutes")} className="btn-secondary text-xs shrink-0 ml-auto">Lưu</button>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-500 mb-1 block">Chu kỳ quét Thành viên vào/rời</label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <input type="number" min={1} max={60} step={1} className="input !w-20 text-center shrink-0"
+                value={settings.poll_interval_members_minutes || "10"}
+                onChange={e => set("poll_interval_members_minutes", e.target.value)} />
+              <span className="text-xs text-gray-500 shrink-0">phút</span>
+              <button onClick={() => save("poll_interval_members_minutes")} className="btn-secondary text-xs shrink-0 ml-auto">Lưu</button>
+            </div>
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-600">
+          Donate và Thành viên vào/rời không có mốc thời gian cụ thể như War/Raid — web phải tự quét định kỳ để phát hiện thay đổi.
+          Quét dày hơn (số phút nhỏ) thì phát hiện nhanh hơn nhưng tốn tài nguyên hơn. Có hiệu lực trong ~2 phút, không cần khởi động lại server.
+        </p>
 
         <div className="space-y-3">
           {[

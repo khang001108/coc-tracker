@@ -14,7 +14,7 @@ ALLOWED_KEYS = [
     "discord_webhook",
     "telegram_bot_token", "telegram_chat_id",
     "notify_war", "notify_raid", "notify_donate", "notify_member", "notify_war_coins", "notify_cwl",
-    "war_reminder_hours", "raid_reminder_hours",
+    "war_reminder_hours", "raid_reminder_hours", "poll_interval_donate_minutes", "poll_interval_members_minutes",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
     "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners",
 ]

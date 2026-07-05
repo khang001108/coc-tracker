@@ -76,6 +76,7 @@ export const api = {
   getCWLStandings: () => apiFetch("/api/war/cwl/standings"),
   getCWLTopWarriors: () => apiFetch("/api/war/cwl/top-warriors"),
   getWarActivity: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/war-activity?period=${period}`),
+  getTopCoins: (limit = 10) => apiFetch(`/api/insights/top-coins?limit=${limit}`),
   getWarHistoryLog: (war_type: "random" | "cwl" = "random", limit = 20) => apiFetch(`/api/insights/war-history?war_type=${war_type}&limit=${limit}`),
   getDonationTrend: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/donation-trend?period=${period}`),
   cleanupStatsNow: () => apiFetch("/api/settings/cleanup-stats-now", { method: "POST" }),

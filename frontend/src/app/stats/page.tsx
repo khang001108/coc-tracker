@@ -34,6 +34,7 @@ export default function StatsPage() {
   const [period, setPeriod] = useState<"week" | "month" | "all">("all");
   const [warActivity, setWarActivity] = useState<{ weakest_war: any[]; most_skips: any[]; mvp_attack?: any; mvp_defense?: any }>({ weakest_war: [], most_skips: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
+  const [topCoins, setTopCoins] = useState<any[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +45,10 @@ export default function StatsPage() {
         if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    api.getTopCoins(10).then((res: any) => setTopCoins(res.top || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -383,6 +388,23 @@ export default function StatsPage() {
               "Anh dũng nhất" là công thức tự tính (sao cao nhất → % phá huỷ cao nhất → nhanh nhất) vì CoC API không cung cấp sẵn 2 chỉ số này.
             </p>
           </div>
+
+          {/* Nhiều Coins nhất */}
+          {topCoins.length > 0 && (
+            <div className="card mt-5">
+              <h4 className="text-sm font-bold text-white flex items-center gap-1.5 mb-3">🪙 Nhiều Coins nhất</h4>
+              <div className="space-y-2">
+                {topCoins.map((p, i) => (
+                  <div key={p.tag} className="flex items-center gap-3 text-sm">
+                    <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                    <span className="flex-1 text-gray-300 truncate">{p.name}</span>
+                    <span className="text-yellow-400 font-semibold shrink-0">🪙 {p.coins.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
+            </div>
+          )}
         </>
       )}
     </div>
