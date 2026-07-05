@@ -82,6 +82,7 @@ function WarMemberRow({ member, mapPosition, maxAttacks = 2, rosterMap = {} }: {
 export default function WarPage() {
   const [war, setWar] = useState<any>(null);
   const [cwlNext, setCwlNext] = useState<any>(null);
+  const [showNextDetail, setShowNextDetail] = useState(false);
   const [warLog, setWarLog] = useState<any[]>([]);
   const [logSubTab, setLogSubTab] = useState<"random" | "cwl">("random");
   const [cwlHistory, setCwlHistory] = useState<any[]>([]);
@@ -266,21 +267,34 @@ export default function WarPage() {
 
               {/* War tiếp theo (CWL) — tách riêng, tránh nhầm với war đang diễn ra ở trên */}
               {war.isCWL && cwlNext && (
-                <div className="card flex items-center gap-3" style={{ borderColor: "rgba(244,161,48,0.25)" }}>
-                  <span className="text-[10px] font-bold px-2 py-1 rounded-lg shrink-0"
-                    style={{ background: "rgba(244,161,48,0.15)", color: "#F4A130" }}>
-                    Vòng tiếp theo
-                  </span>
-                  {cwlNext.opponent?.badgeUrl && (
-                    <img src={cwlNext.opponent.badgeUrl} alt="" className="w-8 h-8 object-contain shrink-0" />
+                <div className="card" style={{ borderColor: "rgba(244,161,48,0.25)" }}>
+                  <button onClick={() => setShowNextDetail(v => !v)} className="w-full flex items-center gap-3 text-left">
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-lg shrink-0"
+                      style={{ background: "rgba(244,161,48,0.15)", color: "#F4A130" }}>
+                      Vòng tiếp theo
+                    </span>
+                    {cwlNext.opponent?.badgeUrl && (
+                      <img src={cwlNext.opponent.badgeUrl} alt="" className="w-8 h-8 object-contain shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">vs {cwlNext.opponent?.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {cwlNext.state === "preparation" ? "⚔️ Đang chuẩn bị" : cwlNext.state === "inWar" ? "🔥 Đang đánh" : cwlNext.state}
+                        {cwlNext.startTime ? ` · Bắt đầu ${formatDate(cwlNext.startTime)}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-[11px] text-yellow-500 shrink-0 flex items-center gap-1">
+                      {showNextDetail ? "Ẩn đội hình ▲" : "Xem đội hình ▼"}
+                    </span>
+                  </button>
+                  {showNextDetail && (
+                    <div className="mt-3 pt-3 border-t border-gray-800">
+                      <p className="text-[11px] text-gray-500 mb-2">
+                        📋 Đội hình 2 bên đã lên cặp đấu (chưa có lượt đánh vì war chưa bắt đầu) — dựa theo vị trí bản đồ CoC xếp:
+                      </p>
+                      <WarBattlefieldMap war={cwlNext} />
+                    </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">vs {cwlNext.opponent?.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {cwlNext.state === "preparation" ? "⚔️ Đang chuẩn bị" : cwlNext.state === "inWar" ? "🔥 Đang đánh" : cwlNext.state}
-                      {cwlNext.startTime ? ` · Bắt đầu ${formatDate(cwlNext.startTime)}` : ""}
-                    </p>
-                  </div>
                 </div>
               )}
 
