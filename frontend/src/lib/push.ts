@@ -34,7 +34,7 @@ export async function getCurrentSubscription(): Promise<PushSubscription | null>
   return reg.pushManager.getSubscription();
 }
 
-export async function enablePush(opts?: { notify_chat?: boolean; notify_event?: boolean; notify_war?: boolean; notify_raid?: boolean }): Promise<{ ok: boolean; error?: string }> {
+export async function enablePush(opts?: { notify_chat?: boolean; notify_event?: boolean; notify_war?: boolean; notify_raid?: boolean; clan_ids?: number[] }): Promise<{ ok: boolean; error?: string }> {
   if (!pushSupported()) return { ok: false, error: "Trình duyệt này không hỗ trợ thông báo đẩy" };
   try {
     const { key, enabled, reason } = await api.getVapidKey();

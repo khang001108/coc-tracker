@@ -5,6 +5,7 @@ import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music
 import { AdminGate } from "@/components/ui/AdminGate";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
+import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons";
 import { getCurrentClanId } from "@/lib/clanContext";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
@@ -1104,12 +1105,52 @@ function ShopPricingSettings() {
 
 // ── Clan Management ────────────────────────────────────────────────────────
 
+/** Hiện link nhóm Zalo/Telegram/Discord của clan ĐANG CHỌN — ai cũng thấy
+ * được (không cần admin), để bấm tham gia nhóm cộng đồng. */
+function JoinGroupLinks() {
+  const [links, setLinks] = useState<{ zalo_group_link?: string; telegram_group_link?: string; discord_group_link?: string } | null>(null);
+
+  useEffect(() => {
+    api.getCurrentClanLinks().then(setLinks).catch(() => {});
+  }, []);
+
+  if (!links) return null;
+  const has = links.zalo_group_link || links.telegram_group_link || links.discord_group_link;
+  if (!has) return null;
+
+  return (
+    <div className="card space-y-3">
+      <h2 className="font-bold text-white flex items-center gap-2">👥 Tham gia nhóm</h2>
+      <div className="flex items-center gap-3 flex-wrap">
+        {links.zalo_group_link && (
+          <a href={links.zalo_group_link} target="_blank" rel="noreferrer"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors text-sm text-white">
+            <ZaloIcon size={22}/> Nhóm Zalo
+          </a>
+        )}
+        {links.telegram_group_link && (
+          <a href={links.telegram_group_link} target="_blank" rel="noreferrer"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors text-sm text-white">
+            <TelegramIcon size={22}/> Nhóm Telegram
+          </a>
+        )}
+        {links.discord_group_link && (
+          <a href={links.discord_group_link} target="_blank" rel="noreferrer"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors text-sm text-white">
+            <DiscordIcon size={22}/> Discord
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ClanManagement() {
   const [clans, setClans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ clan_tag: "", coc_api_key: "" });
+  const [form, setForm] = useState({ clan_tag: "", coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "" });
   const [preview, setPreview] = useState<{ name: string; badge: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1135,7 +1176,7 @@ function ClanManagement() {
   useEffect(() => { load(); }, []);
 
   function startAdd() {
-    setForm({ clan_tag: "", coc_api_key: "" });
+    setForm({ clan_tag: "", coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "" });
     setPreview(null);
     setEditId(null);
     setKeyRevealed(true);
@@ -1145,7 +1186,7 @@ function ClanManagement() {
   async function startEdit(cl: any) {
     setEditId(cl.id);
     setPreview({ name: cl.clan_name, badge: cl.badge_url || "" });
-    setForm({ clan_tag: cl.clan_tag, coc_api_key: "" });
+    setForm({ clan_tag: cl.clan_tag, coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "" });
     setKeyRevealed(false);
     setShowForm(true);
     // Danh sách công khai (list_clans) không trả về API key thật (tránh lộ
@@ -1154,7 +1195,12 @@ function ClanManagement() {
     // bắt gõ lại từ đầu mỗi lần sửa.
     try {
       const full = await api.getClanById(cl.id);
-      setForm({ clan_tag: full.clan_tag, coc_api_key: full.coc_api_key || "" });
+      setForm({
+        clan_tag: full.clan_tag, coc_api_key: full.coc_api_key || "",
+        zalo_group_link: full.zalo_group_link || "",
+        telegram_group_link: full.telegram_group_link || "",
+        discord_group_link: full.discord_group_link || "",
+      });
       setKeyRevealed(!full.coc_api_key);
     } catch {
       setKeyRevealed(true); // không lấy được key cũ — cho gõ tay luôn
@@ -1190,6 +1236,9 @@ function ClanManagement() {
         clan_tag: form.clan_tag.trim(),
         clan_name: preview.name,
         coc_api_key: form.coc_api_key.trim(),
+        zalo_group_link: form.zalo_group_link.trim(),
+        telegram_group_link: form.telegram_group_link.trim(),
+        discord_group_link: form.discord_group_link.trim(),
       };
       if (editId) await api.updateClan(editId, payload);
       else await api.createClan(payload);
@@ -1350,6 +1399,26 @@ function ClanManagement() {
             </div>
           )}
 
+          {/* Link nhóm cộng đồng — công khai để mời thành viên, KHÁC hẳn webhook/bot token gửi thông báo */}
+          <div className="space-y-2 pt-1">
+            <p className="text-[11px] text-gray-500">🔗 Link nhóm mời thành viên (hiện công khai cho mọi người, không phải cấu hình gửi thông báo)</p>
+            <div className="flex items-center gap-2">
+              <ZaloIcon size={20}/>
+              <input className="input !py-1.5 text-xs flex-1" placeholder="Link nhóm Zalo"
+                value={form.zalo_group_link} onChange={e => setForm({ ...form, zalo_group_link: e.target.value })}/>
+            </div>
+            <div className="flex items-center gap-2">
+              <TelegramIcon size={20}/>
+              <input className="input !py-1.5 text-xs flex-1" placeholder="Link nhóm Telegram"
+                value={form.telegram_group_link} onChange={e => setForm({ ...form, telegram_group_link: e.target.value })}/>
+            </div>
+            <div className="flex items-center gap-2">
+              <DiscordIcon size={20}/>
+              <input className="input !py-1.5 text-xs flex-1" placeholder="Link mời Discord"
+                value={form.discord_group_link} onChange={e => setForm({ ...form, discord_group_link: e.target.value })}/>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <button onClick={save} disabled={saving || !preview}
               className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
@@ -1375,6 +1444,8 @@ function PushNotificationSettings() {
   const [notifyEvent, setNotifyEvent] = useState(true);
   const [notifyWar, setNotifyWar] = useState(true);
   const [notifyRaid, setNotifyRaid] = useState(true);
+  const [clans, setClans] = useState<any[]>([]);
+  const [selectedClanIds, setSelectedClanIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
 
@@ -1391,7 +1462,13 @@ function PushNotificationSettings() {
     setSubscribed(!!sub);
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    api.listClans().then((data: any[]) => {
+      setClans(data);
+      setSelectedClanIds(prev => prev.length ? prev : [getCurrentClanId()]);
+    }).catch(() => {});
+  }, []);
 
   async function handleToggle() {
     setBusy(true);
@@ -1403,7 +1480,7 @@ function PushNotificationSettings() {
         flashMsg("Đã tắt thông báo ngoài app", "success");
       } else {
         const { enablePush } = await import("@/lib/push");
-        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid });
+        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid, clan_ids: selectedClanIds });
         if (res.ok) {
           setSubscribed(true);
           flashMsg("Đã bật thông báo ngoài app!", "success");
@@ -1427,6 +1504,32 @@ function PushNotificationSettings() {
     const sub = await getCurrentSubscription();
     if (sub) {
       try { await api.pushPreferences(sub.endpoint, { [key]: val }); }
+      catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
+    }
+  }
+
+  async function toggleClanSelection(id: number) {
+    const next = selectedClanIds.includes(id) ? selectedClanIds.filter(x => x !== id) : [...selectedClanIds, id];
+    setSelectedClanIds(next);
+    if (!subscribed) return;
+    const { getCurrentSubscription } = await import("@/lib/push");
+    const sub = await getCurrentSubscription();
+    if (sub) {
+      try { await api.pushPreferences(sub.endpoint, { clan_ids: next.length ? next : [getCurrentClanId()] }); }
+      catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
+    }
+  }
+
+  async function selectAllClans() {
+    const allIds = clans.map(c => c.id);
+    const isAll = selectedClanIds.length === clans.length;
+    const next = isAll ? [getCurrentClanId()] : allIds;
+    setSelectedClanIds(next);
+    if (!subscribed) return;
+    const { getCurrentSubscription } = await import("@/lib/push");
+    const sub = await getCurrentSubscription();
+    if (sub) {
+      try { await api.pushPreferences(sub.endpoint, { clan_ids: next }); }
       catch (e: any) { flashMsg(e.message || "Lỗi cập nhật"); }
     }
   }
@@ -1479,6 +1582,22 @@ function PushNotificationSettings() {
         </label>
       </div>
 
+      {clans.length > 1 && (
+        <div className="space-y-2 pt-1">
+          <p className="text-xs text-gray-500">Nhận thông báo cho clan nào:</p>
+          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--py-card-text)" }}>
+            <input type="checkbox" checked={selectedClanIds.length === clans.length} onChange={selectAllClans} className="w-4 h-4 accent-yellow-500" />
+            <span className="font-semibold">Tất cả clan</span>
+          </label>
+          {clans.map(cl => (
+            <label key={cl.id} className="flex items-center gap-2 text-sm pl-1" style={{ color: "var(--py-card-text)" }}>
+              <input type="checkbox" checked={selectedClanIds.includes(cl.id)} onChange={() => toggleClanSelection(cl.id)} className="w-4 h-4 accent-yellow-500" />
+              {cl.clan_name}
+            </label>
+          ))}
+        </div>
+      )}
+
       {msg && <MiniToast msg={msg.text} type={msg.type} />}
     </div>
   );
@@ -1497,6 +1616,7 @@ export default function SettingsPage() {
       {/* Ai cũng chỉnh được — không cần đăng nhập admin, vì đây là quyền của
           từng trình duyệt/thiết bị, không phải cấu hình clan. */}
       <InstallAppButton />
+      <JoinGroupLinks />
       <PushNotificationSettings />
 
       <AdminGate>

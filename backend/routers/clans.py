@@ -5,6 +5,7 @@ Mỗi clan có admin_token riêng để xác thực.
 from fastapi import APIRouter, HTTPException, Request, Depends
 from supabase_client import get_supabase
 from auth import require_admin
+from clan_context import get_clan_id
 import secrets
 import json
 
@@ -75,6 +76,19 @@ async def list_clans():
 
 
 # ─── Create clan ──────────────────────────────────────────────────────────────
+
+@router.get("/current/links")
+async def current_clan_links(request: Request):
+    """Link nhóm Zalo/Telegram/Discord công khai của clan ĐANG CHỌN — để mọi
+    người bấm tham gia. Khác hẳn webhook/bot token (dùng để web TỰ gửi
+    thông báo), đây chỉ là link mời vào nhóm."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    res = sb.table("clans").select("zalo_group_link, telegram_group_link, discord_group_link").eq("id", clan_id).execute()
+    if not res.data:
+        return {"zalo_group_link": "", "telegram_group_link": "", "discord_group_link": ""}
+    return res.data[0]
+
 
 @router.get("/public-slot")
 async def public_slot():
@@ -192,7 +206,8 @@ async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_
     body = await request.json()
     allowed = ["clan_name", "clan_tag", "coc_api_key", "discord_webhook",
                "telegram_bot_token", "telegram_chat_id",
-               "notify_war", "notify_raid", "notify_join_leave", "public_editable"]
+               "notify_war", "notify_raid", "notify_join_leave", "public_editable",
+               "zalo_group_link", "telegram_group_link", "discord_group_link"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")

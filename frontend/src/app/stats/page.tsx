@@ -6,6 +6,7 @@ import { formatNumber, thColor, roleLabel } from "@/lib/utils";
 import { BarChart3, TrendingUp, AlertTriangle, ShieldOff, HeartCrack, Copy, Check } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
+import { CoinIcon } from "@/components/ui/CoinIcon";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -224,6 +225,23 @@ export default function StatsPage() {
             </div>
           </div>
 
+          {/* Nhiều Coins nhất — xếp đầu tiên */}
+          {topCoins.length > 0 && (
+            <div className="card">
+              <h4 className="text-sm font-bold text-white flex items-center gap-1.5 mb-3"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
+              <div className="space-y-2">
+                {topCoins.map((p, i) => (
+                  <div key={p.tag} className="flex items-center gap-3 text-sm">
+                    <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                    <span className="flex-1 text-gray-300 truncate">{p.name}</span>
+                    <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
+            </div>
+          )}
+
           {/* Hiệu suất kém — cần admin lưu ý */}
           <div>
             <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
@@ -388,23 +406,6 @@ export default function StatsPage() {
               "Anh dũng nhất" là công thức tự tính (sao cao nhất → % phá huỷ cao nhất → nhanh nhất) vì CoC API không cung cấp sẵn 2 chỉ số này.
             </p>
           </div>
-
-          {/* Nhiều Coins nhất */}
-          {topCoins.length > 0 && (
-            <div className="card mt-5">
-              <h4 className="text-sm font-bold text-white flex items-center gap-1.5 mb-3">🪙 Nhiều Coins nhất</h4>
-              <div className="space-y-2">
-                {topCoins.map((p, i) => (
-                  <div key={p.tag} className="flex items-center gap-3 text-sm">
-                    <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                    <span className="flex-1 text-gray-300 truncate">{p.name}</span>
-                    <span className="text-yellow-400 font-semibold shrink-0">🪙 {p.coins.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
-            </div>
-          )}
         </>
       )}
     </div>

@@ -307,6 +307,7 @@ export const api = {
   // Clans (multi-clan management)
   listClans:   () => apiFetch("/api/clans/"),
   getClanById: (id: number) => apiFetch(`/api/clans/${id}`),  // multi-clan specific
+  getCurrentClanLinks: () => apiFetch("/api/clans/current/links"),
   getPublicSlot: () => apiFetch("/api/clans/public-slot"),
   updatePublicSlot: (clan_tag: string) => apiFetch("/api/clans/public-slot/update", { method: "POST", body: JSON.stringify({ clan_tag }) }),
   createClan:  (data: any) => apiFetch("/api/clans/", { method: "POST", body: JSON.stringify(data) }),
@@ -316,7 +317,7 @@ export const api = {
 
   // Push notifications (thông báo ngoài app)
   getVapidKey:  () => apiFetch("/api/push/vapid-public-key"),
-  pushSubscribe: (subscription: any, opts?: { notify_chat?: boolean; notify_event?: boolean }) =>
+  pushSubscribe: (subscription: any, opts?: { notify_chat?: boolean; notify_event?: boolean; notify_war?: boolean; notify_raid?: boolean; clan_ids?: number[] }) =>
     apiFetch("/api/push/subscribe", {
       method: "POST",
       headers: (() => {
@@ -327,7 +328,7 @@ export const api = {
     }),
   pushUnsubscribe: (endpoint: string) =>
     apiFetch("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
-  pushPreferences: (endpoint: string, prefs: { notify_chat?: boolean; notify_event?: boolean }) =>
+  pushPreferences: (endpoint: string, prefs: { notify_chat?: boolean; notify_event?: boolean; notify_war?: boolean; notify_raid?: boolean; clan_ids?: number[] }) =>
     apiFetch("/api/push/preferences", { method: "PUT", body: JSON.stringify({ endpoint, ...prefs }) }),
 
   // Chat

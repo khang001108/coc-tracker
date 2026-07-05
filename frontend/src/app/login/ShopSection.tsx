@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { CastlePreview, CannonPreview } from "@/lib/gameIcons";
+import { CoinIcon } from "@/components/ui/CoinIcon";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Coins, Lock, CheckCircle2 } from "lucide-react";
 import { EmberField } from "@/components/ui/EmberField";
@@ -75,7 +76,7 @@ export default function ShopSection() {
                 : <span className="text-sm font-bold py-2"><NameEffect effectKey={item.svg_key}>Tên Bạn</NameEffect></span>}
               <p className="text-xs font-semibold text-white">{item.name}</p>
               {!owned && (
-                <p className="text-[11px] text-yellow-400 flex items-center gap-1"><Coins size={11} /> {item.price_coins.toLocaleString()}</p>
+                <p className="text-[11px] text-yellow-400 flex items-center gap-1"><CoinIcon size={12}/> {item.price_coins.toLocaleString()}</p>
               )}
               {equipped ? (
                 <span className="badge-gold text-[10px] flex items-center gap-1"><CheckCircle2 size={10} /> Đang dùng</span>
@@ -103,7 +104,7 @@ export default function ShopSection() {
       <div className="relative flex items-center justify-between">
         <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
         <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">
-          <Coins size={15} /> {inv.coins.toLocaleString()}
+          <CoinIcon size={16}/> {inv.coins.toLocaleString()}
         </span>
       </div>
       <p className="relative text-xs text-gray-500">Dùng Coins (kiếm được từ donate, sau này thêm cả từ war) để đổi lâu đài và pháo trang trí riêng — hiện trên Bản đồ chiến trường ở trang War.</p>

@@ -699,3 +699,20 @@ ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS notify_raid BOOLEAN NOT 
 -- clan cụ thể đã có sẵn API Key, thay vì tạo clan mới trống API Key)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE clans ADD COLUMN IF NOT EXISTS public_editable BOOLEAN NOT NULL DEFAULT false;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 12 (link nhóm Zalo/Telegram/Discord công khai để mời
+-- thành viên tham gia — KHÁC với webhook/bot token dùng để gửi thông báo)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clans ADD COLUMN IF NOT EXISTS zalo_group_link     TEXT DEFAULT '';
+ALTER TABLE clans ADD COLUMN IF NOT EXISTS telegram_group_link TEXT DEFAULT '';
+ALTER TABLE clans ADD COLUMN IF NOT EXISTS discord_group_link  TEXT DEFAULT '';
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 13 (chọn nhận thông báo đẩy theo TỪNG clan hoặc TẤT CẢ,
+-- thay vì chỉ khoá cứng vào 1 clan lúc đăng ký ban đầu)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS clan_ids INTEGER[];
+-- Ai đã đăng ký từ trước (chỉ có clan_id đơn) thì coi như đang chọn đúng
+-- clan đó — không mất cấu hình cũ.
+UPDATE push_subscriptions SET clan_ids = ARRAY[clan_id] WHERE clan_ids IS NULL AND clan_id IS NOT NULL;

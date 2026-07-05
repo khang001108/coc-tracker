@@ -1,5 +1,6 @@
 "use client";
 import { ArtBanner } from "@/components/ui/ArtBanner";
+import { CoinIcon } from "@/components/ui/CoinIcon";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { useEffect, useRef, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
@@ -937,7 +938,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
           <label className="text-xs text-gray-500 mb-1 flex items-center justify-between">
             <span className="flex items-center gap-1"><Coins size={12}/> Thưởng Coins mỗi người thắng</span>
             {myCoins !== null && (
-              <span className="text-yellow-500 font-semibold">Bạn đang có: {myCoins.toLocaleString()} 🪙</span>
+              <span className="text-yellow-500 font-semibold flex items-center gap-1">Bạn đang có: {myCoins.toLocaleString()} <CoinIcon size={14}/></span>
             )}
           </label>
           <div className="flex items-center gap-3">

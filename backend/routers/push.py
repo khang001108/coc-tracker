@@ -38,12 +38,16 @@ async def subscribe(
 
     clan_id = get_clan_id(request)
     player_tag = verify_member_token(x_member_token)
+    clan_ids = body.get("clan_ids")  # danh sách clan muốn nhận thông báo — None = mặc định đúng clan đang xem
+    if not clan_ids:
+        clan_ids = [clan_id]
 
     row = {
         "endpoint": endpoint,
         "p256dh": p256dh,
         "auth": auth,
         "clan_id": clan_id,
+        "clan_ids": clan_ids,
         "player_tag": player_tag,
         "notify_chat": bool(body.get("notify_chat", True)),
         "notify_event": bool(body.get("notify_event", True)),
@@ -54,14 +58,18 @@ async def subscribe(
     try:
         sb.table("push_subscriptions").upsert(row, on_conflict="endpoint").execute()
     except Exception:
-        # Chưa chạy migration PART 10 (thiếu cột notify_war/notify_raid) —
-        # thử lại chỉ với 2 cột cũ để không chặn hẳn tính năng push.
-        row.pop("notify_war", None)
-        row.pop("notify_raid", None)
+        # Chưa chạy đủ migration (thiếu cột notify_war/notify_raid/clan_ids) —
+        # thử lại bỏ dần các cột mới để không chặn hẳn tính năng push.
+        row.pop("clan_ids", None)
         try:
             sb.table("push_subscriptions").upsert(row, on_conflict="endpoint").execute()
-        except Exception as e:
-            raise HTTPException(500, f"Lỗi lưu đăng ký thông báo: {str(e)}")
+        except Exception:
+            row.pop("notify_war", None)
+            row.pop("notify_raid", None)
+            try:
+                sb.table("push_subscriptions").upsert(row, on_conflict="endpoint").execute()
+            except Exception as e:
+                raise HTTPException(500, f"Lỗi lưu đăng ký thông báo: {str(e)}")
     return {"ok": True}
 
 
@@ -78,14 +86,19 @@ async def unsubscribe(request: Request):
 
 @router.put("/preferences")
 async def update_preferences(request: Request):
-    """Bật/tắt riêng từng loại thông báo (chat / sự kiện) cho 1 subscription."""
+    """Bật/tắt riêng từng loại thông báo, và/hoặc đổi danh sách clan muốn
+    nhận thông báo, cho 1 subscription."""
     body = await request.json()
     endpoint = body.get("endpoint")
     if not endpoint:
         raise HTTPException(400, "Cần endpoint")
-    update = {k: v for k, v in body.items() if k in ("notify_chat", "notify_event", "notify_war", "notify_raid")}
+    update = {k: v for k, v in body.items() if k in ("notify_chat", "notify_event", "notify_war", "notify_raid", "clan_ids")}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")
     sb = get_supabase()
-    sb.table("push_subscriptions").update(update).eq("endpoint", endpoint).execute()
+    try:
+        sb.table("push_subscriptions").update(update).eq("endpoint", endpoint).execute()
+    except Exception:
+        update.pop("clan_ids", None)
+        sb.table("push_subscriptions").update(update).eq("endpoint", endpoint).execute()
     return {"ok": True}
