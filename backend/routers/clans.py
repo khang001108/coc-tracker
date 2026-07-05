@@ -11,6 +11,25 @@ import json
 router = APIRouter()
 
 
+def _clear_accumulated_stats(sb, clan_id: int):
+    """Đổi Tag = clan_id này giờ trỏ sang 1 clan CoC THẬT KHÁC HẲN — dữ liệu
+    tích luỹ (war yếu nhất, hay bỏ war, donate ít nhất, nhật ký vào/rời clan)
+    của clan CŨ không còn ý nghĩa gì với clan MỚI, để lẫn vào sẽ hiện sai
+    (đây là lỗi đã gặp: đổi clan xong Thống kê vẫn hiện tên thành viên clan
+    cũ). Xoá sạch để bắt đầu tích luỹ lại từ đầu cho đúng clan mới."""
+    for table, col in [
+        ("war_participation_log", "clan_id"),
+        ("war_history_log", "clan_id"),
+        ("donation_snapshot_log", "clan_id"),
+        ("member_log", "clan_id"),
+        ("notify_dedup", "clan_id"),
+    ]:
+        try:
+            sb.table(table).delete().eq(col, clan_id).execute()
+        except Exception:
+            pass  # bảng/cột chưa tồn tại (chưa chạy đủ migration) — bỏ qua, không chặn việc đổi tag
+
+
 # ─── List all clans ───────────────────────────────────────────────────────────
 
 @router.get("/")
@@ -112,6 +131,7 @@ async def public_slot_update(request: Request):
         sb.table("snapshot_raid").delete().eq("clan_id", clan_id).execute()
     except Exception:
         pass
+    _clear_accumulated_stats(sb, clan_id)
     from schedulers.poller import upsert_snapshot
     upsert_snapshot("snapshot_clan", live, clan_id=clan_id)
 
@@ -210,6 +230,7 @@ async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_
             sb.table("snapshot_raid").delete().eq("clan_id", clan_id).execute()
         except Exception:
             pass
+        _clear_accumulated_stats(sb, clan_id)
         try:
             from services.coc_api import get_clan as fetch_clan_live
             from schedulers.poller import upsert_snapshot
