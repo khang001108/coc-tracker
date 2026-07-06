@@ -50,6 +50,7 @@ export default function DashboardPage() {
   const [raid, setRaid] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [syncFailed, setSyncFailed] = useState(false);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [tagCopied, setTagCopied] = useState(false);
@@ -58,9 +59,9 @@ export default function DashboardPage() {
   const warBannerSrc = usePageBanner("overview_war", "/art/barbarian-fireball.jpg");
   const cwlBannerSrc = usePageBanner("overview_cwl", "/art/dragon-fire-logo.jpg");
 
-  async function load() {
-    setLoading(true);
-    setError("");
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    if (!silent) setError("");
     try {
       const [c, w, cw, roster, r] = await Promise.allSettled([
         api.getClan(), api.getCurrentWar(), api.getCWLCurrentWar(), api.getRoster(), api.getRaidSeasons(),
@@ -74,10 +75,15 @@ export default function DashboardPage() {
         (roster.value as any[]).forEach(m => { map[m.tag] = m; });
         setRosterMap(map);
       }
+      setSyncFailed(false);
     } catch (e: any) {
-      setError(e.message);
+      // Tải ngầm (silent) mà lỗi thì KHÔNG xoá nội dung đang xem để hiện lỗi
+      // to đùng — chỉ báo nhẹ 1 chấm đỏ nhỏ, dữ liệu cũ vẫn còn nguyên trên
+      // màn hình, người dùng tự quyết có cần bấm tải lại hay không.
+      if (silent) setSyncFailed(true);
+      else setError(e.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -103,14 +109,14 @@ export default function DashboardPage() {
     let t: ReturnType<typeof setInterval> | null = null;
     function startInterval() {
       if (t) return;
-      t = setInterval(() => load(), 5 * 60 * 1000);
+      t = setInterval(() => load(true), 5 * 60 * 1000);
     }
     function stopInterval() {
       if (t) { clearInterval(t); t = null; }
     }
     function onVisibilityChange() {
       if (document.visibilityState === "visible") {
-        load();
+        load(true);
         startInterval();
       } else {
         stopInterval();
@@ -176,6 +182,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </ClanSwitcher>
+        {syncFailed && (
+          <button onClick={() => load(true)} title="Lần tải ngầm gần nhất bị lỗi — bấm để thử lại"
+            className="shrink-0 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+        )}
       </div>
 
       {/* Clan description — viền hoa văn */}

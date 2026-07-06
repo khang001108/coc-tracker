@@ -303,18 +303,22 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
         if state == "inWar":
             members = data.get("clan", {}).get("members", [])
             missing = []
+            attacks_used = 0
             for m in members:
                 attacks = m.get("attacks", [])
+                attacks_used += len(attacks)
                 if len(attacks) < 1:
                     missing.append(m.get("name", "?"))
+            attacks_per_member = data.get("attacksPerMember", 2)
+            attacks_total = len(members) * attacks_per_member
             end_time = data.get("endTime", "")
             hours_left = _hours_until(end_time)
             if (missing and c.get("notify_war", True) and end_time
                     and hours_left is not None and hours_left <= war_reminder_hours
                     and should_notify_once(sb, c["id"], "war_reminder", end_time)):
-                await notify_war_attack_reminder(missing, end_time, clan_id=c["id"])
+                await notify_war_attack_reminder(missing, end_time, clan_id=c["id"], attacks_used=attacks_used, attacks_total=attacks_total)
                 await send_push_to_clan(c["id"], "\u2694\ufe0f Nhac danh War",
-                    f"{len(missing)} thanh vien chua danh, con {war_reminder_hours}h la ket thuc!", kind="war")
+                    f"{len(missing)} thanh vien chua danh, con {war_reminder_hours}h la ket thuc! (Da danh {attacks_used}/{attacks_total} luot)", kind="war")
 
         if state == "warEnded":
             _log_war_participation(sb, c["id"], data, war_type="random")
@@ -328,12 +332,15 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
             if cwl_current and c.get("notify_war", True) and notify_cwl_on:
                 cwl_end = cwl_current.get("endTime", "")
                 cwl_hours_left = _hours_until(cwl_end)
-                cwl_missing = [m.get("name", "?") for m in cwl_current.get("clan", {}).get("members", []) if len(m.get("attacks", [])) < 1]
+                cwl_clan_members = cwl_current.get("clan", {}).get("members", [])
+                cwl_missing = [m.get("name", "?") for m in cwl_clan_members if len(m.get("attacks", [])) < 1]
+                cwl_attacks_used = sum(len(m.get("attacks", [])) for m in cwl_clan_members)
+                cwl_attacks_total = len(cwl_clan_members)  # CWL: mỗi người 1 lượt
                 if (cwl_missing and cwl_end and cwl_hours_left is not None and cwl_hours_left <= war_reminder_hours
                         and should_notify_once(sb, c["id"], "cwl_reminder", cwl_end)):
-                    await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"])
+                    await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"], attacks_used=cwl_attacks_used, attacks_total=cwl_attacks_total)
                     await send_push_to_clan(c["id"], "\U0001F3C6 Nhac danh CWL",
-                        f"{len(cwl_missing)} thanh vien chua danh CWL, con {war_reminder_hours}h la ket thuc!", kind="war")
+                        f"{len(cwl_missing)} thanh vien chua danh CWL, con {war_reminder_hours}h la ket thuc! (Da danh {cwl_attacks_used}/{cwl_attacks_total})", kind="war")
         except Exception as e:
             log.error(f"CWL reminder error (clan_id={c['id']}): {e}")
 
@@ -372,14 +379,15 @@ async def poll_raid():
             # Check members who haven't raided
             members = latest.get("members", [])
             missing = [m["name"] for m in members if m.get("capitalResourcesLooted", 0) == 0]
+            raided_count = len(members) - len(missing)
             end_time = latest.get("endTime", "")
             hours_left = _hours_until(end_time)
             if (missing and c.get("notify_raid", True) and latest.get("state") == "ongoing" and end_time
                     and hours_left is not None and hours_left <= raid_reminder_hours
                     and should_notify_once(sb, c["id"], "raid_reminder", end_time)):
-                await notify_raid_reminder(missing, clan_id=c["id"])
+                await notify_raid_reminder(missing, clan_id=c["id"], raided=raided_count, total=len(members))
                 await send_push_to_clan(c["id"], "🏰 Nhắc Raid Weekend",
-                    f"{len(missing)} thành viên chưa raid, còn {raid_reminder_hours}h là kết thúc!", kind="raid")
+                    f"{len(missing)} thành viên chưa raid, còn {raid_reminder_hours}h là kết thúc! (Đã raid {raided_count}/{len(members)})", kind="raid")
 
             log.info(f"Raid snapshot updated (clan_id={c['id']})")
         except Exception as e:

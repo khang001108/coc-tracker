@@ -92,18 +92,20 @@ async def notify_all(message: str, discord_color: int = 0x5865F2, title: str = "
 # Tất cả đều viết theo 1 kiểu thống nhất: **in đậm** cho tên/số liệu quan
 # trọng — notify_all() tự lo phần chuyển đổi cho đúng từng nền tảng.
 
-async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: int = 1):
+async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: int = 1, attacks_used: int = None, attacks_total: int = None):
     if not missing:
         return
     names = ", ".join(missing)
-    msg = f"⚔️ Nhắc đánh War!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}\nKết thúc: {war_end}"
+    progress = f"\n📊 Đã đánh: **{attacks_used}/{attacks_total}** lượt" if attacks_used is not None and attacks_total is not None else ""
+    msg = f"⚔️ Nhắc đánh War!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}{progress}\nKết thúc: {war_end}"
     await notify_all(msg, discord_color=0xED4245, title="⚔️ Chưa đánh War", clan_id=clan_id)
 
-async def notify_raid_reminder(missing: list[str], clan_id: int = 1):
+async def notify_raid_reminder(missing: list[str], clan_id: int = 1, raided: int = None, total: int = None):
     if not missing:
         return
     names = ", ".join(missing)
-    msg = f"🏰 Nhắc Raid Weekend!\n**{len(missing)} thành viên** chưa tham gia Raid:\n{names}"
+    progress = f"\n📊 Đã raid: **{raided}/{total}** thành viên" if raided is not None and total is not None else ""
+    msg = f"🏰 Nhắc Raid Weekend!\n**{len(missing)} thành viên** chưa tham gia Raid:\n{names}{progress}"
     await notify_all(msg, discord_color=0xFEE75C, title="🏰 Chưa tham gia Raid", clan_id=clan_id)
 
 async def notify_member_join(name: str, th: int, clan_id: int = 1):
