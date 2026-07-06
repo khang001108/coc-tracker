@@ -498,3 +498,48 @@ export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: nu
     </div>
   );
 }
+
+/* ── Tia đạn (Chiến trường War) ──────────────────────────────────────────── */
+/* Nguồn dùng chung — WarBattlefieldMap.tsx import từ đây để không lặp code.
+ * Lõi đạn luôn theo màu PHE (xanh=mình, đỏ=địch, xử lý riêng ở nơi dùng),
+ * còn cấu hình dưới đây chỉ quyết định KIỂU ĐUÔI/tia lửa phụ theo skin. */
+export const PROJECTILE_SKINS: Record<string, { trail: number; spark?: string; coreScale: number; label: string }> = {
+  proj_classic:   { trail: 3, coreScale: 1,    label: "Cổ điển" },
+  proj_comet:     { trail: 5, coreScale: 1.3,  label: "Sao chổi" },
+  proj_fire:      { trail: 4, spark: "#FFB300", coreScale: 1.15, label: "Cầu lửa" },
+  proj_lightning: { trail: 2, spark: "#F5F9FF", coreScale: 0.95, label: "Tia sét" },
+  proj_rainbow:   { trail: 6, spark: "rainbow", coreScale: 1.2,  label: "Cầu vồng" },
+};
+export const PROJECTILE_RAINBOW = ["#FF5A5A", "#FFB300", "#FFEB3B", "#4ADE80", "#38BDF8", "#A78BFA"];
+
+export function ProjectilePreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
+  const skin = PROJECTILE_SKINS[svgKey] || PROJECTILE_SKINS.proj_classic;
+  const pathD = `M 4 ${size - 8} Q ${size / 2} 4 ${size - 4} ${size - 8}`;
+  const trailDelays = Array.from({ length: skin.trail }, (_, i) => (skin.trail - 1 - i) * (0.16 / Math.max(1, skin.trail - 1)));
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <defs>
+        <radialGradient id={`projPrev-${svgKey}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FFF3D0" />
+          <stop offset="60%" stopColor="#F4A130" />
+          <stop offset="100%" stopColor="#F4A130" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <path d={pathD} fill="none" stroke="#F4A130" strokeOpacity={0.3} strokeWidth={1.5} strokeDasharray="3 4" />
+      {trailDelays.map((delay, di) => {
+        const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : (skin.spark || "#F4A130");
+        return (
+          <circle key={di} r={(2.4 - di * 0.3) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
+            <animateMotion dur="1.3s" repeatCount="indefinite" begin={`${delay}s`} path={pathD} />
+          </circle>
+        );
+      })}
+      <circle r={5 * skin.coreScale} fill={`url(#projPrev-${svgKey})`}>
+        <animateMotion dur="1.3s" repeatCount="indefinite" path={pathD} />
+      </circle>
+      <circle r={2.2 * skin.coreScale} fill="#fff" opacity={0.9}>
+        <animateMotion dur="1.3s" repeatCount="indefinite" path={pathD} />
+      </circle>
+    </svg>
+  );
+}

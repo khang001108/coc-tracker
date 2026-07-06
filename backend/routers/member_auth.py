@@ -22,7 +22,7 @@ async def roster(request: Request):
     members = await get_clan_members(tag, clan_id=clan_id)
     sb = get_supabase()
     res = sb.table("member_accounts").select(
-        "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
+        "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile,claimed_at"
     ).execute()
     claimed = {r["player_tag"]: r for r in res.data}
     return [
@@ -35,6 +35,7 @@ async def roster(request: Request):
             "equipped_cannon": claimed.get(m["tag"], {}).get("equipped_cannon") or "cannon_basic",
             "equipped_effect": claimed.get(m["tag"], {}).get("equipped_effect"),
             "equipped_number_effect": claimed.get(m["tag"], {}).get("equipped_number_effect"),
+            "equipped_projectile": claimed.get(m["tag"], {}).get("equipped_projectile"),
         }
         for m in members
     ]

@@ -20,7 +20,7 @@ async def my_inventory(x_member_token: str | None = Header(default=None)):
         raise HTTPException(401, "Cần đăng nhập")
     sb = get_supabase()
     inv = sb.table("member_inventory").select("item_id").eq("player_tag", tag).execute()
-    acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").eq("player_tag", tag).execute()
+    acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile").eq("player_tag", tag).execute()
     if not acc.data:
         raise HTTPException(404, "Không tìm thấy tài khoản")
     return {
@@ -30,6 +30,7 @@ async def my_inventory(x_member_token: str | None = Header(default=None)):
         "equipped_cannon": acc.data[0].get("equipped_cannon") or "cannon_basic",
         "equipped_effect": acc.data[0].get("equipped_effect"),
         "equipped_number_effect": acc.data[0].get("equipped_number_effect"),
+        "equipped_projectile": acc.data[0].get("equipped_projectile"),
     }
 
 
@@ -81,7 +82,7 @@ async def equip_item(request: Request, x_member_token: str | None = Header(defau
     body = await request.json()
     item_type = body.get("item_type")
     svg_key = body.get("svg_key")
-    if item_type not in ("castle", "cannon", "effect", "number_effect"):
+    if item_type not in ("castle", "cannon", "effect", "number_effect", "projectile"):
         raise HTTPException(400, "item_type không hợp lệ")
 
     sb = get_supabase()
@@ -96,6 +97,6 @@ async def equip_item(request: Request, x_member_token: str | None = Header(defau
         if not owned.data and not is_free:
             raise HTTPException(403, "Bạn chưa sở hữu vật phẩm này")
 
-    field = {"castle": "equipped_castle", "cannon": "equipped_cannon", "effect": "equipped_effect", "number_effect": "equipped_number_effect"}[item_type]
+    field = {"castle": "equipped_castle", "cannon": "equipped_cannon", "effect": "equipped_effect", "number_effect": "equipped_number_effect", "projectile": "equipped_projectile"}[item_type]
     sb.table("member_accounts").update({field: svg_key}).eq("player_tag", tag).execute()
     return {"ok": True}

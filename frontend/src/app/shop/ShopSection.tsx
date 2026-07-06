@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { CastlePreview, CannonPreview } from "@/lib/gameIcons";
+import { CastlePreview, CannonPreview, ProjectilePreview } from "@/lib/gameIcons";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
@@ -24,7 +24,7 @@ function SectionTitle({ emoji, label }: { emoji: string; label: string }) {
 export default function ShopSection() {
   const [items, setItems] = useState<any[]>([]);
   const emberColor = useEmberColor();
-  const [inv, setInv] = useState<{ owned_item_ids: number[]; coins: number; equipped_castle: string; equipped_cannon: string; equipped_effect: string | null; equipped_number_effect: string | null } | null>(null);
+  const [inv, setInv] = useState<{ owned_item_ids: number[]; coins: number; equipped_castle: string; equipped_cannon: string; equipped_effect: string | null; equipped_number_effect: string | null; equipped_projectile: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -74,6 +74,7 @@ export default function ShopSection() {
   const cannons = items.filter(i => i.item_type === "cannon");
   const effects = items.filter(i => i.item_type === "effect");
   const numberEffects = items.filter(i => i.item_type === "number_effect");
+  const projectiles = items.filter(i => i.item_type === "projectile");
 
   function ItemGrid({ list }: { list: any[] }) {
     return (
@@ -83,6 +84,7 @@ export default function ShopSection() {
           const equippedField = item.item_type === "castle" ? inv.equipped_castle
             : item.item_type === "cannon" ? inv.equipped_cannon
             : item.item_type === "effect" ? inv.equipped_effect
+            : item.item_type === "projectile" ? inv.equipped_projectile
             : inv.equipped_number_effect;
           const equipped = equippedField === item.svg_key;
           return (
@@ -91,6 +93,7 @@ export default function ShopSection() {
               {item.item_type === "castle" ? <CastlePreview svgKey={item.svg_key} />
                 : item.item_type === "cannon" ? <CannonPreview svgKey={item.svg_key} />
                 : item.item_type === "effect" ? <span className="text-sm font-bold py-2"><NameEffect effectKey={item.svg_key}>Tên Bạn</NameEffect></span>
+                : item.item_type === "projectile" ? <ProjectilePreview svgKey={item.svg_key} />
                 : <span className="th-badge text-base py-1"><NumberEffect effectKey={item.svg_key}>17</NumberEffect></span>}
               <p className="text-xs font-semibold text-white">{item.name}</p>
               {!owned && (
@@ -146,6 +149,10 @@ export default function ShopSection() {
             <div className="relative">
               <SectionTitle emoji="🔫" label="Pháo (đại diện 2 lượt đánh)"/>
               <ItemGrid list={cannons} />
+            </div>
+            <div className="relative">
+              <SectionTitle emoji="💥" label="Tia đạn (Chiến trường War)"/>
+              <ItemGrid list={projectiles} />
             </div>
             <div className="relative">
               <SectionTitle emoji="✨" label="Hiệu ứng tên (Chat, Thành viên...)"/>

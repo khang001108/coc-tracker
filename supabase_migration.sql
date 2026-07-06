@@ -716,3 +716,16 @@ ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS clan_ids INTEGER[];
 -- Ai đã đăng ký từ trước (chỉ có clan_id đơn) thì coi như đang chọn đúng
 -- clan đó — không mất cấu hình cũ.
 UPDATE push_subscriptions SET clan_ids = ARRAY[clan_id] WHERE clan_ids IS NULL AND clan_id IS NOT NULL;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 14 (Cửa hàng: hiệu ứng tia đạn cho Chiến trường)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_projectile TEXT;
+
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('projectile', 'proj_classic',  'Tia Đạn Cổ Điển',      0),
+  ('projectile', 'proj_comet',    'Sao Chổi Lấp Lánh',    3500),
+  ('projectile', 'proj_fire',     'Cầu Lửa Rực Cháy',     5000),
+  ('projectile', 'proj_lightning','Tia Sét Xanh',         6500),
+  ('projectile', 'proj_rainbow',  'Cầu Vồng Huyền Ảo',    9000)
+ON CONFLICT (svg_key) DO NOTHING;

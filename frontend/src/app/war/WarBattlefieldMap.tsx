@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon, PROJECTILE_SKINS, PROJECTILE_RAINBOW } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Swords, Shield } from "lucide-react";
 
@@ -94,7 +94,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
   const [selected, setSelected] = useState<{ tag: string; side: "left" | "right" } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [arcs, setArcs] = useState<{ id: string; x1: number; y1: number; x2: number; y2: number; kind: "attack" | "defense" }[]>([]);
+  const [arcs, setArcs] = useState<{ id: string; x1: number; y1: number; x2: number; y2: number; side: "left" | "right"; attackerTag: string }[]>([]);
 
   useEffect(() => {
     api.getRoster().then((roster: any[]) => {
@@ -173,15 +173,18 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         return { x: box.left + box.width / 2 - containerBox.left, y: box.top + box.height / 2 - containerBox.top };
       };
       const newArcs: typeof arcs = [];
+      // attackDetails: tia bắn ĐI từ người đang chọn -> phe bắn = phe của người đang chọn
       attackDetails.forEach((a, i) => {
         const from = center(selected.tag);
         const to = center(a.defenderTag);
-        if (from && to) newArcs.push({ id: `atk-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, kind: "attack" });
+        if (from && to) newArcs.push({ id: `atk-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: selected.side, attackerTag: selected.tag });
       });
+      // defenseDetails: tia bắn ĐẾN người đang chọn -> phe bắn = phe đối phương
       defenseDetails.forEach((a, i) => {
         const from = center(a.attackerTag);
         const to = center(selected.tag);
-        if (from && to) newArcs.push({ id: `def-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, kind: "defense" });
+        const attackerSide = selected.side === "left" ? "right" : "left";
+        if (from && to) newArcs.push({ id: `def-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: attackerSide, attackerTag: a.attackerTag });
       });
       setArcs(newArcs);
     };
@@ -211,8 +214,8 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
           </span>
           {selected && (
             <>
-              <span className="flex items-center gap-1 text-red-400"><Swords size={10}/> tấn công</span>
-              <span className="flex items-center gap-1 text-sky-400"><Shield size={10}/> bị đánh</span>
+              <span className="flex items-center gap-1 text-sky-400"><Swords size={10}/> phe mình</span>
+              <span className="flex items-center gap-1 text-red-400"><Shield size={10}/> phe địch</span>
               <button onClick={() => setSelected(null)} className="text-yellow-600 font-bold">✕</button>
             </>
           )}
@@ -232,15 +235,15 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         {arcs.length > 0 && (
           <svg className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 5 }}>
             <defs>
-              <radialGradient id="ballAttack" cx="50%" cy="50%" r="50%">
+              <radialGradient id="ballOurs" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#DFF6FF" />
+                <stop offset="60%" stopColor="#38BDF8" />
+                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="ballTheirs" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#FFD27A" />
                 <stop offset="60%" stopColor="#FF5A36" />
                 <stop offset="100%" stopColor="#FF5A36" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="ballDefense" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#CFEFFF" />
-                <stop offset="60%" stopColor="#38BDF8" />
-                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
               </radialGradient>
             </defs>
             {arcs.map(a => {
@@ -251,18 +254,40 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
               const ctrlX = midX;
               const ctrlY = midY - arcHeight;
               const pathD = `M ${a.x1} ${a.y1} Q ${ctrlX} ${ctrlY} ${a.x2} ${a.y2}`;
-              const color = a.kind === "attack" ? "#FF5A36" : "#38BDF8";
-              const ball = a.kind === "attack" ? "url(#ballAttack)" : "url(#ballDefense)";
+              const isOurs = a.side === "left";
+              const color = isOurs ? "#38BDF8" : "#FF5A36";
+              const glowId = isOurs ? "ballOurs" : "ballTheirs";
+              const skinKey = iconMap[a.attackerTag]?.equipped_projectile || "proj_classic";
+              const skin = PROJECTILE_SKINS[skinKey] || PROJECTILE_SKINS.proj_classic;
+              const DUR = 1.1;
+              const trailDelays = Array.from({ length: skin.trail }, (_, i) => (skin.trail - 1 - i) * (0.16 / Math.max(1, skin.trail - 1)));
               return (
                 <g key={a.id}>
                   {/* Đường bay mờ, luôn hiện để thấy rõ hình vòng cung */}
                   <path d={pathD} fill="none" stroke={color} strokeOpacity={0.28} strokeWidth={1.5} strokeDasharray="3 4" />
-                  {/* Đạn bay có vệt sáng, lặp lại liên tục */}
-                  <circle r="5" fill={ball}>
-                    <animateMotion dur="1.1s" repeatCount="indefinite" path={pathD} />
+
+                  {/* Vệt đuôi — số lượng/màu tuỳ skin trang bị */}
+                  {trailDelays.map((delay, di) => {
+                    const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : (skin.spark || color);
+                    return (
+                      <circle key={di} r={(2.6 - di * 0.35) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
+                        <animateMotion dur={`${DUR}s`} repeatCount="indefinite" begin={`${delay}s`} path={pathD} />
+                      </circle>
+                    );
+                  })}
+
+                  {/* Đầu đạn phát sáng — luôn theo màu phe để không nhầm */}
+                  <circle r={5.5 * skin.coreScale} fill={`url(#${glowId})`}>
+                    <animateMotion dur={`${DUR}s`} repeatCount="indefinite" path={pathD} />
                   </circle>
-                  <circle r="2.2" fill={color}>
-                    <animateMotion dur="1.1s" repeatCount="indefinite" path={pathD} />
+                  <circle r={2.4 * skin.coreScale} fill="#fff" opacity={0.9}>
+                    <animateMotion dur={`${DUR}s`} repeatCount="indefinite" path={pathD} />
+                  </circle>
+
+                  {/* Chớp sáng lúc đạn chạm đích */}
+                  <circle cx={a.x2} cy={a.y2} r="7" fill={color}>
+                    <animate attributeName="opacity" values="0;0;0.9;0" keyTimes="0;0.88;0.94;1" dur={`${DUR}s`} repeatCount="indefinite" />
+                    <animate attributeName="r" values="3;3;9;3" keyTimes="0;0.88;0.94;1" dur={`${DUR}s`} repeatCount="indefinite" />
                   </circle>
                 </g>
               );
