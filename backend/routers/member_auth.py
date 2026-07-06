@@ -5,6 +5,7 @@ from services.coc_api import get_clan_members
 from clan_context import get_tag_for_request, get_clan_id
 from auth import require_admin
 import os
+from datetime import datetime
 
 router = APIRouter()
 
@@ -13,19 +14,16 @@ router = APIRouter()
 async def roster(request: Request):
     """Danh sách thành viên trong clan (đúng clan đang chọn) kèm trạng thái đã có
     người nhận hay chưa, và icon lâu đài/pháo họ đang trang bị (để bản đồ chiến
-    trường và chat hiển thị)."""
+    trường và chat hiển thị). Trạng thái "đã xác minh" là GLOBAL theo tag người
+    chơi — không lọc theo clan_id, vì tài khoản web là của người chơi, không
+    phải của riêng 1 clan (trước đây lọc theo clan_id khiến ai đó đổi từ clan A
+    sang clan B trong cùng hệ thống bị hiện lại "chưa xác minh" dù đã đăng ký)."""
     clan_id, tag = await get_tag_for_request(request)
     members = await get_clan_members(tag, clan_id=clan_id)
     sb = get_supabase()
-    try:
-        res = sb.table("member_accounts").select(
-            "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
-        ).eq("clan_id", clan_id).execute()
-    except Exception:
-        # Chưa chạy migration clan_id cho member_accounts — fallback không lọc
-        res = sb.table("member_accounts").select(
-            "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
-        ).execute()
+    res = sb.table("member_accounts").select(
+        "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
+    ).execute()
     claimed = {r["player_tag"]: r for r in res.data}
     return [
         {
@@ -105,10 +103,32 @@ async def me(x_member_token: str | None = Header(default=None)):
     if not player_tag:
         raise HTTPException(401, "Chưa đăng nhập")
     sb = get_supabase()
-    res = sb.table("member_accounts").select("player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").eq("player_tag", player_tag).execute()
+    res = sb.table("member_accounts").select("player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,assets_cleared").eq("player_tag", player_tag).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy tài khoản")
-    return res.data[0]
+    row = res.data[0]
+
+    # Kiểm tra xem người này đã rời clan chưa — nếu có, tính còn bao nhiêu
+    # ngày trước khi Coins/vật phẩm bị xoá, để nhắc họ khi quay lại web.
+    row["leave_info"] = None
+    try:
+        log_res = sb.table("member_log").select("status,left_at,clan_id").eq("player_tag", player_tag).order("id", desc=True).limit(1).execute()
+        if log_res.data and log_res.data[0]["status"] == "left" and not row.get("assets_cleared"):
+            cfg = sb.table("settings").select("value").eq("key", "asset_cleanup_days").execute()
+            cleanup_days = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 7
+            left_at_str = log_res.data[0]["left_at"].replace("Z", "+00:00")
+            left_at = datetime.fromisoformat(left_at_str)
+            now = datetime.utcnow().replace(tzinfo=left_at.tzinfo) if left_at.tzinfo else datetime.utcnow()
+            days_since = (now - left_at).days
+            row["leave_info"] = {
+                "days_since_left": days_since,
+                "days_until_wipe": max(0, cleanup_days - days_since),
+                "cleanup_days": cleanup_days,
+            }
+    except Exception:
+        pass
+
+    return row
 
 
 @router.post("/release")

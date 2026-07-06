@@ -319,8 +319,8 @@ export default function WarPage() {
                         setCopiedMissing(true);
                         setTimeout(() => setCopiedMissing(false), 1500);
                       }}
-                      className="flex items-center gap-1 text-xs text-red-400/80 hover:text-red-300 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10">
-                      {copiedMissing ? <><Check size={12}/> Đã copy</> : <><Copy size={12}/> Copy danh sách</>}
+                      className="flex items-center gap-1 text-xs text-red-400/80 hover:text-red-300 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10" title="Copy danh sách">
+                      {copiedMissing ? <Check size={14}/> : <Copy size={14}/>}
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">

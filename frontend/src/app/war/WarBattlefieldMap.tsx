@@ -5,6 +5,7 @@ import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { Swords, Shield } from "lucide-react";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
 const STAR_FILL = (s: number) =>
@@ -130,17 +131,27 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
   const theirDefs = buildDefMap(theirTeam, ourTeam);
 
   const connected = new Set<string>();
+  let selectedMember: any = null;
+  let attackDetails: any[] = [];
+  let defenseDetails: any[] = [];
   if (selected) {
     const isLeft = selected.side === "left";
     const myAtks = isLeft ? ourAtks   : theirAtks;
     const myDefs = isLeft ? ourDefs   : theirDefs;
+    const myTeam = isLeft ? ourTeam : theirTeam;
     const oppTeam = isLeft ? theirTeam : ourTeam;
     connected.add(selected.tag);
+    selectedMember = myTeam.find(m => m.tag === selected.tag);
     (myAtks[selected.tag] || []).forEach((a: any) => {
       const def = oppTeam.find(o => o.mapPosition === a.defenderPos);
       if (def) connected.add(def.tag);
+      attackDetails.push({ ...a, defenderName: def?.name || "?" });
     });
-    (myDefs[selected.tag] || []).forEach((a: any) => connected.add(a.attackerTag));
+    (myDefs[selected.tag] || []).forEach((a: any) => {
+      connected.add(a.attackerTag);
+      const atk = oppTeam.find(o => o.tag === a.attackerTag);
+      defenseDetails.push({ ...a, attackerName: atk?.name || "?", attackerPos: atk?.mapPosition });
+    });
   }
 
   const fade = (tag: string) => !selected || connected.has(tag);
@@ -167,6 +178,35 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
           )}
         </div>
       </div>
+
+      {/* Chi tiết người đang chọn — rõ ràng bằng chữ, không chỉ mờ/sáng nữa */}
+      {selected && selectedMember && (
+        <div className="mx-3 mb-2 p-2.5 rounded-xl" style={{ background: "rgba(244,161,48,0.08)", border: "1px solid rgba(244,161,48,0.25)" }}>
+          <p className="text-xs font-bold mb-1.5" style={{ color: "var(--py-card-text, #fff)" }}>
+            #{selectedMember.mapPosition} {selectedMember.name} (TH{selectedMember.townHallLevel})
+          </p>
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold text-red-400 flex items-center gap-1"><Swords size={11}/> Tấn công:</p>
+            {attackDetails.length === 0 ? (
+              <p className="text-[10px] text-gray-500 pl-4">Chưa đánh</p>
+            ) : attackDetails.map((a, i) => (
+              <p key={i} className="text-[10px] text-gray-300 pl-4">
+                → #{a.defenderPos} {a.defenderName} — {"⭐".repeat(a.stars)}{"☆".repeat(3 - a.stars)} ({a.destructionPercentage}%)
+              </p>
+            ))}
+          </div>
+          <div className="space-y-1 mt-1.5">
+            <p className="text-[10px] font-semibold text-blue-400 flex items-center gap-1"><Shield size={11}/> Bị tấn công bởi:</p>
+            {defenseDetails.length === 0 ? (
+              <p className="text-[10px] text-gray-500 pl-4">Chưa bị đánh</p>
+            ) : defenseDetails.map((a, i) => (
+              <p key={i} className="text-[10px] text-gray-300 pl-4">
+                ← #{a.attackerPos} {a.attackerName} — {"⭐".repeat(a.stars)}{"☆".repeat(3 - a.stars)} ({a.destructionPercentage}%)
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Team labels */}
       <div className="grid px-2" style={{ gridTemplateColumns: "1fr 20px 1fr" }}>

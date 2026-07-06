@@ -232,9 +232,22 @@ export default function StatsPage() {
             <div className="card">
               <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
-                <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-                  <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-                  <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+                    <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+                    <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+                  </div>
+                  <button onClick={() => {
+                    const lines = topCoins.map((p, i) => coinsScope === "all"
+                      ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
+                      : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
+                    const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
+                    navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
+                    setCoinsCopied(true);
+                    setTimeout(() => setCoinsCopied(false), 2000);
+                  }} title="Copy làm báo cáo" className="text-gray-500 hover:text-yellow-400 shrink-0">
+                    {coinsCopied ? <Check size={15}/> : <Copy size={15}/>}
+                  </button>
                 </div>
               </div>
               <div className="space-y-2">
@@ -254,17 +267,6 @@ export default function StatsPage() {
                 ))}
               </div>
               <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
-              <button onClick={() => {
-                const lines = topCoins.map((p, i) => coinsScope === "all"
-                  ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
-                  : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
-                const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
-                navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
-                setCoinsCopied(true);
-                setTimeout(() => setCoinsCopied(false), 2000);
-              }} className="btn-secondary text-xs w-full mt-2 flex items-center justify-center gap-1.5">
-                <Copy size={12}/> {coinsCopied ? "Đã copy!" : "Copy làm báo cáo"}
-              </button>
             </div>
           )}
 

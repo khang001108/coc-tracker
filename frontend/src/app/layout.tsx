@@ -9,6 +9,7 @@ import { FloatingMusicWidget } from "@/components/ui/FloatingMusicWidget";
 import { ThemeInitScript } from "@/components/ui/ThemeToggle";
 import { NotificationProvider } from "@/components/ui/NotificationContext";
 import { CustomCursor } from "@/components/ui/CustomCursor";
+import { LeaveStatusBanner } from "@/components/ui/LeaveStatusBanner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileNav />
           <FloatingMusicWidget />
           <CustomCursor />
+          <LeaveStatusBanner />
         </div>
         </NotificationProvider>
         </MusicProvider>
