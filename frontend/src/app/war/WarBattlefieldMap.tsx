@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -92,6 +92,9 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
 export default function WarBattlefieldMap({ war }: { war: any }) {
   const [iconMap, setIconMap] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<{ tag: string; side: "left" | "right" } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [arcs, setArcs] = useState<{ id: string; x1: number; y1: number; x2: number; y2: number; kind: "attack" | "defense" }[]>([]);
 
   useEffect(() => {
     api.getRoster().then((roster: any[]) => {
@@ -156,6 +159,39 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
   const fade = (tag: string) => !selected || connected.has(tag);
 
+  // Đo vị trí thật của từng thẻ trên màn hình để vẽ đúng đường bay tia đạn —
+  // đáng tin cậy hơn hẳn tính theo index vì tên dài/ngắn khác nhau làm chiều
+  // cao mỗi hàng không đều nhau.
+  useEffect(() => {
+    if (!selected || !containerRef.current) { setArcs([]); return; }
+    const measure = () => {
+      const containerBox = containerRef.current!.getBoundingClientRect();
+      const center = (tag: string) => {
+        const el = cardRefs.current.get(tag);
+        if (!el) return null;
+        const box = el.getBoundingClientRect();
+        return { x: box.left + box.width / 2 - containerBox.left, y: box.top + box.height / 2 - containerBox.top };
+      };
+      const newArcs: typeof arcs = [];
+      attackDetails.forEach((a, i) => {
+        const from = center(selected.tag);
+        const to = center(a.defenderTag);
+        if (from && to) newArcs.push({ id: `atk-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, kind: "attack" });
+      });
+      defenseDetails.forEach((a, i) => {
+        const from = center(a.attackerTag);
+        const to = center(selected.tag);
+        if (from && to) newArcs.push({ id: `def-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, kind: "defense" });
+      });
+      setArcs(newArcs);
+    };
+    // Đợi 1 nhịp để layout ổn định (đổi selected có thể làm card đổi vị trí)
+    const t = setTimeout(measure, 30);
+    window.addEventListener("resize", measure);
+    return () => { clearTimeout(t); window.removeEventListener("resize", measure); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, war]);
+
   const rows = Math.max(ourTeam.length, theirTeam.length);
   const maxAttacks = war?.attacksPerMember || (war?.isCWL ? 1 : 2);
 
@@ -174,39 +210,14 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
             = {maxAttacks} lượt đánh
           </span>
           {selected && (
-            <button onClick={() => setSelected(null)} className="text-yellow-600 font-bold">✕</button>
+            <>
+              <span className="flex items-center gap-1 text-red-400"><Swords size={10}/> tấn công</span>
+              <span className="flex items-center gap-1 text-sky-400"><Shield size={10}/> bị đánh</span>
+              <button onClick={() => setSelected(null)} className="text-yellow-600 font-bold">✕</button>
+            </>
           )}
         </div>
       </div>
-
-      {/* Chi tiết người đang chọn — rõ ràng bằng chữ, không chỉ mờ/sáng nữa */}
-      {selected && selectedMember && (
-        <div className="mx-3 mb-2 p-2.5 rounded-xl" style={{ background: "rgba(244,161,48,0.08)", border: "1px solid rgba(244,161,48,0.25)" }}>
-          <p className="text-xs font-bold mb-1.5" style={{ color: "var(--py-card-text, #fff)" }}>
-            #{selectedMember.mapPosition} {selectedMember.name} (TH{selectedMember.townHallLevel})
-          </p>
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold text-red-400 flex items-center gap-1"><Swords size={11}/> Tấn công:</p>
-            {attackDetails.length === 0 ? (
-              <p className="text-[10px] text-gray-500 pl-4">Chưa đánh</p>
-            ) : attackDetails.map((a, i) => (
-              <p key={i} className="text-[10px] text-gray-300 pl-4">
-                → #{a.defenderPos} {a.defenderName} — {"⭐".repeat(a.stars)}{"☆".repeat(3 - a.stars)} ({a.destructionPercentage}%)
-              </p>
-            ))}
-          </div>
-          <div className="space-y-1 mt-1.5">
-            <p className="text-[10px] font-semibold text-blue-400 flex items-center gap-1"><Shield size={11}/> Bị tấn công bởi:</p>
-            {defenseDetails.length === 0 ? (
-              <p className="text-[10px] text-gray-500 pl-4">Chưa bị đánh</p>
-            ) : defenseDetails.map((a, i) => (
-              <p key={i} className="text-[10px] text-gray-300 pl-4">
-                ← #{a.attackerPos} {a.attackerName} — {"⭐".repeat(a.stars)}{"☆".repeat(3 - a.stars)} ({a.destructionPercentage}%)
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Team labels */}
       <div className="grid px-2" style={{ gridTemplateColumns: "1fr 20px 1fr" }}>
@@ -216,13 +227,55 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
       </div>
 
       {/* Member rows */}
-      <div className="px-1 pb-3 space-y-0">
+      <div className="px-1 pb-3 space-y-0 relative" ref={containerRef}>
+        {/* Lớp phủ tia đạn — vẽ đường bay cong kiểu pháo bắn + đạn bay có hiệu ứng phát sáng */}
+        {arcs.length > 0 && (
+          <svg className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 5 }}>
+            <defs>
+              <radialGradient id="ballAttack" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FFD27A" />
+                <stop offset="60%" stopColor="#FF5A36" />
+                <stop offset="100%" stopColor="#FF5A36" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="ballDefense" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#CFEFFF" />
+                <stop offset="60%" stopColor="#38BDF8" />
+                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            {arcs.map(a => {
+              const midX = (a.x1 + a.x2) / 2;
+              const midY = (a.y1 + a.y2) / 2;
+              const dist = Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
+              const arcHeight = Math.min(70, Math.max(22, dist * 0.35));
+              const ctrlX = midX;
+              const ctrlY = midY - arcHeight;
+              const pathD = `M ${a.x1} ${a.y1} Q ${ctrlX} ${ctrlY} ${a.x2} ${a.y2}`;
+              const color = a.kind === "attack" ? "#FF5A36" : "#38BDF8";
+              const ball = a.kind === "attack" ? "url(#ballAttack)" : "url(#ballDefense)";
+              return (
+                <g key={a.id}>
+                  {/* Đường bay mờ, luôn hiện để thấy rõ hình vòng cung */}
+                  <path d={pathD} fill="none" stroke={color} strokeOpacity={0.28} strokeWidth={1.5} strokeDasharray="3 4" />
+                  {/* Đạn bay có vệt sáng, lặp lại liên tục */}
+                  <circle r="5" fill={ball}>
+                    <animateMotion dur="1.1s" repeatCount="indefinite" path={pathD} />
+                  </circle>
+                  <circle r="2.2" fill={color}>
+                    <animateMotion dur="1.1s" repeatCount="indefinite" path={pathD} />
+                  </circle>
+                </g>
+              );
+            })}
+          </svg>
+        )}
         {Array.from({ length: rows }).map((_, i) => {
           const left  = ourTeam[i];
           const right = theirTeam[i];
           return (
             <div key={i} className="grid items-start" style={{ gridTemplateColumns: "1fr 18px 1fr" }}>
-              <div style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
+              <div ref={el => { if (left) { if (el) cardRefs.current.set(left.tag, el); else cardRefs.current.delete(left.tag); } }}
+                style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
                 {left && (
                   <MemberCard member={left} side="left"
                     attacks={ourAtks[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
@@ -235,7 +288,8 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
                 <span className="text-[9px] text-gray-400 font-mono font-bold">{i + 1}</span>
               </div>
 
-              <div style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
+              <div ref={el => { if (right) { if (el) cardRefs.current.set(right.tag, el); else cardRefs.current.delete(right.tag); } }}
+                style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
                 {right && (
                   <MemberCard member={right} side="right"
                     attacks={theirAtks[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
