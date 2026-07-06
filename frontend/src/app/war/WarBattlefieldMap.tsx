@@ -92,9 +92,10 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
 export default function WarBattlefieldMap({ war }: { war: any }) {
   const [iconMap, setIconMap] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<{ tag: string; side: "left" | "right" } | null>(null);
+  const [viewMode, setViewMode] = useState<"single" | "all">("single");
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [arcs, setArcs] = useState<{ id: string; x1: number; y1: number; x2: number; y2: number; side: "left" | "right"; attackerTag: string }[]>([]);
+  const [arcs, setArcs] = useState<{ id: string; x1: number; y1: number; x2: number; y2: number; side: "left" | "right"; attackerTag: string; begin: number }[]>([]);
 
   useEffect(() => {
     api.getRoster().then((roster: any[]) => {
@@ -157,13 +158,14 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
     });
   }
 
-  const fade = (tag: string) => !selected || connected.has(tag);
+  const fade = (tag: string) => viewMode === "all" || !selected || connected.has(tag);
 
   // Đo vị trí thật của từng thẻ trên màn hình để vẽ đúng đường bay tia đạn —
   // đáng tin cậy hơn hẳn tính theo index vì tên dài/ngắn khác nhau làm chiều
   // cao mỗi hàng không đều nhau.
   useEffect(() => {
-    if (!selected || !containerRef.current) { setArcs([]); return; }
+    if (!containerRef.current) { setArcs([]); return; }
+    if (viewMode === "single" && !selected) { setArcs([]); return; }
     const measure = () => {
       const containerBox = containerRef.current!.getBoundingClientRect();
       const center = (tag: string) => {
@@ -173,19 +175,39 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         return { x: box.left + box.width / 2 - containerBox.left, y: box.top + box.height / 2 - containerBox.top };
       };
       const newArcs: typeof arcs = [];
-      // attackDetails: tia bắn ĐI từ người đang chọn -> phe bắn = phe của người đang chọn
-      attackDetails.forEach((a, i) => {
-        const from = center(selected.tag);
-        const to = center(a.defenderTag);
-        if (from && to) newArcs.push({ id: `atk-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: selected.side, attackerTag: selected.tag });
-      });
-      // defenseDetails: tia bắn ĐẾN người đang chọn -> phe bắn = phe đối phương
-      defenseDetails.forEach((a, i) => {
-        const from = center(a.attackerTag);
-        const to = center(selected.tag);
-        const attackerSide = selected.side === "left" ? "right" : "left";
-        if (from && to) newArcs.push({ id: `def-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: attackerSide, attackerTag: a.attackerTag });
-      });
+
+      if (viewMode === "all") {
+        // Gom TẤT CẢ đòn đánh 2 bên lại, xếp theo đúng thứ tự đã đánh (order
+        // của CoC) rồi rải đều "begin" ra 1 khung thời gian ngắn — mô phỏng
+        // "ai đánh trước thì đạn bay trước" (CoC không cho biết giờ thật của
+        // từng đòn đánh, chỉ có thứ tự, nên đây là ước lượng theo thứ tự chứ
+        // không phải đúng tỉ lệ giờ thực 1:1).
+        const allShots: { attackerTag: string; defenderTag: string; side: "left" | "right"; order: number }[] = [];
+        Object.entries(ourAtks).forEach(([tag, atks]) => (atks as any[]).forEach(a => allShots.push({ attackerTag: tag, defenderTag: a.defenderTag, side: "left", order: a.order ?? 0 })));
+        Object.entries(theirAtks).forEach(([tag, atks]) => (atks as any[]).forEach(a => allShots.push({ attackerTag: tag, defenderTag: a.defenderTag, side: "right", order: a.order ?? 0 })));
+        allShots.sort((a, b) => a.order - b.order);
+        const CYCLE = 18; // dàn trải toàn bộ đòn đánh trong war ra 18 giây
+        allShots.forEach((s, i) => {
+          const from = center(s.attackerTag);
+          const to = center(s.defenderTag);
+          const beginDelay = allShots.length > 1 ? (i / (allShots.length - 1)) * CYCLE : 0;
+          if (from && to) newArcs.push({ id: `all-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: s.side, attackerTag: s.attackerTag, begin: beginDelay });
+        });
+      } else if (selected) {
+        // attackDetails: tia bắn ĐI từ người đang chọn -> phe bắn = phe của người đang chọn
+        attackDetails.forEach((a, i) => {
+          const from = center(selected.tag);
+          const to = center(a.defenderTag);
+          if (from && to) newArcs.push({ id: `atk-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: selected.side, attackerTag: selected.tag, begin: 0 });
+        });
+        // defenseDetails: tia bắn ĐẾN người đang chọn -> phe bắn = phe đối phương
+        defenseDetails.forEach((a, i) => {
+          const from = center(a.attackerTag);
+          const to = center(selected.tag);
+          const attackerSide = selected.side === "left" ? "right" : "left";
+          if (from && to) newArcs.push({ id: `def-${i}`, x1: from.x, y1: from.y, x2: to.x, y2: to.y, side: attackerSide, attackerTag: a.attackerTag, begin: 0 });
+        });
+      }
       setArcs(newArcs);
     };
     // Đợi 1 nhịp để layout ổn định (đổi selected có thể làm card đổi vị trí)
@@ -193,7 +215,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
     window.addEventListener("resize", measure);
     return () => { clearTimeout(t); window.removeEventListener("resize", measure); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, war]);
+  }, [selected, war, viewMode]);
 
   const rows = Math.max(ourTeam.length, theirTeam.length);
   const maxAttacks = war?.attacksPerMember || (war?.isCWL ? 1 : 2);
@@ -205,6 +227,11 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
       <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">
         <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Chiến trường</h3>
         <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
+          <button onClick={() => { setViewMode(v => v === "all" ? "single" : "all"); setSelected(null); }}
+            className="px-2 py-1 rounded-lg font-bold flex items-center gap-1"
+            style={{ background: viewMode === "all" ? "rgba(244,161,48,0.2)" : "rgba(120,120,140,0.12)", color: viewMode === "all" ? "#F4A130" : undefined }}>
+            {viewMode === "all" ? "🎯 Đang xem tất cả" : "👤 Xem tất cả"}
+          </button>
           <span>⚔ #X = vị trí tấn công</span>
           <span className="flex items-center gap-1">
             {Array.from({ length: maxAttacks }).map((_, i) => (
@@ -212,7 +239,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
             ))}
             = {maxAttacks} lượt đánh
           </span>
-          {selected && (
+          {selected && viewMode === "single" && (
             <>
               <span className="flex items-center gap-1 text-sky-400"><Swords size={10}/> phe mình</span>
               <span className="flex items-center gap-1 text-red-400"><Shield size={10}/> phe địch</span>
@@ -221,6 +248,11 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
           )}
         </div>
       </div>
+      {viewMode === "all" && (
+        <p className="px-3 pb-1 text-[9px] text-gray-500">
+          Đang phát lại theo đúng thứ tự đánh (ai đánh trước bay trước) — dồn cả trận vào ~18 giây cho dễ theo dõi.
+        </p>
+      )}
 
       {/* Team labels */}
       <div className="grid px-2" style={{ gridTemplateColumns: "1fr 20px 1fr" }}>
@@ -250,12 +282,12 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
                   {/* Đường bay mờ, luôn hiện để thấy rõ hình vòng cung */}
                   <path d={pathD} fill="none" stroke={color} strokeOpacity={0.28} strokeWidth={1.5} strokeDasharray="3 4" />
 
-                  <ProjectileBall svgKey={skinKey} pathD={pathD} teamColor={color} dur={PROJECTILE_DUR} />
+                  <ProjectileBall svgKey={skinKey} pathD={pathD} teamColor={color} dur={PROJECTILE_DUR} begin={a.begin} />
 
                   {/* Chớp sáng lúc đạn chạm đích */}
                   <circle cx={a.x2} cy={a.y2} r="7" fill={color}>
-                    <animate attributeName="opacity" values="0;0;0.9;0" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} repeatCount="indefinite" />
-                    <animate attributeName="r" values="3;3;9;3" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0;0;0.9;0" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} begin={`${a.begin}s`} repeatCount="indefinite" />
+                    <animate attributeName="r" values="3;3;9;3" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} begin={`${a.begin}s`} repeatCount="indefinite" />
                   </circle>
                 </g>
               );
@@ -273,7 +305,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
                   <MemberCard member={left} side="left"
                     attacks={ourAtks[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
                     selected={selected?.tag === left.tag}
-                    onSelect={() => setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" })} />
+                    onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" }); }} />
                 )}
               </div>
 
@@ -287,7 +319,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
                   <MemberCard member={right} side="right"
                     attacks={theirAtks[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
                     selected={selected?.tag === right.tag}
-                    onSelect={() => setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" })} />
+                    onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" }); }} />
                 )}
               </div>
             </div>

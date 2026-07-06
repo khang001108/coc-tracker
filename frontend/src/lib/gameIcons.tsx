@@ -521,6 +521,10 @@ export const PROJECTILE_SKINS: Record<string, {
   proj_fridge:     { rotate: "wobble", trail: 3, spark: "#7DD3FC", coreScale: 1.3, label: "Tủ Lạnh" },
   proj_hammer:     { rotate: "spin",   trail: 2, spark: "#FFD700", coreScale: 1.2, label: "Búa Thần" },
   proj_scissors:   { rotate: "spin",   trail: 2, spark: "#E5E7EB", coreScale: 1.1, label: "Lưỡi Kéo" },
+  proj_throwdart:  { rotate: "spin",   trail: 2, spark: "#FF5A5A", coreScale: 1,   label: "Phi Tiêu" },
+  proj_pan:        { rotate: "spin",   trail: 2, spark: "#9AA5B1", coreScale: 1.2, label: "Chảo Bay" },
+  proj_bread:      { rotate: "wobble", trail: 2, spark: "#E3A857", coreScale: 1.2, label: "Bánh Mì" },
+  proj_lollipop:   { rotate: "wobble", trail: 3, spark: "#FF5A8A", coreScale: 1.1, label: "Kẹo Mút" },
 };
 export const PROJECTILE_RAINBOW = ["#FF5A5A", "#FFB300", "#FFEB3B", "#4ADE80", "#38BDF8", "#A78BFA"];
 // Tốc độ bay = đúng nhịp xoay nòng pháo (.cannon-spin-fast trong globals.css: 2s/vòng)
@@ -534,25 +538,43 @@ export const PROJECTILE_DUR = 2;
 function ShapeRocket() {
   return (
     <g>
-      <path d="M0 -9 C3 -6 3.5 -1 2.5 4 L-2.5 4 C-3.5 -1 -3 -6 0 -9 Z" fill="#E7E9EE" stroke="#8B93A3" strokeWidth="0.6" />
-      <path d="M0 -9 C1.6 -6.5 2 -3.5 1.6 -1 L-1.6 -1 C-2 -3.5 -1.6 -6.5 0 -9 Z" fill="#FF5A36" />
-      <circle cx="0" cy="-2.5" r="1.3" fill="#7DD3FC" stroke="#38BDF8" strokeWidth="0.5" />
-      <path d="M-2.5 2 L-5 5.5 L-2 4.3 Z" fill="#FF5A36" />
-      <path d="M2.5 2 L5 5.5 L2 4.3 Z" fill="#FF5A36" />
-      <path d="M-1.6 4 C-1.2 6.5 0 8.5 0 8.5 C0 8.5 1.2 6.5 1.6 4 Z" fill="#FFB300" />
+      {/* Mũi hướng +X (phải) — để rotate="auto" tự xoay đúng theo hướng bay */}
+      <path d="M9 0 C6 -3 1 -3.5 -4 -2.5 L-4 2.5 C1 3.5 6 3 9 0 Z" fill="#E7E9EE" stroke="#8B93A3" strokeWidth="0.6" />
+      <path d="M9 0 C6.5 -1.6 3.5 -2 1 -1.6 L1 1.6 C3.5 2 6.5 1.6 9 0 Z" fill="#FF5A36" />
+      <circle cx="2.5" cy="0" r="1.3" fill="#7DD3FC" stroke="#38BDF8" strokeWidth="0.5" />
+      <path d="M-2 -2.5 L-5.5 -5 L-4.3 -2 Z" fill="#FF5A36" />
+      <path d="M-2 2.5 L-5.5 5 L-4.3 2 Z" fill="#FF5A36" />
+      <path d="M-4 -1.6 C-6.5 -1.2 -8.5 0 -8.5 0 C-8.5 0 -6.5 1.2 -4 1.6 Z" fill="#FFB300" />
     </g>
   );
 }
 function ShapeDragon() {
+  const bodyA = "M -13 0 C -9.5 -4 -6 4 -2.5 0 C 0.5 -4 4 4 7.5 0 C 9.5 -2.4 11 -1 12.5 0";
+  const bodyB = "M -13 0 C -9.5 4 -6 -4 -2.5 0 C 0.5 4 4 -4 7.5 0 C 9.5 2.4 11 1 12.5 0";
   return (
     <g>
-      <circle cx="0" cy="0" r="6" fill="#FF3D00" />
-      <circle cx="0" cy="0" r="3.6" fill="#FFB300" />
-      <circle cx="0" cy="0" r="1.6" fill="#FFF3D0" />
-      {[0, 60, 120, 180, 240, 300].map(deg => (
-        <path key={deg} d="M0 -6 C1.5 -8.5 1 -10.5 0 -12 C-1 -10.5 -1.5 -8.5 0 -6 Z" fill="#FF6B1A"
-          transform={`rotate(${deg})`} opacity={0.85} />
+      {/* Thân rồng dài uốn lượn kiểu rồng châu Á — nhấp nháy giữa 2 dáng sóng để tạo cảm giác uốn éo khi bay */}
+      <path d={bodyA} fill="none" stroke="#B71C1C" strokeWidth="3.8" strokeLinecap="round">
+        <animate attributeName="d" values={`${bodyA};${bodyB};${bodyA}`} dur="0.6s" repeatCount="indefinite" />
+      </path>
+      <path d={bodyA} fill="none" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" opacity={0.8}>
+        <animate attributeName="d" values={`${bodyA};${bodyB};${bodyA}`} dur="0.6s" repeatCount="indefinite" />
+      </path>
+      {/* Vảy vàng dọc thân */}
+      {[-9, -5, -1, 3, 7].map((x, i) => (
+        <circle key={i} cx={x} cy={i % 2 === 0 ? -1.5 : 1.5} r="0.9" fill="#FFD700" opacity={0.85} />
       ))}
+      {/* Đầu rồng ở đầu +X (theo hướng bay) */}
+      <g>
+        <ellipse cx="13.5" cy="0" rx="2.8" ry="2.2" fill="#B71C1C" />
+        <path d="M15 -1.6 L17.8 -3.4 L15.8 -0.6 Z" fill="#FFD700" />
+        <path d="M15 1.6 L17.8 3.4 L15.8 0.6 Z" fill="#FFD700" />
+        <circle cx="14.4" cy="-0.7" r="0.55" fill="#FFEB3B" />
+        <path d="M12.6 1.2 C11 1.8 9.8 1.2 9.2 0.8" stroke="#FFD700" strokeWidth="0.4" fill="none" strokeLinecap="round" />
+        {/* Lửa phun ra từ miệng */}
+        <path d="M16.2 0.6 L20.5 1.8 L17 0.9 Z" fill="#FFB300" opacity={0.9} />
+        <path d="M16.2 -0.2 L21.5 0 L17 0.3 Z" fill="#FF5A36" opacity={0.9} />
+      </g>
     </g>
   );
 }
@@ -570,21 +592,25 @@ function ShapeCannonball() {
 function ShapeDart() {
   return (
     <g>
-      <path d="M0 -9 L2 2 L0 5 L-2 2 Z" fill="#CBD5E1" stroke="#64748B" strokeWidth="0.5" />
-      <path d="M0 -9 L0.8 1.5 L0 4 Z" fill="#EDF2F7" />
-      <rect x="-2.6" y="2" width="5.2" height="1.4" rx="0.6" fill="#8B93A3" />
-      <path d="M-2.6 3.4 L-4.5 7 L-1.8 5.2 Z" fill="#374151" />
-      <path d="M2.6 3.4 L4.5 7 L1.8 5.2 Z" fill="#374151" />
+      {/* Lưỡi dao mảnh, nhọn 2 cạnh */}
+      <path d="M0 -10 L1.6 -1 L0 3 L-1.6 -1 Z" fill="#D9E2EC" stroke="#52606D" strokeWidth="0.5" />
+      <path d="M0 -10 L0.5 -1 L0 2 Z" fill="#F0F4F8" />
+      <line x1="0" y1="-8" x2="0" y2="-1.5" stroke="#9AA5B1" strokeWidth="0.35" />
+      {/* Chắn tay (crossguard) */}
+      <rect x="-3.4" y="3" width="6.8" height="1.3" rx="0.5" fill="#B8860B" stroke="#6B4A00" strokeWidth="0.3" />
+      {/* Chuôi cầm */}
+      <rect x="-1" y="4.3" width="2" height="5" rx="0.9" fill="#5C3A21" />
+      <circle cx="0" cy="9.5" r="1.2" fill="#B8860B" />
     </g>
   );
 }
 function ShapeArrow() {
   return (
     <g>
-      <path d="M0 -9 L-2.6 -3.5 L0 -5 L2.6 -3.5 Z" fill="#8BE28B" stroke="#166534" strokeWidth="0.4" />
-      <rect x="-0.6" y="-4" width="1.2" height="10" fill="#B45309" />
-      <path d="M-0.6 6 L-3 9 L-0.6 7.2 Z" fill="#8BE28B" />
-      <path d="M0.6 6 L3 9 L0.6 7.2 Z" fill="#8BE28B" />
+      <path d="M9 0 L3.5 -2.6 L5 0 L3.5 2.6 Z" fill="#8BE28B" stroke="#166534" strokeWidth="0.4" />
+      <rect x="-6" y="-0.6" width="10" height="1.2" fill="#B45309" />
+      <path d="M-6 -0.6 L-9 -3 L-7.2 -0.6 Z" fill="#8BE28B" />
+      <path d="M-6 0.6 L-9 3 L-7.2 0.6 Z" fill="#8BE28B" />
     </g>
   );
 }
@@ -636,14 +662,65 @@ function ShapeScissors() {
   );
 }
 
+function ShapeThrowingDart() {
+  return (
+    <g>
+      {/* Mũi kim loại nhọn hướng +X */}
+      <path d="M9 0 L3 -1.3 L3 1.3 Z" fill="#9AA5B1" stroke="#52606D" strokeWidth="0.3" />
+      <rect x="-3" y="-0.7" width="6" height="1.4" rx="0.6" fill="#374151" />
+      {/* Cánh đuôi phi tiêu */}
+      <path d="M-3 0 L-8 -3.4 L-4.5 -0.6 Z" fill="#FF5A5A" />
+      <path d="M-3 0 L-8 3.4 L-4.5 0.6 Z" fill="#38BDF8" />
+      <path d="M-3 0 L-9 0 L-4.5 0 Z" fill="#FFD700" />
+    </g>
+  );
+}
+function ShapePan() {
+  return (
+    <g>
+      <circle cx="-1" cy="0" r="6.4" fill="#3A3A3E" stroke="#1C1C1E" strokeWidth="0.7" />
+      <circle cx="-1" cy="0" r="4.6" fill="#57575C" />
+      <ellipse cx="-2.6" cy="-2" rx="2" ry="1.1" fill="#7A7A80" opacity={0.7} />
+      <rect x="5" y="-1" width="8.5" height="2" rx="1" fill="#6B4A21" />
+      <circle cx="13" cy="0" r="1.1" fill="#3A2410" />
+    </g>
+  );
+}
+function ShapeBread() {
+  return (
+    <g>
+      <path d="M-10 0 C-10 -3.6 -5 -5 0 -5 C6 -5 10 -3.4 10 0 C10 3.4 6 5 0 5 C-5 5 -10 3.6 -10 0 Z"
+        fill="#E3A857" stroke="#A9682B" strokeWidth="0.6" />
+      <path d="M-10 0 C-10 -3.6 -5 -5 0 -5 C6 -5 10 -3.4 10 0 C10 1 9.5 1.8 8.5 2.4 C7 -1.5 3 -3.6 0 -3.6 C-4 -3.6 -8 -1.6 -9.4 1.6 C-9.8 1 -10 0.6 -10 0 Z"
+        fill="#F0C378" />
+      {[-5, -1.5, 2, 5.5].map((x, i) => (
+        <path key={i} d={`M${x} -4 C${x + 1.4} -2 ${x + 1.4} 2 ${x} 4`} stroke="#A9682B" strokeWidth="0.6" fill="none" strokeLinecap="round" />
+      ))}
+    </g>
+  );
+}
+function ShapeLollipop() {
+  return (
+    <g>
+      <rect x="-1" y="1" width="2" height="9" rx="1" fill="#F5F5F5" />
+      <circle cx="0" cy="-3" r="6.5" fill="#FF5A8A" />
+      <path d="M0 -3 m-6.5 0 A6.5 6.5 0 0 1 0 -9.5" fill="none" stroke="#FFD1DE" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="0" cy="-3" r="6.5" fill="none" stroke="#C2185B" strokeWidth="0.6" />
+      <path d="M0 -3 C2 -5.5 4 -5.5 4.5 -3 C5 -0.8 3 1 0 -3" fill="#FFEB3B" opacity={0.9} />
+      <path d="M-3.5 -6 C-1.5 -7 1 -6.5 2 -4.5" fill="none" stroke="#FF8FAB" strokeWidth="1.4" strokeLinecap="round" />
+    </g>
+  );
+}
+
 const PROJECTILE_SHAPES: Record<string, () => JSX.Element> = {
   proj_rocket: ShapeRocket, proj_dragon: ShapeDragon, proj_cannonball: ShapeCannonball,
   proj_dart: ShapeDart, proj_arrow: ShapeArrow, proj_poop: ShapePoop,
   proj_fridge: ShapeFridge, proj_hammer: ShapeHammer, proj_scissors: ShapeScissors,
+  proj_throwdart: ShapeThrowingDart, proj_pan: ShapePan, proj_bread: ShapeBread, proj_lollipop: ShapeLollipop,
 };
 
-export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR }: {
-  svgKey: string; pathD: string; teamColor?: string; dur?: number;
+export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR, begin = 0 }: {
+  svgKey: string; pathD: string; teamColor?: string; dur?: number; begin?: number;
 }) {
   const skin = PROJECTILE_SKINS[svgKey] || PROJECTILE_SKINS.proj_classic;
   const color = skin.spark || teamColor || "#F4A130";
@@ -666,31 +743,31 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR 
         const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : color;
         return (
           <circle key={di} r={(2.6 - di * 0.35) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
-            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${delay}s`} path={pathD} />
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin + delay}s`} path={pathD} />
           </circle>
         );
       })}
 
       {ShapeComp ? (
         <g>
-          <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} rotate={skin.rotate === "point" ? "auto" : undefined} />
-          <g transform={`scale(${skin.coreScale * 0.55})`}>
+          <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} rotate={skin.rotate === "point" ? "auto" : undefined} />
+          <g transform={`scale(${skin.coreScale * 0.85})`}>
             {skin.rotate === "spin" && (
-              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.45s" repeatCount="indefinite" additive="sum" />
+              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.45s" begin={`${begin}s`} repeatCount="indefinite" additive="sum" />
             )}
             {skin.rotate === "wobble" && (
-              <animateTransform attributeName="transform" type="rotate" values="-22;22;-22" dur="0.35s" repeatCount="indefinite" additive="sum" />
+              <animateTransform attributeName="transform" type="rotate" values="-22;22;-22" dur="0.35s" begin={`${begin}s`} repeatCount="indefinite" additive="sum" />
             )}
             <ShapeComp />
           </g>
         </g>
       ) : (
         <>
-          <circle r={5.5 * skin.coreScale} fill={`url(#${glowId})`}>
-            <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} />
+          <circle r={7 * skin.coreScale} fill={`url(#${glowId})`}>
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} />
           </circle>
-          <circle r={2.4 * skin.coreScale} fill="#fff" opacity={0.9}>
-            <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} />
+          <circle r={3 * skin.coreScale} fill="#fff" opacity={0.9}>
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} />
           </circle>
         </>
       )}

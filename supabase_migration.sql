@@ -749,3 +749,13 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('projectile', 'proj_hammer',     'Búa Thần',    7000),
   ('projectile', 'proj_scissors',   'Lưỡi Kéo',    3000)
 ON CONFLICT (svg_key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 16 (thêm 4 tia đạn mới: Phi Tiêu, Chảo Bay, Bánh Mì, Kẹo Mút)
+-- ════════════════════════════════════════════════════════════════
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('projectile', 'proj_throwdart', 'Phi Tiêu',   3200),
+  ('projectile', 'proj_pan',       'Chảo Bay',   4000),
+  ('projectile', 'proj_bread',     'Bánh Mì',    2500),
+  ('projectile', 'proj_lollipop',  'Kẹo Mút',    2800)
+ON CONFLICT (svg_key) DO NOTHING;
