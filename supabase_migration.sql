@@ -729,3 +729,23 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('projectile', 'proj_lightning','Tia Sét Xanh',         6500),
   ('projectile', 'proj_rainbow',  'Cầu Vồng Huyền Ảo',    9000)
 ON CONFLICT (svg_key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 15 (làm phong phú Tia đạn — thay bộ cũ ít đa dạng bằng
+-- các hình dạng ngầu hơn: tên lửa, rồng, phi đao, cung tên, bom thối...)
+-- ════════════════════════════════════════════════════════════════
+-- Xoá bộ tia đạn cũ (chỉ khác màu, không khác hình) — ai đã trang bị các
+-- skin này thì tự động rơi về Cổ Điển (proj_classic), không lỗi gì.
+DELETE FROM shop_items WHERE svg_key IN ('proj_comet', 'proj_fire', 'proj_lightning', 'proj_rainbow');
+
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('projectile', 'proj_rocket',     'Hoả Tiễn',    4000),
+  ('projectile', 'proj_dragon',     'Long Hoả',    8500),
+  ('projectile', 'proj_cannonball', 'Đại Bác',     3000),
+  ('projectile', 'proj_dart',       'Phi Đao',     3500),
+  ('projectile', 'proj_arrow',      'Thần Tiễn',   4500),
+  ('projectile', 'proj_poop',       'Bom Thối',    2000),
+  ('projectile', 'proj_fridge',     'Tủ Lạnh',     5500),
+  ('projectile', 'proj_hammer',     'Búa Thần',    7000),
+  ('projectile', 'proj_scissors',   'Lưỡi Kéo',    3000)
+ON CONFLICT (svg_key) DO NOTHING;

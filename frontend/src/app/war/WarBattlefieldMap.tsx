@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon, CannonIcon, PROJECTILE_SKINS, PROJECTILE_RAINBOW } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Swords, Shield } from "lucide-react";
 
@@ -234,18 +234,6 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         {/* Lớp phủ tia đạn — vẽ đường bay cong kiểu pháo bắn + đạn bay có hiệu ứng phát sáng */}
         {arcs.length > 0 && (
           <svg className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 5 }}>
-            <defs>
-              <radialGradient id="ballOurs" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#DFF6FF" />
-                <stop offset="60%" stopColor="#38BDF8" />
-                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="ballTheirs" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#FFD27A" />
-                <stop offset="60%" stopColor="#FF5A36" />
-                <stop offset="100%" stopColor="#FF5A36" stopOpacity="0" />
-              </radialGradient>
-            </defs>
             {arcs.map(a => {
               const midX = (a.x1 + a.x2) / 2;
               const midY = (a.y1 + a.y2) / 2;
@@ -256,38 +244,18 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
               const pathD = `M ${a.x1} ${a.y1} Q ${ctrlX} ${ctrlY} ${a.x2} ${a.y2}`;
               const isOurs = a.side === "left";
               const color = isOurs ? "#38BDF8" : "#FF5A36";
-              const glowId = isOurs ? "ballOurs" : "ballTheirs";
               const skinKey = iconMap[a.attackerTag]?.equipped_projectile || "proj_classic";
-              const skin = PROJECTILE_SKINS[skinKey] || PROJECTILE_SKINS.proj_classic;
-              const DUR = 1.1;
-              const trailDelays = Array.from({ length: skin.trail }, (_, i) => (skin.trail - 1 - i) * (0.16 / Math.max(1, skin.trail - 1)));
               return (
                 <g key={a.id}>
                   {/* Đường bay mờ, luôn hiện để thấy rõ hình vòng cung */}
                   <path d={pathD} fill="none" stroke={color} strokeOpacity={0.28} strokeWidth={1.5} strokeDasharray="3 4" />
 
-                  {/* Vệt đuôi — số lượng/màu tuỳ skin trang bị */}
-                  {trailDelays.map((delay, di) => {
-                    const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : (skin.spark || color);
-                    return (
-                      <circle key={di} r={(2.6 - di * 0.35) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
-                        <animateMotion dur={`${DUR}s`} repeatCount="indefinite" begin={`${delay}s`} path={pathD} />
-                      </circle>
-                    );
-                  })}
-
-                  {/* Đầu đạn phát sáng — luôn theo màu phe để không nhầm */}
-                  <circle r={5.5 * skin.coreScale} fill={`url(#${glowId})`}>
-                    <animateMotion dur={`${DUR}s`} repeatCount="indefinite" path={pathD} />
-                  </circle>
-                  <circle r={2.4 * skin.coreScale} fill="#fff" opacity={0.9}>
-                    <animateMotion dur={`${DUR}s`} repeatCount="indefinite" path={pathD} />
-                  </circle>
+                  <ProjectileBall svgKey={skinKey} pathD={pathD} teamColor={color} dur={PROJECTILE_DUR} />
 
                   {/* Chớp sáng lúc đạn chạm đích */}
                   <circle cx={a.x2} cy={a.y2} r="7" fill={color}>
-                    <animate attributeName="opacity" values="0;0;0.9;0" keyTimes="0;0.88;0.94;1" dur={`${DUR}s`} repeatCount="indefinite" />
-                    <animate attributeName="r" values="3;3;9;3" keyTimes="0;0.88;0.94;1" dur={`${DUR}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0;0;0.9;0" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} repeatCount="indefinite" />
+                    <animate attributeName="r" values="3;3;9;3" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} repeatCount="indefinite" />
                   </circle>
                 </g>
               );

@@ -501,45 +501,94 @@ export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: nu
 
 /* ── Tia đạn (Chiến trường War) ──────────────────────────────────────────── */
 /* Nguồn dùng chung — WarBattlefieldMap.tsx import từ đây để không lặp code.
- * Lõi đạn luôn theo màu PHE (xanh=mình, đỏ=địch, xử lý riêng ở nơi dùng),
- * còn cấu hình dưới đây chỉ quyết định KIỂU ĐUÔI/tia lửa phụ theo skin. */
-export const PROJECTILE_SKINS: Record<string, { trail: number; spark?: string; coreScale: number; label: string }> = {
-  proj_classic:   { trail: 3, coreScale: 1,    label: "Cổ điển" },
-  proj_comet:     { trail: 5, coreScale: 1.3,  label: "Sao chổi" },
-  proj_fire:      { trail: 4, spark: "#FFB300", coreScale: 1.15, label: "Cầu lửa" },
-  proj_lightning: { trail: 2, spark: "#F5F9FF", coreScale: 0.95, label: "Tia sét" },
-  proj_rainbow:   { trail: 6, spark: "rainbow", coreScale: 1.2,  label: "Cầu vồng" },
+ * Lõi đạn theo màu PHE (xanh=mình, đỏ=địch, xử lý riêng ở nơi dùng) CHỈ với
+ * skin dùng chấm tròn cổ điển — các skin có emoji (tên lửa, phi đao...) thì
+ * bản thân hình dạng đã đủ nhận diện, không cần phủ màu phe lên trên nữa.
+ * rotate: "point" = tự xoay theo hướng bay (như tên lửa/mũi tên thật),
+ * "spin" = tự xoay tít không ngừng (phi đao/búa/kéo), "wobble" = lắc nghiêng
+ * ngả hài hước (bom thối/tủ lạnh), "none" = không xoay (đại bác/cổ điển). */
+export type ProjectileRotate = "none" | "spin" | "wobble" | "point";
+export const PROJECTILE_SKINS: Record<string, {
+  emoji?: string; rotate: ProjectileRotate; trail: number; spark?: string; coreScale: number; label: string;
+}> = {
+  proj_classic:    { rotate: "none",  trail: 3, coreScale: 1,    label: "Đạn Cổ Điển" },
+  proj_rocket:     { emoji: "🚀", rotate: "point",  trail: 5, spark: "#FF6B00", coreScale: 1.3, label: "Hoả Tiễn" },
+  proj_dragon:     { emoji: "🐉", rotate: "point",  trail: 6, spark: "#FF3D00", coreScale: 1.3, label: "Long Hoả" },
+  proj_cannonball: { emoji: "💣", rotate: "none",   trail: 4, spark: "#FFA500", coreScale: 1.2, label: "Đại Bác" },
+  proj_dart:       { emoji: "🗡️", rotate: "spin",   trail: 2, spark: "#CBD5E1", coreScale: 1.1, label: "Phi Đao" },
+  proj_arrow:      { emoji: "🏹", rotate: "point",  trail: 3, spark: "#8BE28B", coreScale: 1.1, label: "Thần Tiễn" },
+  proj_poop:       { emoji: "💩", rotate: "wobble", trail: 0, coreScale: 1.3, label: "Bom Thối" },
+  proj_fridge:     { emoji: "🧊", rotate: "wobble", trail: 3, spark: "#7DD3FC", coreScale: 1.3, label: "Tủ Lạnh" },
+  proj_hammer:     { emoji: "🔨", rotate: "spin",   trail: 2, spark: "#FFD700", coreScale: 1.2, label: "Búa Thần" },
+  proj_scissors:   { emoji: "✂️", rotate: "spin",   trail: 2, spark: "#E5E7EB", coreScale: 1.1, label: "Lưỡi Kéo" },
 };
 export const PROJECTILE_RAINBOW = ["#FF5A5A", "#FFB300", "#FFEB3B", "#4ADE80", "#38BDF8", "#A78BFA"];
+// Tốc độ bay = đúng nhịp xoay nòng pháo (.cannon-spin-fast trong globals.css: 2s/vòng)
+export const PROJECTILE_DUR = 2;
 
-export function ProjectilePreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
+/** 1 viên đạn hoàn chỉnh (đầu đạn + đuôi vệt) bay theo pathD, dùng chung cho
+ * cả bản đồ chiến trường thật (nhiều màu phe) và preview trong Cửa hàng. */
+export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR }: {
+  svgKey: string; pathD: string; teamColor?: string; dur?: number;
+}) {
   const skin = PROJECTILE_SKINS[svgKey] || PROJECTILE_SKINS.proj_classic;
-  const pathD = `M 4 ${size - 8} Q ${size / 2} 4 ${size - 4} ${size - 8}`;
+  const color = skin.spark || teamColor || "#F4A130";
   const trailDelays = Array.from({ length: skin.trail }, (_, i) => (skin.trail - 1 - i) * (0.16 / Math.max(1, skin.trail - 1)));
+  const glowId = `projGlow-${svgKey}-${teamColor ? teamColor.replace("#", "") : "x"}`;
+
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <>
       <defs>
-        <radialGradient id={`projPrev-${svgKey}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFF3D0" />
-          <stop offset="60%" stopColor="#F4A130" />
-          <stop offset="100%" stopColor="#F4A130" stopOpacity="0" />
+        <radialGradient id={glowId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="55%" stopColor={teamColor || "#F4A130"} />
+          <stop offset="100%" stopColor={teamColor || "#F4A130"} stopOpacity="0" />
         </radialGradient>
       </defs>
-      <path d={pathD} fill="none" stroke="#F4A130" strokeOpacity={0.3} strokeWidth={1.5} strokeDasharray="3 4" />
+
+      {/* Đuôi vệt — số lượng/màu theo skin */}
       {trailDelays.map((delay, di) => {
-        const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : (skin.spark || "#F4A130");
+        const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : color;
         return (
-          <circle key={di} r={(2.4 - di * 0.3) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
-            <animateMotion dur="1.3s" repeatCount="indefinite" begin={`${delay}s`} path={pathD} />
+          <circle key={di} r={(2.6 - di * 0.35) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${delay}s`} path={pathD} />
           </circle>
         );
       })}
-      <circle r={5 * skin.coreScale} fill={`url(#projPrev-${svgKey})`}>
-        <animateMotion dur="1.3s" repeatCount="indefinite" path={pathD} />
-      </circle>
-      <circle r={2.2 * skin.coreScale} fill="#fff" opacity={0.9}>
-        <animateMotion dur="1.3s" repeatCount="indefinite" path={pathD} />
-      </circle>
+
+      {skin.emoji ? (
+        <g>
+          <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} rotate={skin.rotate === "point" ? "auto" : undefined} />
+          <g fontSize={16 * skin.coreScale} textAnchor="middle" dominantBaseline="central">
+            {skin.rotate === "spin" && (
+              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.45s" repeatCount="indefinite" />
+            )}
+            {skin.rotate === "wobble" && (
+              <animateTransform attributeName="transform" type="rotate" values="-22;22;-22" dur="0.35s" repeatCount="indefinite" />
+            )}
+            <text>{skin.emoji}</text>
+          </g>
+        </g>
+      ) : (
+        <>
+          <circle r={5.5 * skin.coreScale} fill={`url(#${glowId})`}>
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} />
+          </circle>
+          <circle r={2.4 * skin.coreScale} fill="#fff" opacity={0.9}>
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} />
+          </circle>
+        </>
+      )}
+    </>
+  );
+}
+
+export function ProjectilePreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
+  const pathD = `M 4 ${size - 8} Q ${size / 2} 4 ${size - 4} ${size - 8}`;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <path d={pathD} fill="none" stroke="#F4A130" strokeOpacity={0.3} strokeWidth={1.5} strokeDasharray="3 4" />
+      <ProjectileBall svgKey={svgKey} pathD={pathD} teamColor="#F4A130" dur={1.4} />
     </svg>
   );
 }
