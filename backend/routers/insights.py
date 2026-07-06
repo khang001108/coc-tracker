@@ -8,16 +8,42 @@ from fastapi import APIRouter, Request, Query
 from supabase_client import get_supabase
 from clan_context import get_clan_id
 from datetime import datetime, timedelta
+import json
 
 router = APIRouter()
 
 
 @router.get("/top-coins")
-async def top_coins(request: Request, limit: int = Query(10, le=50)):
+async def top_coins(request: Request, limit: int = Query(10, le=50), scope: str = Query("clan")):
     """Xếp hạng ai đang có nhiều Coins nhất (chỉ tính người đã đăng nhập/nhận
-    tài khoản trên web, vì Coins chỉ tồn tại cho nhóm này)."""
-    clan_id = get_clan_id(request)
+    tài khoản trên web, vì Coins chỉ tồn tại cho nhóm này).
+    scope=clan: chỉ trong clan đang chọn. scope=all: liên clan (mọi clan)."""
     sb = get_supabase()
+
+    if scope == "all":
+        clans_res = sb.table("clans").select("id, clan_name").execute()
+        clan_info = {c["id"]: c for c in (clans_res.data or [])}
+        # Lấy huy hiệu từng clan từ snapshot gần nhất (không gọi lại CoC API cho
+        # từng clan — dùng cache có sẵn cho nhanh)
+        badges: dict[int, str] = {}
+        for cid in clan_info:
+            try:
+                snap = sb.table("snapshot_clan").select("data").eq("clan_id", cid).order("id", desc=True).limit(1).execute()
+                if snap.data:
+                    badges[cid] = json.loads(snap.data[0]["data"]).get("badgeUrls", {}).get("medium", "")
+            except Exception:
+                pass
+
+        res = sb.table("member_accounts").select("player_tag,player_name,coins,clan_id").order("coins", desc=True).execute()
+        rows = [r for r in (res.data or []) if (r.get("coins") or 0) > 0][:limit]
+        return {"top": [{
+            "tag": r["player_tag"], "name": r["player_name"], "coins": r.get("coins") or 0,
+            "clan_id": r.get("clan_id"),
+            "clan_name": clan_info.get(r.get("clan_id"), {}).get("clan_name", "?"),
+            "clan_badge": badges.get(r.get("clan_id"), ""),
+        } for r in rows]}
+
+    clan_id = get_clan_id(request)
     tag = None
     try:
         from clan_context import get_tag_by_clan_id

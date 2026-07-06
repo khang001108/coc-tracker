@@ -36,6 +36,8 @@ export default function StatsPage() {
   const [warActivity, setWarActivity] = useState<{ weakest_war: any[]; most_skips: any[]; mvp_attack?: any; mvp_defense?: any }>({ weakest_war: [], most_skips: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
   const [topCoins, setTopCoins] = useState<any[]>([]);
+  const [coinsScope, setCoinsScope] = useState<"clan" | "all">("clan");
+  const [coinsCopied, setCoinsCopied] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
@@ -49,8 +51,8 @@ export default function StatsPage() {
   }, []);
 
   useEffect(() => {
-    api.getTopCoins(10).then((res: any) => setTopCoins(res.top || [])).catch(() => {});
-  }, []);
+    api.getTopCoins(10, coinsScope).then((res: any) => setTopCoins(res.top || [])).catch(() => {});
+  }, [coinsScope]);
 
   useEffect(() => {
     setInsightsLoading(true);
@@ -228,17 +230,41 @@ export default function StatsPage() {
           {/* Nhiều Coins nhất — xếp đầu tiên */}
           {topCoins.length > 0 && (
             <div className="card">
-              <h4 className="text-sm font-bold text-white flex items-center gap-1.5 mb-3"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
+                <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+                  <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+                  <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+                </div>
+              </div>
               <div className="space-y-2">
                 {topCoins.map((p, i) => (
                   <div key={p.tag} className="flex items-center gap-3 text-sm">
                     <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                    <span className="flex-1 text-gray-300 truncate">{p.name}</span>
+                    {coinsScope === "all" && (
+                      p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
+                        : <span className="w-5 h-5 shrink-0" />
+                    )}
+                    <span className="flex-1 min-w-0 truncate">
+                      <span className="text-gray-300">{p.name}</span>
+                      {coinsScope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {p.clan_name}</span>}
+                    </span>
                     <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
               <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
+              <button onClick={() => {
+                const lines = topCoins.map((p, i) => coinsScope === "all"
+                  ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
+                  : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
+                const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
+                navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
+                setCoinsCopied(true);
+                setTimeout(() => setCoinsCopied(false), 2000);
+              }} className="btn-secondary text-xs w-full mt-2 flex items-center justify-center gap-1.5">
+                <Copy size={12}/> {coinsCopied ? "Đã copy!" : "Copy làm báo cáo"}
+              </button>
             </div>
           )}
 

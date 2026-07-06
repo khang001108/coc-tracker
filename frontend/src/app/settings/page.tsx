@@ -1113,6 +1113,44 @@ function ShopPricingSettings() {
 
 /** Hiện link nhóm Zalo/Telegram/Discord của clan ĐANG CHỌN — ai cũng thấy
  * được (không cần admin), để bấm tham gia nhóm cộng đồng. */
+/** Chia sẻ link web / mời người khác dùng — ai cũng thấy được (không cần
+ * admin), vì đây chỉ là mời tham gia xem chung, không phải cấu hình. */
+function ShareWebsite() {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== "undefined" ? window.location.origin : "";
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  async function shareLink() {
+    if (navigator.share) {
+      try { await navigator.share({ title: "CoC Tracker", text: "Cùng theo dõi clan trên CoC Tracker nhé!", url }); }
+      catch {}
+    } else {
+      copyLink();
+    }
+  }
+
+  return (
+    <div className="card space-y-3">
+      <h2 className="font-bold text-white flex items-center gap-2">🔗 Chia sẻ / Mời bạn bè</h2>
+      <p className="text-xs text-gray-500">Gửi link này cho bạn bè hoặc thành viên khác để họ cùng vào xem/dùng web.</p>
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800">
+        <span className="flex-1 text-xs text-gray-300 truncate">{url}</span>
+        <button onClick={copyLink} className="text-xs text-yellow-500 hover:text-yellow-400 shrink-0 font-medium">
+          {copied ? "✓ Đã copy" : "Copy"}
+        </button>
+      </div>
+      <button onClick={shareLink} className="btn-gold w-full text-sm">📤 Chia sẻ ngay</button>
+    </div>
+  );
+}
+
 function JoinGroupLinks() {
   const [links, setLinks] = useState<{ zalo_group_link?: string; telegram_group_link?: string; discord_group_link?: string } | null>(null);
 
@@ -1645,6 +1683,7 @@ export default function SettingsPage() {
       {/* Ai cũng chỉnh được — không cần đăng nhập admin, vì đây là quyền của
           từng trình duyệt/thiết bị, không phải cấu hình clan. */}
       <InstallAppButton />
+      <ShareWebsite />
       <JoinGroupLinks />
       <PushNotificationSettings />
 
