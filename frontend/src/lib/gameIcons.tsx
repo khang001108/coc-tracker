@@ -509,18 +509,18 @@ export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: nu
  * ngả hài hước (bom thối/tủ lạnh), "none" = không xoay (đại bác/cổ điển). */
 export type ProjectileRotate = "none" | "spin" | "wobble" | "point";
 export const PROJECTILE_SKINS: Record<string, {
-  emoji?: string; rotate: ProjectileRotate; trail: number; spark?: string; coreScale: number; label: string;
+  rotate: ProjectileRotate; trail: number; spark?: string; coreScale: number; label: string;
 }> = {
   proj_classic:    { rotate: "none",  trail: 3, coreScale: 1,    label: "Đạn Cổ Điển" },
-  proj_rocket:     { emoji: "🚀", rotate: "point",  trail: 5, spark: "#FF6B00", coreScale: 1.3, label: "Hoả Tiễn" },
-  proj_dragon:     { emoji: "🐉", rotate: "point",  trail: 6, spark: "#FF3D00", coreScale: 1.3, label: "Long Hoả" },
-  proj_cannonball: { emoji: "💣", rotate: "none",   trail: 4, spark: "#FFA500", coreScale: 1.2, label: "Đại Bác" },
-  proj_dart:       { emoji: "🗡️", rotate: "spin",   trail: 2, spark: "#CBD5E1", coreScale: 1.1, label: "Phi Đao" },
-  proj_arrow:      { emoji: "🏹", rotate: "point",  trail: 3, spark: "#8BE28B", coreScale: 1.1, label: "Thần Tiễn" },
-  proj_poop:       { emoji: "💩", rotate: "wobble", trail: 0, coreScale: 1.3, label: "Bom Thối" },
-  proj_fridge:     { emoji: "🧊", rotate: "wobble", trail: 3, spark: "#7DD3FC", coreScale: 1.3, label: "Tủ Lạnh" },
-  proj_hammer:     { emoji: "🔨", rotate: "spin",   trail: 2, spark: "#FFD700", coreScale: 1.2, label: "Búa Thần" },
-  proj_scissors:   { emoji: "✂️", rotate: "spin",   trail: 2, spark: "#E5E7EB", coreScale: 1.1, label: "Lưỡi Kéo" },
+  proj_rocket:     { rotate: "point",  trail: 5, spark: "#FF6B00", coreScale: 1.3, label: "Hoả Tiễn" },
+  proj_dragon:     { rotate: "point",  trail: 6, spark: "#FF3D00", coreScale: 1.3, label: "Long Hoả" },
+  proj_cannonball: { rotate: "none",   trail: 4, spark: "#FFA500", coreScale: 1.2, label: "Đại Bác" },
+  proj_dart:       { rotate: "spin",   trail: 2, spark: "#CBD5E1", coreScale: 1.1, label: "Phi Đao" },
+  proj_arrow:      { rotate: "point",  trail: 3, spark: "#8BE28B", coreScale: 1.1, label: "Thần Tiễn" },
+  proj_poop:       { rotate: "wobble", trail: 0, coreScale: 1.3, label: "Bom Thối" },
+  proj_fridge:     { rotate: "wobble", trail: 3, spark: "#7DD3FC", coreScale: 1.3, label: "Tủ Lạnh" },
+  proj_hammer:     { rotate: "spin",   trail: 2, spark: "#FFD700", coreScale: 1.2, label: "Búa Thần" },
+  proj_scissors:   { rotate: "spin",   trail: 2, spark: "#E5E7EB", coreScale: 1.1, label: "Lưỡi Kéo" },
 };
 export const PROJECTILE_RAINBOW = ["#FF5A5A", "#FFB300", "#FFEB3B", "#4ADE80", "#38BDF8", "#A78BFA"];
 // Tốc độ bay = đúng nhịp xoay nòng pháo (.cannon-spin-fast trong globals.css: 2s/vòng)
@@ -528,6 +528,120 @@ export const PROJECTILE_DUR = 2;
 
 /** 1 viên đạn hoàn chỉnh (đầu đạn + đuôi vệt) bay theo pathD, dùng chung cho
  * cả bản đồ chiến trường thật (nhiều màu phe) và preview trong Cửa hàng. */
+/* ── Hình dạng tia đạn tự vẽ (không dùng emoji — mỗi máy hiện khác nhau) ──
+ * Mỗi shape vẽ trong khung 20x20, canh giữa tại gốc toạ độ để dễ ghép vào
+ * <g> đang animate xoay/di chuyển. */
+function ShapeRocket() {
+  return (
+    <g>
+      <path d="M0 -9 C3 -6 3.5 -1 2.5 4 L-2.5 4 C-3.5 -1 -3 -6 0 -9 Z" fill="#E7E9EE" stroke="#8B93A3" strokeWidth="0.6" />
+      <path d="M0 -9 C1.6 -6.5 2 -3.5 1.6 -1 L-1.6 -1 C-2 -3.5 -1.6 -6.5 0 -9 Z" fill="#FF5A36" />
+      <circle cx="0" cy="-2.5" r="1.3" fill="#7DD3FC" stroke="#38BDF8" strokeWidth="0.5" />
+      <path d="M-2.5 2 L-5 5.5 L-2 4.3 Z" fill="#FF5A36" />
+      <path d="M2.5 2 L5 5.5 L2 4.3 Z" fill="#FF5A36" />
+      <path d="M-1.6 4 C-1.2 6.5 0 8.5 0 8.5 C0 8.5 1.2 6.5 1.6 4 Z" fill="#FFB300" />
+    </g>
+  );
+}
+function ShapeDragon() {
+  return (
+    <g>
+      <circle cx="0" cy="0" r="6" fill="#FF3D00" />
+      <circle cx="0" cy="0" r="3.6" fill="#FFB300" />
+      <circle cx="0" cy="0" r="1.6" fill="#FFF3D0" />
+      {[0, 60, 120, 180, 240, 300].map(deg => (
+        <path key={deg} d="M0 -6 C1.5 -8.5 1 -10.5 0 -12 C-1 -10.5 -1.5 -8.5 0 -6 Z" fill="#FF6B1A"
+          transform={`rotate(${deg})`} opacity={0.85} />
+      ))}
+    </g>
+  );
+}
+function ShapeCannonball() {
+  return (
+    <g>
+      <circle cx="0" cy="1" r="6.5" fill="#2B2B2E" stroke="#111" strokeWidth="0.6" />
+      <ellipse cx="-2" cy="-1.5" rx="2" ry="1.2" fill="#5A5A5E" opacity={0.6} />
+      <path d="M0 -5.5 L1 -9 L-0.6 -8.6 Z" fill="#8B5A0F" />
+      <circle cx="1" cy="-9" r="1.1" fill="#FFD700" />
+      <circle cx="1" cy="-9" r="0.5" fill="#FFF3D0" />
+    </g>
+  );
+}
+function ShapeDart() {
+  return (
+    <g>
+      <path d="M0 -9 L2 2 L0 5 L-2 2 Z" fill="#CBD5E1" stroke="#64748B" strokeWidth="0.5" />
+      <path d="M0 -9 L0.8 1.5 L0 4 Z" fill="#EDF2F7" />
+      <rect x="-2.6" y="2" width="5.2" height="1.4" rx="0.6" fill="#8B93A3" />
+      <path d="M-2.6 3.4 L-4.5 7 L-1.8 5.2 Z" fill="#374151" />
+      <path d="M2.6 3.4 L4.5 7 L1.8 5.2 Z" fill="#374151" />
+    </g>
+  );
+}
+function ShapeArrow() {
+  return (
+    <g>
+      <path d="M0 -9 L-2.6 -3.5 L0 -5 L2.6 -3.5 Z" fill="#8BE28B" stroke="#166534" strokeWidth="0.4" />
+      <rect x="-0.6" y="-4" width="1.2" height="10" fill="#B45309" />
+      <path d="M-0.6 6 L-3 9 L-0.6 7.2 Z" fill="#8BE28B" />
+      <path d="M0.6 6 L3 9 L0.6 7.2 Z" fill="#8BE28B" />
+    </g>
+  );
+}
+function ShapePoop() {
+  return (
+    <g>
+      <ellipse cx="0" cy="6" rx="6.5" ry="2.6" fill="#8B5A2B" />
+      <ellipse cx="0" cy="2.5" rx="5" ry="2.6" fill="#A0692F" />
+      <ellipse cx="0" cy="-1.5" rx="3.6" ry="2.4" fill="#B47A3C" />
+      <ellipse cx="0" cy="-4.6" rx="2.2" ry="1.8" fill="#C48A4D" />
+      <circle cx="-2" cy="1" r="0.8" fill="#fff" />
+      <circle cx="2" cy="1" r="0.8" fill="#fff" />
+      <circle cx="-2" cy="1.2" r="0.4" fill="#222" />
+      <circle cx="2" cy="1.2" r="0.4" fill="#222" />
+    </g>
+  );
+}
+function ShapeFridge() {
+  return (
+    <g>
+      <rect x="-5" y="-9" width="10" height="18" rx="1.6" fill="#EAF6FF" stroke="#8FC7E8" strokeWidth="0.7" />
+      <line x1="-5" y1="-2.5" x2="5" y2="-2.5" stroke="#8FC7E8" strokeWidth="0.7" />
+      <rect x="2.6" y="-7" width="1.1" height="3" rx="0.5" fill="#7DD3FC" />
+      <rect x="2.6" y="-0.5" width="1.1" height="3" rx="0.5" fill="#7DD3FC" />
+      <path d="M-3 -6 L-1 -4" stroke="#C7EAFB" strokeWidth="0.8" strokeLinecap="round" />
+    </g>
+  );
+}
+function ShapeHammer() {
+  return (
+    <g>
+      <rect x="-1" y="-2" width="2" height="11" rx="0.8" fill="#B45309" />
+      <rect x="-5.5" y="-9" width="11" height="6" rx="1.2" fill="#8B93A3" stroke="#4B5563" strokeWidth="0.6" />
+      <rect x="-5.5" y="-9" width="11" height="2" rx="1" fill="#CBD5E1" />
+    </g>
+  );
+}
+function ShapeScissors() {
+  return (
+    <g>
+      <path d="M-1 0 L-6 -8 L-4.3 -8.6 L1 -0.8 Z" fill="#CBD5E1" stroke="#64748B" strokeWidth="0.4" />
+      <path d="M1 0 L6 -8 L4.3 -8.6 L-1 -0.8 Z" fill="#CBD5E1" stroke="#64748B" strokeWidth="0.4" />
+      <circle cx="0" cy="0" r="1.3" fill="#F4A130" />
+      <circle cx="-5" cy="6.5" r="2.6" fill="none" stroke="#374151" strokeWidth="1.3" />
+      <circle cx="5" cy="6.5" r="2.6" fill="none" stroke="#374151" strokeWidth="1.3" />
+      <path d="M-1 0 L-5 6.5" stroke="#374151" strokeWidth="1.1" />
+      <path d="M1 0 L5 6.5" stroke="#374151" strokeWidth="1.1" />
+    </g>
+  );
+}
+
+const PROJECTILE_SHAPES: Record<string, () => JSX.Element> = {
+  proj_rocket: ShapeRocket, proj_dragon: ShapeDragon, proj_cannonball: ShapeCannonball,
+  proj_dart: ShapeDart, proj_arrow: ShapeArrow, proj_poop: ShapePoop,
+  proj_fridge: ShapeFridge, proj_hammer: ShapeHammer, proj_scissors: ShapeScissors,
+};
+
 export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR }: {
   svgKey: string; pathD: string; teamColor?: string; dur?: number;
 }) {
@@ -535,6 +649,7 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR 
   const color = skin.spark || teamColor || "#F4A130";
   const trailDelays = Array.from({ length: skin.trail }, (_, i) => (skin.trail - 1 - i) * (0.16 / Math.max(1, skin.trail - 1)));
   const glowId = `projGlow-${svgKey}-${teamColor ? teamColor.replace("#", "") : "x"}`;
+  const ShapeComp = PROJECTILE_SHAPES[svgKey];
 
   return (
     <>
@@ -556,17 +671,17 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR 
         );
       })}
 
-      {skin.emoji ? (
+      {ShapeComp ? (
         <g>
           <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} rotate={skin.rotate === "point" ? "auto" : undefined} />
-          <g fontSize={16 * skin.coreScale} textAnchor="middle" dominantBaseline="central">
+          <g transform={`scale(${skin.coreScale * 0.55})`}>
             {skin.rotate === "spin" && (
-              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.45s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.45s" repeatCount="indefinite" additive="sum" />
             )}
             {skin.rotate === "wobble" && (
-              <animateTransform attributeName="transform" type="rotate" values="-22;22;-22" dur="0.35s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="rotate" values="-22;22;-22" dur="0.35s" repeatCount="indefinite" additive="sum" />
             )}
-            <text>{skin.emoji}</text>
+            <ShapeComp />
           </g>
         </g>
       ) : (
