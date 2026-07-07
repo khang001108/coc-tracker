@@ -299,8 +299,9 @@ const CASTLE_COMPONENTS: Record<string, React.FC<{ size?: number }>> = {
   castle_tiger:     CastleTiger,
   castle_panda:     CastlePanda,
   castle_grand:     CastleGrand,
-  castle_ruins:     CastleRuins,
+  castle_ruins:     CastleRuins,   // không bán trong Shop nữa — chỉ dùng để hiện "vỡ vụn" khi phòng thủ mất trọn 3 sao
   castle_straw:     CastleStraw,
+  castle_shack:     CastleShack,
 };
 
 // ── Pháo (nòng súng xoay khi đã bắn) ─────────────────────────────────────
@@ -505,6 +506,24 @@ function CastleStraw({ size = 34 }: { size?: number }) {
       <circle cx="12" cy="22" r="1.9" fill="#4A3520" />
       <circle cx="12.6" cy="21.3" r="0.5" fill="#FFE8B8" />
       <path d="M18 31 L18 25.5 C18 23.5 24 23.5 24 25.5 L24 31 Z" fill="#7A5230" stroke="#4A3520" strokeWidth="1" />
+    </svg>
+  );
+}
+
+/** Túp Lều Xiêu Vẹo — nhà gỗ tồi tàn, xiêu vẹo, vá chằng vá đụp — khác hẳn
+ * Nhà Tranh Mộc (còn nguyên vẹn, mái rơm gọn gàng): cái này méo mó, ọp ẹp. */
+function CastleShack({ size = 34 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 34 34">
+      <path d="M6 30 L7 17 L26 15.5 L27 30 Z" fill="#8B7355" stroke="#5B4A2A" strokeWidth="1" />
+      <rect x="12" y="19" width="4" height="3.4" fill="#6B5A3A" opacity={0.7} />
+      <rect x="19" y="21" width="3.6" height="3" fill="#6B5A3A" opacity={0.6} />
+      <path d="M4 17.5 L16.5 8 L29 16 L28.6 18.5 L16.3 11 L5 19.5 Z" fill="#9C8A6A" stroke="#5B4A2A" strokeWidth="0.9" />
+      <line x1="9" y1="15.3" x2="10.5" y2="17.6" stroke="#5B4A2A" strokeWidth="0.6" />
+      <line x1="20" y1="13.5" x2="21.5" y2="16" stroke="#5B4A2A" strokeWidth="0.6" />
+      <circle cx="11" cy="24.5" r="1.7" fill="#2B2118" />
+      <path d="M11 22.8 L11 26.2 M9.4 24.5 L12.6 24.5" stroke="#5B4A2A" strokeWidth="0.4" opacity={0.6} />
+      <path d="M18 30 L18.4 24.5 C18.4 23 22.6 23 22.6 24.5 L23 30 Z" fill="#5B4A2A" stroke="#3A2E18" strokeWidth="0.8" />
     </svg>
   );
 }
@@ -829,6 +848,26 @@ const PROJECTILE_SHAPES: Record<string, () => JSX.Element> = {
   proj_throwdart: ShapeThrowingDart, proj_pan: ShapePan, proj_bread: ShapeBread, proj_lollipop: ShapeLollipop,
 };
 
+/** Icon tia đạn TĨNH, nhỏ — dùng làm biểu tượng "lượt đánh" (sáng = đã đánh,
+ * mờ = chưa đánh) thay cho pháo trước đây — pháo giờ chuyển sang trang trí
+ * lâu đài đại diện cho PHÒNG THỦ. */
+export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: string; fired?: boolean; size?: number }) {
+  const key = svgKey || "proj_classic";
+  const ShapeComp = PROJECTILE_SHAPES[key];
+  const skin = PROJECTILE_SKINS[key] || PROJECTILE_SKINS.proj_classic;
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" opacity={fired ? 1 : 0.28}>
+      <g transform="translate(10 10)">
+        {ShapeComp ? (
+          <g transform={`scale(${skin.coreScale * 0.85})`}><ShapeComp /></g>
+        ) : (
+          <circle r="4.5" fill={fired ? "#F4A130" : "#6B7280"} stroke="#8B5A0F" strokeWidth="0.6" />
+        )}
+      </g>
+    </svg>
+  );
+}
+
 export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR, begin = 0 }: {
   svgKey: string; pathD: string; teamColor?: string; dur?: number; begin?: number;
 }) {
@@ -928,14 +967,14 @@ function repeatBegins(begin: number, cycleDur: number, count = 120): string {
  * vòng bay), nhưng có THỜI LƯỢNG NỔ RIÊNG (burstDur) để đủ lâu nhìn thấy rõ,
  * không phụ thuộc vào việc vòng bay của đạn dài hay ngắn. Nuclear/Splash có
  * hình riêng (nấm/giọt nước), còn lại dùng chùm mảnh vỡ toé ra chung. */
-export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0, burstDurOverride }: {
-  svgKey: string; x: number; y: number; dur?: number; begin?: number; burstDurOverride?: number;
+export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0, burstDurOverride, firstBurstAtOverride }: {
+  svgKey: string; x: number; y: number; dur?: number; begin?: number; burstDurOverride?: number; firstBurstAtOverride?: number;
 }) {
   const exp = EXPLOSION_SKINS[svgKey] || EXPLOSION_SKINS.exp_classic;
   const burstDur = burstDurOverride ?? exp.burstDur;
   // Đạn chạm đích ngay khi vòng bay (dur) kết thúc — bắt đầu nổ đúng lúc đó,
   // rồi lặp lại đúng mỗi chu kỳ dur tiếp theo.
-  const beginList = repeatBegins(begin + dur * 0.97, dur);
+  const beginList = repeatBegins(begin + dur * (firstBurstAtOverride ?? 0.97), dur);
   const keyTimes = "0;0.06;0.5;1";
 
   if (svgKey === "exp_nuclear") {
@@ -1022,7 +1061,7 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0,
 export function ExplosionPreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={1.6} begin={0} />
+      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={1.6} begin={0} firstBurstAtOverride={0.05} />
     </svg>
   );
 }

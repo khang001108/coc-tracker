@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion, ProjectileMiniIcon } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
@@ -44,12 +44,17 @@ function AttackBadge({ attack }: { attack: any }) {
   );
 }
 
-function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAttacks }: {
-  member: any; attacks: any[]; side: "left" | "right";
+function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSelect, maxAttacks }: {
+  member: any; attacks: any[]; defenses: any[]; side: "left" | "right";
   iconMap: Record<string, any>; selected: boolean; onSelect: () => void; maxAttacks: number;
 }) {
   const isRight = side === "right";
   const totalStars = attacks.reduce((s, a) => s + a.stars, 0);
+  // Pháo + lâu đài giờ trang trí cho PHÒNG THỦ: mất bao nhiêu sao khi bị đánh
+  // (best/cao nhất trong các lượt bị tấn công) — 2 pháo = 2 sao, lâu đài vỡ = sao thứ 3.
+  const starsConceded = defenses.length ? Math.max(...defenses.map((d: any) => d.stars || 0)) : 0;
+  const darkCannons = Math.min(2, starsConceded);
+  const castleRuined = starsConceded >= 3;
 
   return (
     <button onClick={onSelect}
@@ -57,12 +62,12 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
       <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-        {/* Castle icon */}
+        {/* Castle icon — vỡ thành phế tích nếu bị mất trọn 3 sao khi phòng thủ */}
         <div className="shrink-0">
-          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
+          <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
         </div>
 
-        {/* Name + stars + cannons */}
+        {/* Name + stars + pháo phòng thủ */}
         <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
           <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: "var(--py-card-text, #e5e7eb)" }}>
             <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
@@ -70,10 +75,16 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             <Stars stars={totalStars} />
           </div>
-          {/* Số pháo = số lượt đánh cho phép (1 ở CWL, 2 ở war thường) */}
+          {/* 2 pháo cố định = trang trí phòng thủ, tối màu dần theo số sao đã mất khi bị đánh */}
+          <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
+            {Array.from({ length: 2 }).map((_, i) => (
+              <CannonIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_cannon} fired={i < darkCannons} />
+            ))}
+          </div>
+          {/* Lượt đánh — hiện icon tia đạn đang sở hữu, sáng = đã đánh, mờ = chưa đánh */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {Array.from({ length: maxAttacks }).map((_, i) => (
-              <CannonIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_cannon} fired={!!attacks[i]} />
+              <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={!!attacks[i]} />
             ))}
           </div>
         </div>
@@ -264,23 +275,50 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
       {/* Member rows */}
       <div className="px-1 pb-3 space-y-0 relative" ref={containerRef}>
-        {/* Lớp phủ tia đạn — vẽ đường bay cong kiểu pháo bắn + đạn bay có hiệu ứng phát sáng */}
+        {Array.from({ length: rows }).map((_, i) => {
+          const left  = ourTeam[i];
+          const right = theirTeam[i];
+          return (
+            <div key={i} className="grid items-start" style={{ gridTemplateColumns: "1fr 18px 1fr" }}>
+              <div ref={el => { if (left) { if (el) cardRefs.current.set(left.tag, el); else cardRefs.current.delete(left.tag); } }}
+                style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
+                {left && (
+                  <MemberCard member={left} side="left"
+                    attacks={ourAtks[left.tag] || []} defenses={ourDefs[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
+                    selected={selected?.tag === left.tag}
+                    onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" }); }} />
+                )}
+              </div>
+
+              <div className="flex items-center justify-center pt-2">
+                <span className="text-[9px] text-gray-400 font-mono font-bold">{i + 1}</span>
+              </div>
+
+              <div ref={el => { if (right) { if (el) cardRefs.current.set(right.tag, el); else cardRefs.current.delete(right.tag); } }}
+                style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
+                {right && (
+                  <MemberCard member={right} side="right"
+                    attacks={theirAtks[right.tag] || []} defenses={theirDefs[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
+                    selected={selected?.tag === right.tag}
+                    onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" }); }} />
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Lớp phủ tia đạn — vẽ SAU danh sách thành viên để luôn hiện TRÊN
+            lâu đài/pháo, không bị nhà che mất hướng bay ở điểm xuất phát nữa. */}
         {arcs.length > 0 && (
-          <svg className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 5 }}>
+          <svg className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 30 }}>
             {arcs.map(a => {
               const midX = (a.x1 + a.x2) / 2;
               const midY = (a.y1 + a.y2) / 2;
               const dx = a.x2 - a.x1;
               const dy = a.y2 - a.y1;
               const dist = Math.hypot(dx, dy) || 1;
-              // Cong theo hướng VUÔNG GÓC với đường nối thật (không phải luôn
-              // luôn cong lên) — trước đây cứ đẩy lên cố định nên đường nối
-              // gần như thẳng đứng (rất hay gặp vì 2 đội xếp theo cột) bị
-              // vẽ lệch sang ngang, nhìn như bắn không tới đích.
-              // Luôn cong lên trên (đúng ý bạn thích) — nhưng cho phép cong
-              // CAO HƠN NHIỀU khi 2 người ở xa nhau (màn hình máy tính cột 2
-              // bên cách xa nhau) — trước giới hạn quá thấp (tối đa 60px) nên
-              // trên máy tính đường bay gần như phẳng, nhìn như không chạm đích.
+              // Luôn cong lên trên — cho phép cong CAO HƠN khi 2 người ở xa
+              // nhau (màn hình máy tính cột 2 bên cách xa nhau).
               const arcHeight = Math.min(140, Math.max(20, dist * 0.4));
               const ctrlX = midX;
               const ctrlY = midY - arcHeight;
@@ -302,37 +340,6 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
             })}
           </svg>
         )}
-        {Array.from({ length: rows }).map((_, i) => {
-          const left  = ourTeam[i];
-          const right = theirTeam[i];
-          return (
-            <div key={i} className="grid items-start" style={{ gridTemplateColumns: "1fr 18px 1fr" }}>
-              <div ref={el => { if (left) { if (el) cardRefs.current.set(left.tag, el); else cardRefs.current.delete(left.tag); } }}
-                style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
-                {left && (
-                  <MemberCard member={left} side="left"
-                    attacks={ourAtks[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
-                    selected={selected?.tag === left.tag}
-                    onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" }); }} />
-                )}
-              </div>
-
-              <div className="flex items-center justify-center pt-2">
-                <span className="text-[9px] text-gray-400 font-mono font-bold">{i + 1}</span>
-              </div>
-
-              <div ref={el => { if (right) { if (el) cardRefs.current.set(right.tag, el); else cardRefs.current.delete(right.tag); } }}
-                style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
-                {right && (
-                  <MemberCard member={right} side="right"
-                    attacks={theirAtks[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
-                    selected={selected?.tag === right.tag}
-                    onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" }); }} />
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

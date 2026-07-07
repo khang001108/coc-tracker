@@ -780,3 +780,14 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('castle', 'castle_ruins',  'Phế Tích Cổ',     2500),
   ('castle', 'castle_straw',  'Nhà Tranh Mộc',   1500)
 ON CONFLICT (svg_key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 18 (Pháo giờ trang trí cho PHÒNG THỦ — Phế Tích Cổ trở
+-- thành hình ảnh riêng cho "mất trọn 3 sao khi phòng thủ", không bán trong
+-- Cửa hàng nữa — thay bằng Túp Lều Xiêu Vẹo)
+-- ════════════════════════════════════════════════════════════════
+DELETE FROM shop_items WHERE svg_key = 'castle_ruins';
+
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('castle', 'castle_shack', 'Túp Lều Xiêu Vẹo', 1200)
+ON CONFLICT (svg_key) DO NOTHING;
