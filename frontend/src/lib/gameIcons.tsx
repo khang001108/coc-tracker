@@ -588,50 +588,12 @@ export function CannonIcon({ svgKey, fired, size }: {
   );
 }
 
-/** Preview trong Shop — lớn hơn, luôn orange, luôn animate */
-const PREMIUM_CASTLES = new Set(["castle_grand", "castle_celestial", "castle_dragon", "castle_shadow"]);
-const PREMIUM_CANNONS = new Set(["cannon_mythic", "cannon_celestial", "cannon_dragon", "cannon_storm"]);
-
-/** Rồng/phượng nhỏ bay lượn vòng quanh — chỉ dành cho vật phẩm cao cấp/đắt
- * tiền, tạo cảm giác "xịn" hẳn so với các loại thường. */
-function OrbitingCreature({ size, kind }: { size: number; kind: "dragon" | "phoenix" }) {
-  const color = kind === "dragon" ? "#4ADE80" : "#FF6B35";
-  const accent = kind === "dragon" ? "#FFD700" : "#FFEB3B";
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-      <g>
-        <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="3.2s" repeatCount="indefinite" />
-        <g transform="translate(50 6)">
-          {kind === "dragon" ? (
-            <>
-              <path d="M0 3 C3 0 6 1 7 4 C8 1 10 2 9 5 L4 8 Z" fill={color} stroke="#166534" strokeWidth="0.4" />
-              <path d="M-2 5 L-5 2 L-3.6 6 Z" fill={accent} />
-              <path d="M6 5 L9 2 L7.6 6 Z" fill={accent} />
-              <circle cx="1.5" cy="4" r="0.6" fill={accent} />
-            </>
-          ) : (
-            <>
-              <path d="M0 2 C2.5 -1 6 -0.5 7 3 C7.6 0.5 9.6 1.5 8.6 4.5 L3.5 7 Z" fill={color} stroke="#9C2A16" strokeWidth="0.4" />
-              <path d="M-3 4 L-6 1 L-4 6 Z" fill={accent} />
-              <path d="M8 3 L11 0.5 L9.4 5.5 Z" fill={accent} />
-            </>
-          )}
-        </g>
-      </g>
-    </svg>
-  );
-}
-
 export function CastlePreview({ svgKey, size = 48 }: { svgKey: string; size?: number }) {
   ensureStyles();
   const Comp = CASTLE_COMPONENTS[svgKey] || CastleClassic;
-  const isPremium = PREMIUM_CASTLES.has(svgKey);
   return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      <div style={{ animation: "castle-float 3s ease-in-out infinite" }}>
-        <Comp size={size} />
-      </div>
-      {isPremium && <OrbitingCreature size={size * 1.7} kind={svgKey === "castle_dragon" ? "dragon" : "phoenix"} />}
+    <div style={{ animation: "castle-float 3s ease-in-out infinite" }}>
+      <Comp size={size} />
     </div>
   );
 }
@@ -639,14 +601,10 @@ export function CastlePreview({ svgKey, size = 48 }: { svgKey: string; size?: nu
 export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: number }) {
   ensureStyles();
   const Comp = CANNON_COMPONENTS[svgKey] || CannonBasic;
-  const isPremium = PREMIUM_CANNONS.has(svgKey);
   // fired=false → sáng + spin-fast (trạng thái "sẵn sàng" = đẹp nhất để preview)
   return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      <div style={{ animation: "cannon-glow 2s ease-in-out infinite" }}>
-        <Comp fired={false} size={size} />
-      </div>
-      {isPremium && <OrbitingCreature size={size * 1.9} kind={svgKey === "cannon_dragon" ? "dragon" : "phoenix"} />}
+    <div style={{ animation: "cannon-glow 2s ease-in-out infinite" }}>
+      <Comp fired={false} size={size} />
     </div>
   );
 }
@@ -934,15 +892,19 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
 }
 
 /* ── Hiệu ứng nổ khi đạn chạm đích (Cửa hàng) ──────────────────────────────
- * Mỗi loại là 1 chùm mảnh nhỏ bắn toé ra từ tâm rồi mờ dần — đồng bộ đúng
- * lúc đạn tới đích (dùng chung begin/dur với ProjectileBall). */
-export const EXPLOSION_SKINS: Record<string, { label: string; colors: string[]; particles: number; shape: "circle" | "square" | "star" | "drop" }> = {
-  exp_classic:    { label: "Nổ Cổ Điển",  colors: ["#FFD27A", "#FF5A36"],                     particles: 6,  shape: "circle" },
-  exp_fireworks:  { label: "Pháo Hoa",    colors: ["#FF5A5A", "#FFD700", "#4ADE80", "#38BDF8", "#A78BFA"], particles: 10, shape: "star" },
-  exp_trash:      { label: "Nổ Bãi Rác",  colors: ["#8B7355", "#6B4A21", "#9CA3AF", "#5B4A2A"], particles: 7,  shape: "square" },
-  exp_snowflake:  { label: "Nổ Bông Tuyết", colors: ["#DFF6FF", "#BFE3FF", "#FFFFFF"],         particles: 8,  shape: "star" },
-  exp_splash:     { label: "Nổ Toé Nước",  colors: ["#38BDF8", "#7DD3FC", "#BFE3FF"],          particles: 8,  shape: "drop" },
-  exp_nuclear:    { label: "Nổ Hạt Nhân",  colors: ["#FFD700", "#FF8C00", "#FF3D00", "#6B7280"], particles: 12, shape: "circle" },
+ * Miễn phí = nổ nhỏ, nhanh, gọn. Trả phí = nổ TO hơn, LÂU hơn, nhiều mảnh
+ * hơn — đồng bộ đúng lúc đạn tới đích (dùng chung begin/dur với ProjectileBall). */
+export const EXPLOSION_SKINS: Record<string, {
+  label: string; colors: string[]; particles: number; shape: "circle" | "square" | "star" | "drop";
+  burstStart: number; // % chu kỳ bắt đầu nổ — càng nhỏ càng nổ SỚM hơn = kéo dài lâu hơn trước khi lặp lại
+  scale: number; // độ toé xa/to của mảnh vỡ
+}> = {
+  exp_classic:    { label: "Nổ Cổ Điển",    colors: ["#FFD27A", "#FF5A36"],                                 particles: 6,  shape: "circle", burstStart: 0.92, scale: 1 },
+  exp_fireworks:  { label: "Pháo Hoa",      colors: ["#FF5A5A", "#FFD700", "#4ADE80", "#38BDF8", "#A78BFA"], particles: 16, shape: "star",   burstStart: 0.78, scale: 1.6 },
+  exp_trash:      { label: "Nổ Bãi Rác",    colors: ["#8B7355", "#6B4A21", "#9CA3AF", "#5B4A2A"],           particles: 10, shape: "square", burstStart: 0.82, scale: 1.3 },
+  exp_snowflake:  { label: "Nổ Bông Tuyết", colors: ["#DFF6FF", "#BFE3FF", "#FFFFFF"],                       particles: 12, shape: "star",   burstStart: 0.8,  scale: 1.3 },
+  exp_splash:     { label: "Nổ Toé Nước",   colors: ["#38BDF8", "#7DD3FC", "#BFE3FF"],                       particles: 10, shape: "drop",   burstStart: 0.8,  scale: 1.4 },
+  exp_nuclear:    { label: "Nổ Hạt Nhân",   colors: ["#FFD700", "#FF8C00", "#FF3D00", "#6B7280"],           particles: 14, shape: "circle", burstStart: 0.68, scale: 2 },
 };
 
 function ExplosionParticle({ shape, color, size }: { shape: string; color: string; size: number }) {
@@ -953,26 +915,91 @@ function ExplosionParticle({ shape, color, size }: { shape: string; color: strin
 }
 
 /** Hiệu ứng nổ ở đúng điểm đạn chạm đích — đồng bộ begin/dur với ProjectileBall
- * để bùng nổ đúng lúc đạn tới nơi (keyTimes gần cuối chu kỳ bay). */
+ * để bùng nổ đúng lúc đạn tới nơi. Nuclear/Splash có hình riêng (nấm/giọt
+ * nước), còn lại dùng chùm mảnh vỡ toé ra chung, chỉ khác màu/hình/độ to/lâu. */
 export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0 }: {
   svgKey: string; x: number; y: number; dur?: number; begin?: number;
 }) {
   const exp = EXPLOSION_SKINS[svgKey] || EXPLOSION_SKINS.exp_classic;
+  const burstAt = dur * exp.burstStart;
+  const fadeAt = Math.min(dur * 0.99, burstAt + (dur - burstAt) * 0.85);
+  const keyTimes = `0;${(burstAt / dur).toFixed(3)};${(Math.min(burstAt + dur * 0.06, fadeAt) / dur).toFixed(3)};${(fadeAt / dur).toFixed(3)}`;
+
+  if (svgKey === "exp_nuclear") {
+    return (
+      <g transform={`translate(${x} ${y})`}>
+        {/* Vòng sóng xung kích lan ra */}
+        <circle r="4" fill="none" stroke="#FF8C00" strokeWidth="1.4" opacity={0}>
+          <animate attributeName="opacity" values="0;0;0.8;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="r" values="2;2;20;26" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </circle>
+        {/* Cột khói bốc lên */}
+        <rect x="-2.5" y="-14" width="5" height="14" opacity={0} fill="#8A8A8A">
+          <animate attributeName="opacity" values="0;0;0.9;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </rect>
+        {/* Đầu nấm */}
+        <ellipse cx="0" cy="-15" rx="9" ry="6" opacity={0} fill="#FF8C00">
+          <animate attributeName="opacity" values="0;0;0.95;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="ry" values="1;1;6;7" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="0" cy="-16" rx="6" ry="4" opacity={0} fill="#FFD700">
+          <animate attributeName="opacity" values="0;0;0.95;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </ellipse>
+        {/* Chớp sáng gốc nổ */}
+        <circle r="8" fill="#FFD700" opacity={0}>
+          <animate attributeName="opacity" values="0;0;1;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="r" values="2;2;12;14" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </circle>
+      </g>
+    );
+  }
+
+  if (svgKey === "exp_splash") {
+    const drops = Array.from({ length: exp.particles }, (_, i) => (360 / exp.particles) * i);
+    return (
+      <g transform={`translate(${x} ${y})`}>
+        {/* Vòng gợn nước lan ra */}
+        <ellipse rx="3" ry="1.5" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity={0}>
+          <animate attributeName="opacity" values="0;0;0.8;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="rx" values="2;2;16;20" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="ry" values="1;1;7;9" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </ellipse>
+        {/* Giọt nước bắn tung toé lên rồi rơi xuống theo hình vòng cung nhỏ */}
+        {drops.map((deg, i) => {
+          const color = exp.colors[i % exp.colors.length];
+          const dist = (10 + (i % 3) * 4) * exp.scale;
+          const dx = Math.cos((deg * Math.PI) / 180) * dist * 0.6;
+          const riseY = -dist * 0.9;
+          const fallY = dist * 0.3;
+          return (
+            <g key={i} opacity={0}>
+              <animate attributeName="opacity" values="0;0;1;1;0" keyTimes={`0;${(burstAt / dur).toFixed(3)};${((burstAt + dur * 0.02) / dur).toFixed(3)};${((fadeAt - dur * 0.05) / dur).toFixed(3)};${(fadeAt / dur).toFixed(3)}`} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="translate" values={`0 0;0 0;${dx} ${riseY};${dx * 1.3} ${fallY}`} keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+              <ExplosionParticle shape="drop" color={color} size={2 - (i % 3) * 0.3} />
+            </g>
+          );
+        })}
+        <circle r="6" fill="#7DD3FC" opacity={0}>
+          <animate attributeName="opacity" values="0;0;0.85;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="r" values="2;2;8;3" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        </circle>
+      </g>
+    );
+  }
+
   const angles = Array.from({ length: exp.particles }, (_, i) => (360 / exp.particles) * i + (svgKey.length % 30));
-  const burstAt = dur * 0.9; // % thời điểm nổ trong chu kỳ (ngay trước khi lặp lại)
-  const keyTimes = `0;${(burstAt / dur - 0.02).toFixed(3)};${(burstAt / dur).toFixed(3)};1`;
   return (
     <g transform={`translate(${x} ${y})`}>
       {angles.map((deg, i) => {
         const color = exp.colors[i % exp.colors.length];
-        const dist = 9 + (i % 3) * 3;
+        const dist = (9 + (i % 3) * 3) * exp.scale;
         const dx = Math.cos((deg * Math.PI) / 180) * dist;
         const dy = Math.sin((deg * Math.PI) / 180) * dist;
         return (
           <g key={i} opacity={0}>
             <animate attributeName="opacity" values="0;0;1;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
             <animateTransform attributeName="transform" type="translate" values={`0 0;0 0;${dx} ${dy};${dx * 1.4} ${dy * 1.4}`} keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-            <ExplosionParticle shape={exp.shape} color={color} size={2.4 - (i % 3) * 0.4} />
+            <ExplosionParticle shape={exp.shape} color={color} size={(2.4 - (i % 3) * 0.4) * Math.min(exp.scale, 1.4)} />
           </g>
         );
       })}
@@ -988,7 +1015,7 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0 
 export function ExplosionPreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2} dur={1.4} begin={0} />
+      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={2.2} begin={0} />
     </svg>
   );
 }
