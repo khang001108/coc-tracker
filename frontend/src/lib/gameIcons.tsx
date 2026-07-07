@@ -917,11 +917,11 @@ function ExplosionParticle({ shape, color, size }: { shape: string; color: strin
 /** Hiệu ứng nổ ở đúng điểm đạn chạm đích — đồng bộ begin/dur với ProjectileBall
  * để bùng nổ đúng lúc đạn tới nơi. Nuclear/Splash có hình riêng (nấm/giọt
  * nước), còn lại dùng chùm mảnh vỡ toé ra chung, chỉ khác màu/hình/độ to/lâu. */
-export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0 }: {
-  svgKey: string; x: number; y: number; dur?: number; begin?: number;
+export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0, burstStartOverride }: {
+  svgKey: string; x: number; y: number; dur?: number; begin?: number; burstStartOverride?: number;
 }) {
   const exp = EXPLOSION_SKINS[svgKey] || EXPLOSION_SKINS.exp_classic;
-  const burstAt = dur * exp.burstStart;
+  const burstAt = dur * (burstStartOverride ?? exp.burstStart);
   const fadeAt = Math.min(dur * 0.99, burstAt + (dur - burstAt) * 0.85);
   const keyTimes = `0;${(burstAt / dur).toFixed(3)};${(Math.min(burstAt + dur * 0.06, fadeAt) / dur).toFixed(3)};${(fadeAt / dur).toFixed(3)}`;
 
@@ -1015,7 +1015,7 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0 
 export function ExplosionPreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={2.2} begin={0} />
+      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={1.3} begin={0} burstStartOverride={0.05} />
     </svg>
   );
 }
