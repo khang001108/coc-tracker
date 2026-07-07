@@ -759,3 +759,24 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('projectile', 'proj_bread',     'Bánh Mì',    2500),
   ('projectile', 'proj_lollipop',  'Kẹo Mút',    2800)
 ON CONFLICT (svg_key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 17 (hiệu ứng nổ khi đạn chạm đích + 3 lâu đài mới đa dạng
+-- hình dáng hơn: đồ sộ, phế tích, mái tranh)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE member_accounts ADD COLUMN IF NOT EXISTS equipped_explosion TEXT;
+
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('explosion', 'exp_classic',   'Nổ Cổ Điển',    0),
+  ('explosion', 'exp_fireworks', 'Pháo Hoa',      4500),
+  ('explosion', 'exp_trash',     'Nổ Bãi Rác',    2200),
+  ('explosion', 'exp_snowflake', 'Nổ Bông Tuyết', 3800),
+  ('explosion', 'exp_splash',    'Nổ Toé Nước',   3200),
+  ('explosion', 'exp_nuclear',   'Nổ Hạt Nhân',   7500)
+ON CONFLICT (svg_key) DO NOTHING;
+
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('castle', 'castle_grand',  'Đại Thành Đồ Sộ', 12000),
+  ('castle', 'castle_ruins',  'Phế Tích Cổ',     2500),
+  ('castle', 'castle_straw',  'Nhà Tranh Mộc',   1500)
+ON CONFLICT (svg_key) DO NOTHING;

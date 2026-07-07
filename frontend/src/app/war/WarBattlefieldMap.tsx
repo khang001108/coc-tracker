@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
@@ -295,11 +295,8 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
                   <ProjectileBall svgKey={skinKey} pathD={pathD} teamColor={color} dur={PROJECTILE_DUR} begin={a.begin} />
 
-                  {/* Chớp sáng lúc đạn chạm đích */}
-                  <circle cx={a.x2} cy={a.y2} r="7" fill={color}>
-                    <animate attributeName="opacity" values="0;0;0.9;0" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} begin={`${a.begin}s`} repeatCount="indefinite" />
-                    <animate attributeName="r" values="3;3;9;3" keyTimes="0;0.88;0.94;1" dur={`${PROJECTILE_DUR}s`} begin={`${a.begin}s`} repeatCount="indefinite" />
-                  </circle>
+                  {/* Hiệu ứng nổ lúc đạn chạm đích — theo skin đã trang bị của người bắn */}
+                  <ImpactExplosion svgKey={iconMap[a.attackerTag]?.equipped_explosion || "exp_classic"} x={a.x2} y={a.y2} dur={PROJECTILE_DUR} begin={a.begin} />
                 </g>
               );
             })}

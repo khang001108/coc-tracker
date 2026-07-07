@@ -298,6 +298,9 @@ const CASTLE_COMPONENTS: Record<string, React.FC<{ size?: number }>> = {
   castle_cat:       CastleCat,
   castle_tiger:     CastleTiger,
   castle_panda:     CastlePanda,
+  castle_grand:     CastleGrand,
+  castle_ruins:     CastleRuins,
+  castle_straw:     CastleStraw,
 };
 
 // ── Pháo (nòng súng xoay khi đã bắn) ─────────────────────────────────────
@@ -443,6 +446,69 @@ function CastleCelestial({ size = 34 }: { size?: number }) {
   );
 }
 
+/** Đại Thành Đồ Sộ — 5 tháp, thân rộng hơn hẳn, viewBox rộng hơn để nhồi
+ * thêm chi tiết, tạo cảm giác hoành tráng khác biệt hẳn các lâu đài kia. */
+function CastleGrand({ size = 34 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 34">
+      <rect x="3" y="16" width="34" height="16" rx="2.5" fill="#D9A85C" stroke="#8B5A2B" strokeWidth="1.2" />
+      <rect x="3" y="16" width="34" height="4.5" rx="2" fill="#F5DFAE" />
+      {[5, 13.5, 20, 26.5, 33].map((x, i) => (
+        <g key={i}>
+          <circle cx={x} cy={i === 2 ? 8 : 13} r={i === 2 ? 5.4 : 4} fill="#C48A4D" stroke="#8B5A2B" strokeWidth="1" />
+          <path d={`M${x} ${i === 2 ? 0 : 6} L${x + (i === 2 ? 3.4 : 2.6)} ${i === 2 ? 8 : 13} L${x - (i === 2 ? 3.4 : 2.6)} ${i === 2 ? 8 : 13} Z`}
+            fill={i === 2 ? "#4C7FE0" : "#6B93F0"} stroke="#2E56A8" strokeWidth="0.7" />
+          <circle cx={x} cy={i === 2 ? 1.5 : 7} r="0.9" fill="#FFD700" />
+          <rect x={x - (i === 2 ? 3 : 1.5)} y={i === 2 ? -3.5 : -1} width="0.8" height={i === 2 ? 4 : 2.5} fill="#B71C1C" opacity={i % 2 === 0 ? 1 : 0} />
+        </g>
+      ))}
+      <circle cx="14" cy="21.5" r="1.8" fill="#2B3A55" />
+      <circle cx="26" cy="21.5" r="1.8" fill="#2B3A55" />
+      <path d="M17 32 L17 25 C17 22 23 22 23 25 L23 32 Z" fill="#8B5A2B" stroke="#5C3A1A" strokeWidth="1" />
+      <rect x="19.3" y="27" width="1.4" height="2" rx="0.6" fill="#FFD700" />
+    </svg>
+  );
+}
+
+/** Phế Tích Cổ — tường vỡ lởm chởm, thiếu mái, dây leo xanh mọc lên,
+ * màu đá xám rêu mốc thay vì tường vàng nguyên vẹn. */
+function CastleRuins({ size = 34 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 34 34">
+      <path d="M6 15 L28 15 L27 21 L30 22 L29 31 L5 31 L6 21 L4 20 Z" fill="#9CA3AF" stroke="#5B6472" strokeWidth="1.1" />
+      <path d="M6 15 L10 11 L9 16 L14 12 L13 16 L19 10 L18 16 L23 12 L22 16 L28 15 L27 18 L6 18 Z" fill="#B0B8C4" />
+      <circle cx="8" cy="14" r="3.2" fill="#8B93A3" stroke="#5B6472" strokeWidth="1" opacity={0.9} />
+      <path d="M11 9 L11 13" stroke="#5B6472" strokeWidth="1" />
+      <circle cx="11" cy="20.5" r="1.7" fill="#1F2937" />
+      <path d="M3 19 C2 23 3.5 26 3 30" stroke="#4ADE80" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+      <path d="M3 19 C4.5 22 2.5 25 4 28" stroke="#4ADE80" strokeWidth="1" fill="none" strokeLinecap="round" opacity={0.8} />
+      <circle cx="3" cy="19.5" r="0.9" fill="#4ADE80" />
+      <path d="M14 31 L15 24 C15 22 20 22 20 24 L20.5 31 Z" fill="#7A8698" stroke="#4A5563" strokeWidth="1" />
+      <path d="M15.5 24 L19.5 27" stroke="#4A5563" strokeWidth="0.6" />
+    </svg>
+  );
+}
+
+/** Nhà Tranh Mộc — nhà gỗ nhỏ mái rơm mộc mạc, hoàn toàn khác kiểu lâu đài
+ * đá — rẻ nhất, hợp làm lựa chọn "khởi đầu" giá phải chăng. */
+function CastleStraw({ size = 34 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 34 34">
+      <rect x="7" y="17" width="20" height="14" rx="1.5" fill="#B8895A" stroke="#7A5230" strokeWidth="1.1" />
+      {[19, 22, 25, 28].map((y, i) => <line key={i} x1="7" y1={y} x2="27" y2={y} stroke="#7A5230" strokeWidth="0.5" opacity={0.6} />)}
+      <path d="M4 17 L17 6 L30 17 Z" fill="#E3B84A" stroke="#A9752F" strokeWidth="1.1" />
+      {[0,1,2,3,4,5,6].map(i => (
+        <line key={i} x1={6 + i * 3.6} y1={16.4 - Math.abs(i - 3) * 1.6} x2={5 + i * 3.6} y2="17.6" stroke="#C89638" strokeWidth="1" strokeLinecap="round" />
+      ))}
+      <rect x="20" y="8" width="2.4" height="5" fill="#8B93A3" />
+      <ellipse cx="21.2" cy="6.5" rx="1.6" ry="1" fill="#D9D9D9" opacity={0.7} />
+      <circle cx="12" cy="22" r="1.9" fill="#4A3520" />
+      <circle cx="12.6" cy="21.3" r="0.5" fill="#FFE8B8" />
+      <path d="M18 31 L18 25.5 C18 23.5 24 23.5 24 25.5 L24 31 Z" fill="#7A5230" stroke="#4A3520" strokeWidth="1" />
+    </svg>
+  );
+}
+
 // ── Pháo Mới ─────────────────────────────────────────────────────────────
 
 function CannonLaser({ fired, size = 22 }: { fired?: boolean; size?: number }) {
@@ -523,12 +589,49 @@ export function CannonIcon({ svgKey, fired, size }: {
 }
 
 /** Preview trong Shop — lớn hơn, luôn orange, luôn animate */
+const PREMIUM_CASTLES = new Set(["castle_grand", "castle_celestial", "castle_dragon", "castle_shadow"]);
+const PREMIUM_CANNONS = new Set(["cannon_mythic", "cannon_celestial", "cannon_dragon", "cannon_storm"]);
+
+/** Rồng/phượng nhỏ bay lượn vòng quanh — chỉ dành cho vật phẩm cao cấp/đắt
+ * tiền, tạo cảm giác "xịn" hẳn so với các loại thường. */
+function OrbitingCreature({ size, kind }: { size: number; kind: "dragon" | "phoenix" }) {
+  const color = kind === "dragon" ? "#4ADE80" : "#FF6B35";
+  const accent = kind === "dragon" ? "#FFD700" : "#FFEB3B";
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="3.2s" repeatCount="indefinite" />
+        <g transform="translate(50 6)">
+          {kind === "dragon" ? (
+            <>
+              <path d="M0 3 C3 0 6 1 7 4 C8 1 10 2 9 5 L4 8 Z" fill={color} stroke="#166534" strokeWidth="0.4" />
+              <path d="M-2 5 L-5 2 L-3.6 6 Z" fill={accent} />
+              <path d="M6 5 L9 2 L7.6 6 Z" fill={accent} />
+              <circle cx="1.5" cy="4" r="0.6" fill={accent} />
+            </>
+          ) : (
+            <>
+              <path d="M0 2 C2.5 -1 6 -0.5 7 3 C7.6 0.5 9.6 1.5 8.6 4.5 L3.5 7 Z" fill={color} stroke="#9C2A16" strokeWidth="0.4" />
+              <path d="M-3 4 L-6 1 L-4 6 Z" fill={accent} />
+              <path d="M8 3 L11 0.5 L9.4 5.5 Z" fill={accent} />
+            </>
+          )}
+        </g>
+      </g>
+    </svg>
+  );
+}
+
 export function CastlePreview({ svgKey, size = 48 }: { svgKey: string; size?: number }) {
   ensureStyles();
   const Comp = CASTLE_COMPONENTS[svgKey] || CastleClassic;
+  const isPremium = PREMIUM_CASTLES.has(svgKey);
   return (
-    <div style={{ animation: "castle-float 3s ease-in-out infinite" }}>
-      <Comp size={size} />
+    <div style={{ position: "relative", width: size, height: size }}>
+      <div style={{ animation: "castle-float 3s ease-in-out infinite" }}>
+        <Comp size={size} />
+      </div>
+      {isPremium && <OrbitingCreature size={size * 1.7} kind={svgKey === "castle_dragon" ? "dragon" : "phoenix"} />}
     </div>
   );
 }
@@ -536,10 +639,14 @@ export function CastlePreview({ svgKey, size = 48 }: { svgKey: string; size?: nu
 export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: number }) {
   ensureStyles();
   const Comp = CANNON_COMPONENTS[svgKey] || CannonBasic;
+  const isPremium = PREMIUM_CANNONS.has(svgKey);
   // fired=false → sáng + spin-fast (trạng thái "sẵn sàng" = đẹp nhất để preview)
   return (
-    <div style={{ animation: "cannon-glow 2s ease-in-out infinite" }}>
-      <Comp fired={false} size={size} />
+    <div style={{ position: "relative", width: size, height: size }}>
+      <div style={{ animation: "cannon-glow 2s ease-in-out infinite" }}>
+        <Comp fired={false} size={size} />
+      </div>
+      {isPremium && <OrbitingCreature size={size * 1.9} kind={svgKey === "cannon_dragon" ? "dragon" : "phoenix"} />}
     </div>
   );
 }
@@ -786,16 +893,20 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
       {/* Đuôi vệt — số lượng/màu theo skin */}
       {trailDelays.map((delay, di) => {
         const trailColor = skin.spark === "rainbow" ? PROJECTILE_RAINBOW[di % PROJECTILE_RAINBOW.length] : color;
+        const myBegin = begin + delay;
+        const targetOpacity = 0.85 - di * 0.12;
         return (
-          <circle key={di} r={(2.6 - di * 0.35) * skin.coreScale} fill={trailColor} opacity={0.85 - di * 0.12}>
-            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin + delay}s`} path={pathD} />
+          <circle key={di} r={(2.6 - di * 0.35) * skin.coreScale} fill={trailColor} opacity={0}>
+            <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${myBegin}s`} path={pathD} />
+            <animate attributeName="opacity" from="0" to={targetOpacity} dur="0.01s" begin={`${myBegin}s`} fill="freeze" />
           </circle>
         );
       })}
 
       {ShapeComp ? (
-        <g>
+        <g opacity={0}>
           <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} rotate={skin.rotate === "point" ? "auto" : undefined} />
+          <animate attributeName="opacity" from="0" to="1" dur="0.01s" begin={`${begin}s`} fill="freeze" />
           <g transform={`scale(${skin.coreScale * 0.85})`}>
             {skin.rotate === "spin" && (
               <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.45s" begin={`${begin}s`} repeatCount="indefinite" additive="sum" />
@@ -808,15 +919,77 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
         </g>
       ) : (
         <>
-          <circle r={7 * skin.coreScale} fill={`url(#${glowId})`}>
+          <circle r={7 * skin.coreScale} fill={`url(#${glowId})`} opacity={0}>
             <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} />
+            <animate attributeName="opacity" from="0" to="1" dur="0.01s" begin={`${begin}s`} fill="freeze" />
           </circle>
-          <circle r={3 * skin.coreScale} fill="#fff" opacity={0.9}>
+          <circle r={3 * skin.coreScale} fill="#fff" opacity={0}>
             <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} />
+            <animate attributeName="opacity" from="0" to="0.9" dur="0.01s" begin={`${begin}s`} fill="freeze" />
           </circle>
         </>
       )}
     </>
+  );
+}
+
+/* ── Hiệu ứng nổ khi đạn chạm đích (Cửa hàng) ──────────────────────────────
+ * Mỗi loại là 1 chùm mảnh nhỏ bắn toé ra từ tâm rồi mờ dần — đồng bộ đúng
+ * lúc đạn tới đích (dùng chung begin/dur với ProjectileBall). */
+export const EXPLOSION_SKINS: Record<string, { label: string; colors: string[]; particles: number; shape: "circle" | "square" | "star" | "drop" }> = {
+  exp_classic:    { label: "Nổ Cổ Điển",  colors: ["#FFD27A", "#FF5A36"],                     particles: 6,  shape: "circle" },
+  exp_fireworks:  { label: "Pháo Hoa",    colors: ["#FF5A5A", "#FFD700", "#4ADE80", "#38BDF8", "#A78BFA"], particles: 10, shape: "star" },
+  exp_trash:      { label: "Nổ Bãi Rác",  colors: ["#8B7355", "#6B4A21", "#9CA3AF", "#5B4A2A"], particles: 7,  shape: "square" },
+  exp_snowflake:  { label: "Nổ Bông Tuyết", colors: ["#DFF6FF", "#BFE3FF", "#FFFFFF"],         particles: 8,  shape: "star" },
+  exp_splash:     { label: "Nổ Toé Nước",  colors: ["#38BDF8", "#7DD3FC", "#BFE3FF"],          particles: 8,  shape: "drop" },
+  exp_nuclear:    { label: "Nổ Hạt Nhân",  colors: ["#FFD700", "#FF8C00", "#FF3D00", "#6B7280"], particles: 12, shape: "circle" },
+};
+
+function ExplosionParticle({ shape, color, size }: { shape: string; color: string; size: number }) {
+  if (shape === "square") return <rect x={-size / 2} y={-size / 2} width={size} height={size} fill={color} />;
+  if (shape === "drop") return <path d={`M0 ${-size} C${size * 0.6} ${-size * 0.2} ${size * 0.4} ${size * 0.7} 0 ${size} C${-size * 0.4} ${size * 0.7} ${-size * 0.6} ${-size * 0.2} 0 ${-size}`} fill={color} />;
+  if (shape === "star") return <path d={`M0 ${-size} L${size * 0.28} ${-size * 0.28} L${size} 0 L${size * 0.28} ${size * 0.28} L0 ${size} L${-size * 0.28} ${size * 0.28} L${-size} 0 L${-size * 0.28} ${-size * 0.28} Z`} fill={color} />;
+  return <circle r={size} fill={color} />;
+}
+
+/** Hiệu ứng nổ ở đúng điểm đạn chạm đích — đồng bộ begin/dur với ProjectileBall
+ * để bùng nổ đúng lúc đạn tới nơi (keyTimes gần cuối chu kỳ bay). */
+export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0 }: {
+  svgKey: string; x: number; y: number; dur?: number; begin?: number;
+}) {
+  const exp = EXPLOSION_SKINS[svgKey] || EXPLOSION_SKINS.exp_classic;
+  const angles = Array.from({ length: exp.particles }, (_, i) => (360 / exp.particles) * i + (svgKey.length % 30));
+  const burstAt = dur * 0.9; // % thời điểm nổ trong chu kỳ (ngay trước khi lặp lại)
+  const keyTimes = `0;${(burstAt / dur - 0.02).toFixed(3)};${(burstAt / dur).toFixed(3)};1`;
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      {angles.map((deg, i) => {
+        const color = exp.colors[i % exp.colors.length];
+        const dist = 9 + (i % 3) * 3;
+        const dx = Math.cos((deg * Math.PI) / 180) * dist;
+        const dy = Math.sin((deg * Math.PI) / 180) * dist;
+        return (
+          <g key={i} opacity={0}>
+            <animate attributeName="opacity" values="0;0;1;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="translate" values={`0 0;0 0;${dx} ${dy};${dx * 1.4} ${dy * 1.4}`} keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+            <ExplosionParticle shape={exp.shape} color={color} size={2.4 - (i % 3) * 0.4} />
+          </g>
+        );
+      })}
+      {/* Chớp sáng trung tâm */}
+      <circle r="7" fill={exp.colors[0]} opacity={0}>
+        <animate attributeName="opacity" values="0;0;0.9;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        <animate attributeName="r" values="3;3;10;3" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+      </circle>
+    </g>
+  );
+}
+
+export function ExplosionPreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2} dur={1.4} begin={0} />
+    </svg>
   );
 }
 
