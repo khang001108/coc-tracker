@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion, ProjectileMiniIcon } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion, ProjectileMiniIcon, MechFortress } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
@@ -62,21 +62,11 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
       <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-        {/* Castle + 2 pháo gắn ngay trên tháp — 1 khối liền, giống hình lâu đài
-            trang trí thật, không còn tách rời thành hàng riêng nữa.
-            Vỡ thành phế tích nếu bị mất trọn 3 sao khi phòng thủ. */}
-        <div className="shrink-0 relative" style={{ width: 38, height: 38 }}>
-          <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
-          {!castleRuined && (
-            <>
-              <div className="absolute" style={{ top: -1, left: 1 }}>
-                <CannonIcon size={12} svgKey={iconMap[member.tag]?.equipped_cannon} fired={0 < darkCannons} />
-              </div>
-              <div className="absolute" style={{ top: -1, right: 1 }}>
-                <CannonIcon size={12} svgKey={iconMap[member.tag]?.equipped_cannon} fired={1 < darkCannons} />
-              </div>
-            </>
-          )}
+        {/* Pháo đài di động — 1 khối liền lâu đài + 2 pháo gắn 2 bên hông,
+            kiểu Mortal Engines. Vỡ nát nếu bị mất trọn 3 sao khi phòng thủ. */}
+        <div className="shrink-0">
+          <MechFortress svgKey={iconMap[member.tag]?.equipped_castle} size={44}
+            cannon1Damaged={0 < darkCannons} cannon2Damaged={1 < darkCannons} wrecked={castleRuined} />
         </div>
 
         {/* Name + stars + lượt đánh */}

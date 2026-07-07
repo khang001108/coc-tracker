@@ -574,6 +574,105 @@ function CannonCelestial({ fired, size = 22 }: { fired?: boolean; size?: number 
 // ── Exports ───────────────────────────────────────────────────────────────
 
 /** Icon lâu đài trong War map — màu cam, float animation, TH number ở giữa */
+/* ── Pháo Đài Di Động (Mortal Engines) ─────────────────────────────────────
+ * Thay vì lâu đài + pháo tách rời, đây là 1 KHỐI DUY NHẤT: thân bọc giáp có
+ * bánh xích di chuyển, 2 pháo tháp gắn LIỀN 2 bên hông (không phải icon nổi
+ * rời), cầu chỉ huy + ăng-ten + ống khói ở giữa — đúng kiểu thành phố di
+ * động bọc thép. Palette màu theo lâu đài đã trang bị để vẫn phân biệt được
+ * các loại, nhưng cấu trúc cơ khí dùng chung 1 khung cho đồng bộ. */
+const MECH_PALETTES: Record<string, { hull: string; hullDark: string; plate: string; accent: string; light: string }> = {
+  castle_classic:   { hull: "#C9A876", hullDark: "#7A5A32", plate: "#A9865A", accent: "#FFD700", light: "#FFF3D0" },
+  castle_round:     { hull: "#8FBFA0", hullDark: "#4A7A5C", plate: "#6FA080", accent: "#FFD700", light: "#E8FFF0" },
+  castle_fortress:  { hull: "#9AA3B0", hullDark: "#4A5563", plate: "#7A8494", accent: "#FFD700", light: "#DDE3EA" },
+  castle_royal:     { hull: "#D9C48A", hullDark: "#8A6A2E", plate: "#B89A5C", accent: "#4C7FE0", light: "#FFF8E0" },
+  castle_dragon:    { hull: "#C9705A", hullDark: "#7A2E1A", plate: "#A85238", accent: "#FFD700", light: "#FFD9C4" },
+  castle_ice:       { hull: "#8FCBE8", hullDark: "#3E7A9C", plate: "#6FAECC", accent: "#E0F4FF", light: "#EAF7FF" },
+  castle_shadow:    { hull: "#6B4A8C", hullDark: "#2E1747", plate: "#523A6E", accent: "#C8A2FF", light: "#D9C2FF" },
+  castle_celestial: { hull: "#E0C458", hullDark: "#8A6A1E", plate: "#C7A83C", accent: "#FFFFFF", light: "#FFFAE0" },
+  castle_cat:       { hull: "#E8B87A", hullDark: "#8A5A2E", plate: "#C99A5C", accent: "#FF6B9C", light: "#FFE8D0" },
+  castle_tiger:     { hull: "#E89A4A", hullDark: "#8A4A0E", plate: "#C97A2C", accent: "#2B2118", light: "#FFE8C0" },
+  castle_panda:     { hull: "#D9D9D9", hullDark: "#5B5B5B", plate: "#B0B0B0", accent: "#2B2118", light: "#F5F5F5" },
+  castle_grand:     { hull: "#C9A876", hullDark: "#7A5A32", plate: "#A9865A", accent: "#B71C1C", light: "#FFF3D0" },
+  castle_straw:     { hull: "#B8895A", hullDark: "#5B3A1A", plate: "#96723F", accent: "#E3B84A", light: "#F0D9AE" },
+  castle_shack:     { hull: "#8B7355", hullDark: "#3A2E18", plate: "#6B5A3A", accent: "#5B4A2A", light: "#B8A488" },
+};
+
+/** 1 tháp pháo gắn liền vào thân — sáng/hoạt động hoặc xám xịt/hỏng tuỳ theo
+ * số sao đã bị mất khi phòng thủ. */
+function MechTurret({ x, damaged, accent }: { x: number; damaged: boolean; accent: string }) {
+  const barrelColor = damaged ? "#4A4A4A" : "#2B3A55";
+  const capColor = damaged ? "#6B6B6B" : accent;
+  return (
+    <g transform={`translate(${x} 0)`} opacity={damaged ? 0.55 : 1}>
+      <rect x="-3.2" y="-2" width="6.4" height="6" rx="1.4" fill={damaged ? "#8A8A8A" : "#5B6472"} stroke={damaged ? "#4A4A4A" : "#2B3A55"} strokeWidth="0.6" />
+      <rect x="-1.4" y="-7" width="2.8" height="6" rx="1.2" fill={barrelColor} stroke="#111827" strokeWidth="0.5" />
+      <circle cx="0" cy="-7" r="1.5" fill={capColor} opacity={damaged ? 0.6 : 0.95} />
+      {damaged && <path d="M-2 1 L1 -1.5 M-1 2 L2 0" stroke="#2B2118" strokeWidth="0.5" opacity={0.6} />}
+    </g>
+  );
+}
+
+export function MechFortress({ svgKey, cannon1Damaged, cannon2Damaged, wrecked, size = 46 }: {
+  svgKey?: string | null; cannon1Damaged?: boolean; cannon2Damaged?: boolean; wrecked?: boolean; size?: number;
+}) {
+  const p = MECH_PALETTES[svgKey || "castle_classic"] || MECH_PALETTES.castle_classic;
+  if (wrecked) {
+    return (
+      <svg width={size} height={size * 0.74} viewBox="0 0 46 34">
+        {/* Bánh xích */}
+        <rect x="4" y="27" width="38" height="5" rx="2" fill="#3A3A3E" />
+        {[8, 15, 22, 29, 36].map((x, i) => <circle key={i} cx={x} cy="29.5" r="2.1" fill="#1F1F22" />)}
+        {/* Thân đổ nát, mảng giáp vỡ lệch */}
+        <path d="M8 27 L7 17 L18 15 L17 22 L26 13 L27 20 L38 17 L37 27 Z" fill="#6B6B6B" stroke="#3A3A3E" strokeWidth="1" />
+        <path d="M18 15 L20 10 L23 14" fill="none" stroke="#4A4A4A" strokeWidth="1" />
+        <circle cx="20" cy="20" r="1.6" fill="#1F2937" />
+        <path d="M4 20 C2 24 3.5 27 3 30" stroke="#4ADE80" strokeWidth="1" fill="none" strokeLinecap="round" opacity={0.7} />
+        {/* Pháo gãy rơi 2 bên */}
+        <rect x="4" y="24" width="4" height="1.8" rx="0.6" fill="#4A4A4A" transform="rotate(25 4 24)" />
+        <rect x="38" y="25" width="4" height="1.8" rx="0.6" fill="#4A4A4A" transform="rotate(-20 38 25)" />
+        {/* Khói */}
+        <circle cx="22" cy="9" r="2.6" fill="#8A8A8A" opacity={0.5} />
+        <circle cx="25" cy="6" r="2" fill="#9A9A9A" opacity={0.4} />
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size * 0.74} viewBox="0 0 46 34">
+      {/* Bánh xích di chuyển ở đáy */}
+      <rect x="4" y="27" width="38" height="5" rx="2" fill="#3A3A3E" stroke="#1F1F22" strokeWidth="0.6" />
+      {[8, 15, 22, 29, 36].map((x, i) => <circle key={i} cx={x} cy="29.5" r="2.1" fill="#1F1F22" stroke="#0D0D0F" strokeWidth="0.4" />)}
+
+      {/* Thân bọc giáp chính */}
+      <path d="M7 27 L7 17 C7 15.5 9 15 10.5 15 L35.5 15 C37 15 39 15.5 39 17 L39 27 Z" fill={p.hull} stroke={p.hullDark} strokeWidth="1.1" />
+      {/* Mảng giáp + đinh tán */}
+      <rect x="10" y="18" width="8" height="6" rx="0.8" fill={p.plate} opacity={0.8} />
+      <rect x="28" y="18" width="8" height="6" rx="0.8" fill={p.plate} opacity={0.8} />
+      {[11, 17.5, 28.5, 35].map((x, i) => <circle key={i} cx={x} cy="19" r="0.5" fill={p.hullDark} />)}
+
+      {/* Cầu chỉ huy giữa */}
+      <path d="M17 15 L19 9 L27 9 L29 15 Z" fill={p.plate} stroke={p.hullDark} strokeWidth="0.9" />
+      <rect x="20.5" y="10.5" width="5" height="3" fill="#0B0F19" opacity={0.85} />
+      <rect x="21.3" y="11" width="1.4" height="1.4" fill={p.light} opacity={0.8} />
+
+      {/* Ăng-ten + đèn nháy */}
+      <line x1="23" y1="9" x2="23" y2="4" stroke={p.hullDark} strokeWidth="0.8" />
+      <circle cx="23" cy="3.2" r="1.1" fill={p.accent} />
+
+      {/* Ống khói nhỏ bên phải cầu chỉ huy */}
+      <rect x="30.5" y="10" width="2.4" height="5" rx="0.6" fill={p.hullDark} />
+      <ellipse cx="31.7" cy="9" rx="1.6" ry="1" fill="#B0B0B0" opacity={0.6} />
+
+      {/* Cửa/khe nhỏ trên thân */}
+      <rect x="20" y="21" width="6" height="4" rx="1" fill="#1F2937" />
+      <rect x="21.2" y="21.8" width="1.2" height="1.2" fill={p.light} opacity={0.8} />
+
+      {/* 2 tháp pháo gắn liền 2 bên hông — tối màu nếu mất sao phòng thủ */}
+      <MechTurret x={4.5} damaged={!!cannon1Damaged} accent={p.accent} />
+      <MechTurret x={41.5} damaged={!!cannon2Damaged} accent={p.accent} />
+    </svg>
+  );
+}
+
 export function CastleIcon({ svgKey, th, size, animate = true, showTh = true }: {
   svgKey?: string | null; th: number; size?: number; animate?: boolean; showTh?: boolean;
 }) {
