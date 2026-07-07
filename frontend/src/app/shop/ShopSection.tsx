@@ -150,11 +150,11 @@ export default function ShopSection() {
               <ItemGrid list={castles} />
             </div>
             <div className="relative">
-              <SectionTitle emoji="🔫" label="Pháo (đại diện 2 lượt đánh)"/>
+              <SectionTitle emoji="🛡️" label="Pháo (trang trí phòng thủ lâu đài — mất mấy sao thì tối màu bấy nhiêu)"/>
               <ItemGrid list={cannons} />
             </div>
             <div className="relative">
-              <SectionTitle emoji="💥" label="Tia đạn (Chiến trường War)"/>
+              <SectionTitle emoji="💥" label="Tia đạn (bay khi tấn công + hiện ở ô lượt đánh)"/>
               <ItemGrid list={projectiles} />
             </div>
             <div className="relative">

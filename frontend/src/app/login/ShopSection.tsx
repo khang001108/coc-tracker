@@ -124,11 +124,11 @@ export default function ShopSection() {
             <ItemGrid list={castles} />
           </div>
           <div className="relative">
-            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Pháo (đại diện 2 lượt đánh)</p>
+            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">🛡️ Pháo (trang trí phòng thủ — mất sao thì tối màu)</p>
             <ItemGrid list={cannons} />
           </div>
           <div className="relative">
-            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Tia đạn (Chiến trường War)</p>
+            <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">💥 Tia đạn (bay khi tấn công + hiện ở ô lượt đánh)</p>
             <ItemGrid list={projectiles} />
           </div>
           <div className="relative">
