@@ -43,11 +43,25 @@ function ensureStyles() {
 function CastleClassic({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <polygon points="17,3 31,14 31,31 3,31 3,14"
-        fill={ORANGE} fillOpacity={0.75} stroke={ORANGE} strokeWidth={1.5} />
-      <rect x="8"  y="16" width="4" height="4" fill={ORANGE} fillOpacity={0.5}/>
-      <rect x="22" y="16" width="4" height="4" fill={ORANGE} fillOpacity={0.5}/>
-      <rect x="13" y="20" width="8" height="11" fill={ORANGE} fillOpacity={0.9} stroke={ORANGE} strokeWidth="1"/>
+      {/* Thân lâu đài — đá be tròn trịa kiểu chibi */}
+      <rect x="6" y="15" width="22" height="16" rx="3" fill="#E8C88A" stroke="#A9752F" strokeWidth="1.2" />
+      <rect x="6" y="15" width="22" height="5" rx="2.5" fill="#F5DFAE" />
+      {/* 2 tháp tròn 2 bên */}
+      <circle cx="8" cy="13" r="4.2" fill="#D9A85C" stroke="#A9752F" strokeWidth="1.1" />
+      <circle cx="26" cy="13" r="4.2" fill="#D9A85C" stroke="#A9752F" strokeWidth="1.1" />
+      <path d="M8 6 L10.4 10.5 L5.6 10.5 Z" fill="#4C7FE0" stroke="#2E56A8" strokeWidth="0.8" />
+      <path d="M26 6 L28.4 10.5 L23.6 10.5 Z" fill="#4C7FE0" stroke="#2E56A8" strokeWidth="0.8" />
+      {/* Nóc chóp chính giữa */}
+      <path d="M17 2 L22 11 L12 11 Z" fill="#6B93F0" stroke="#2E56A8" strokeWidth="1" />
+      <circle cx="17" cy="4.2" r="1.2" fill="#FFD700" />
+      {/* Cửa sổ tròn dễ thương */}
+      <circle cx="11" cy="21" r="2" fill="#2B3A55" />
+      <circle cx="11.7" cy="20.3" r="0.6" fill="#8FB4FF" />
+      <circle cx="23" cy="21" r="2" fill="#2B3A55" />
+      <circle cx="23.7" cy="20.3" r="0.6" fill="#8FB4FF" />
+      {/* Cổng chính bo tròn */}
+      <path d="M13 31 L13 25 C13 22.2 21 22.2 21 25 L21 31 Z" fill="#8B5A2B" stroke="#5C3A1A" strokeWidth="1" />
+      <rect x="16.2" y="26.5" width="1.6" height="2.2" rx="0.8" fill="#FFD700" />
     </svg>
   );
 }
@@ -269,11 +283,17 @@ const CASTLE_COMPONENTS: Record<string, React.FC<{ size?: number }>> = {
 
 function CannonBasic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="14" r="6" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="9" y="2" width="4" height="12" rx="1.5" fill={fired ? "#7A4810" : ORANGE}/>
-        {!fired && <circle cx="11" cy="2.5" r="2.2" fill={GOLD} fillOpacity={0.9}/>}
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      {/* Bệ pháo tròn trịa */}
+      <ellipse cx="11" cy="17.5" rx="7" ry="3" fill={fired ? "#5C5C5C" : "#6B4A21"} />
+      <circle cx="11" cy="14.5" r="6.4" fill={fired ? "#8A8A8A" : "#D9A85C"} stroke={fired ? "#4A4A4A" : "#A9752F"} strokeWidth="1.1" />
+      <circle cx="9" cy="12.5" r="2" fill={fired ? "#9A9A9A" : "#F5DFAE"} opacity={0.7} />
+      <g className={fired ? undefined : "cannon-spin-fast"} style={{ transformBox: "fill-box", transformOrigin: "50% 100%" }}>
+        {/* Nòng pháo mập mạp, đầu nòng tròn */}
+        <rect x="8" y="1.5" width="6" height="11" rx="3" fill={fired ? "#5C5C5C" : "#3B4B63"} stroke={fired ? "#3A3A3A" : "#1F2937"} strokeWidth="0.8" />
+        <circle cx="11" cy="3" r="3.4" fill={fired ? "#4A4A4A" : "#2B3A55"} stroke={fired ? "#2A2A2A" : "#111827"} strokeWidth="0.8" />
+        <circle cx="11" cy="3" r="1.6" fill={fired ? "#2A2A2A" : "#0B0F19"} />
+        {!fired && <circle cx="9.8" cy="1.9" r="0.8" fill="#8FB4FF" opacity={0.8} />}
       </g>
     </svg>
   );

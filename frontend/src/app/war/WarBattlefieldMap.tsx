@@ -269,10 +269,18 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
             {arcs.map(a => {
               const midX = (a.x1 + a.x2) / 2;
               const midY = (a.y1 + a.y2) / 2;
-              const dist = Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
-              const arcHeight = Math.min(70, Math.max(22, dist * 0.35));
-              const ctrlX = midX;
-              const ctrlY = midY - arcHeight;
+              const dx = a.x2 - a.x1;
+              const dy = a.y2 - a.y1;
+              const dist = Math.hypot(dx, dy) || 1;
+              // Cong theo hướng VUÔNG GÓC với đường nối thật (không phải luôn
+              // luôn cong lên) — trước đây cứ đẩy lên cố định nên đường nối
+              // gần như thẳng đứng (rất hay gặp vì 2 đội xếp theo cột) bị
+              // vẽ lệch sang ngang, nhìn như bắn không tới đích.
+              const arcHeight = Math.min(60, Math.max(14, dist * 0.28));
+              const perpX = -dy / dist;
+              const perpY = dx / dist;
+              const ctrlX = midX + perpX * arcHeight;
+              const ctrlY = midY + perpY * arcHeight;
               const pathD = `M ${a.x1} ${a.y1} Q ${ctrlX} ${ctrlY} ${a.x2} ${a.y2}`;
               const isOurs = a.side === "left";
               const color = isOurs ? "#38BDF8" : "#FF5A36";
