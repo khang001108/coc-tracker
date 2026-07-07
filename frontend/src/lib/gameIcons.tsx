@@ -856,12 +856,12 @@ export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: stri
   const ShapeComp = PROJECTILE_SHAPES[key];
   const skin = PROJECTILE_SKINS[key] || PROJECTILE_SKINS.proj_classic;
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" opacity={fired ? 1 : 0.28}>
+    <svg width={size} height={size} viewBox="0 0 20 20" opacity={fired ? 0.35 : 1}>
       <g transform="translate(10 10)">
         {ShapeComp ? (
           <g transform={`scale(${skin.coreScale * 0.85})`}><ShapeComp /></g>
         ) : (
-          <circle r="4.5" fill={fired ? "#F4A130" : "#6B7280"} stroke="#8B5A0F" strokeWidth="0.6" />
+          <circle r="4.5" fill={fired ? "#6B7280" : "#F4A130"} stroke="#8B5A0F" strokeWidth="0.6" />
         )}
       </g>
     </svg>

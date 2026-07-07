@@ -62,12 +62,24 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
       <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-        {/* Castle icon — vỡ thành phế tích nếu bị mất trọn 3 sao khi phòng thủ */}
-        <div className="shrink-0">
+        {/* Castle + 2 pháo gắn ngay trên tháp — 1 khối liền, giống hình lâu đài
+            trang trí thật, không còn tách rời thành hàng riêng nữa.
+            Vỡ thành phế tích nếu bị mất trọn 3 sao khi phòng thủ. */}
+        <div className="shrink-0 relative" style={{ width: 38, height: 38 }}>
           <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
+          {!castleRuined && (
+            <>
+              <div className="absolute" style={{ top: -1, left: 1 }}>
+                <CannonIcon size={12} svgKey={iconMap[member.tag]?.equipped_cannon} fired={0 < darkCannons} />
+              </div>
+              <div className="absolute" style={{ top: -1, right: 1 }}>
+                <CannonIcon size={12} svgKey={iconMap[member.tag]?.equipped_cannon} fired={1 < darkCannons} />
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Name + stars + pháo phòng thủ */}
+        {/* Name + stars + lượt đánh */}
         <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
           <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: "var(--py-card-text, #e5e7eb)" }}>
             <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
@@ -75,13 +87,7 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             <Stars stars={totalStars} />
           </div>
-          {/* 2 pháo cố định = trang trí phòng thủ, tối màu dần theo số sao đã mất khi bị đánh */}
-          <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
-            {Array.from({ length: 2 }).map((_, i) => (
-              <CannonIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_cannon} fired={i < darkCannons} />
-            ))}
-          </div>
-          {/* Lượt đánh — hiện icon tia đạn đang sở hữu, sáng = đã đánh, mờ = chưa đánh */}
+          {/* Lượt đánh — hiện icon tia đạn đang sở hữu, sáng = còn lượt, mờ = đã dùng */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {Array.from({ length: maxAttacks }).map((_, i) => (
               <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={!!attacks[i]} />
