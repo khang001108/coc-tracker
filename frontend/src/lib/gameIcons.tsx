@@ -896,15 +896,15 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
  * hơn — đồng bộ đúng lúc đạn tới đích (dùng chung begin/dur với ProjectileBall). */
 export const EXPLOSION_SKINS: Record<string, {
   label: string; colors: string[]; particles: number; shape: "circle" | "square" | "star" | "drop";
-  burstStart: number; // % chu kỳ bắt đầu nổ — càng nhỏ càng nổ SỚM hơn = kéo dài lâu hơn trước khi lặp lại
+  burstDur: number; // thời gian nổ (giây) — ĐỘC LẬP với vòng lặp bay của đạn, để nổ đủ lâu nhìn thấy rõ
   scale: number; // độ toé xa/to của mảnh vỡ
 }> = {
-  exp_classic:    { label: "Nổ Cổ Điển",    colors: ["#FFD27A", "#FF5A36"],                                 particles: 6,  shape: "circle", burstStart: 0.92, scale: 1 },
-  exp_fireworks:  { label: "Pháo Hoa",      colors: ["#FF5A5A", "#FFD700", "#4ADE80", "#38BDF8", "#A78BFA"], particles: 16, shape: "star",   burstStart: 0.78, scale: 1.6 },
-  exp_trash:      { label: "Nổ Bãi Rác",    colors: ["#8B7355", "#6B4A21", "#9CA3AF", "#5B4A2A"],           particles: 10, shape: "square", burstStart: 0.82, scale: 1.3 },
-  exp_snowflake:  { label: "Nổ Bông Tuyết", colors: ["#DFF6FF", "#BFE3FF", "#FFFFFF"],                       particles: 12, shape: "star",   burstStart: 0.8,  scale: 1.3 },
-  exp_splash:     { label: "Nổ Toé Nước",   colors: ["#38BDF8", "#7DD3FC", "#BFE3FF"],                       particles: 10, shape: "drop",   burstStart: 0.8,  scale: 1.4 },
-  exp_nuclear:    { label: "Nổ Hạt Nhân",   colors: ["#FFD700", "#FF8C00", "#FF3D00", "#6B7280"],           particles: 14, shape: "circle", burstStart: 0.68, scale: 2 },
+  exp_classic:    { label: "Nổ Cổ Điển",    colors: ["#FFD27A", "#FF5A36"],                                 particles: 6,  shape: "circle", burstDur: 0.6, scale: 1 },
+  exp_fireworks:  { label: "Pháo Hoa",      colors: ["#FF5A5A", "#FFD700", "#4ADE80", "#38BDF8", "#A78BFA"], particles: 16, shape: "star",   burstDur: 1.5, scale: 1.6 },
+  exp_trash:      { label: "Nổ Bãi Rác",    colors: ["#8B7355", "#6B4A21", "#9CA3AF", "#5B4A2A"],           particles: 10, shape: "square", burstDur: 1.0, scale: 1.3 },
+  exp_snowflake:  { label: "Nổ Bông Tuyết", colors: ["#DFF6FF", "#BFE3FF", "#FFFFFF"],                       particles: 12, shape: "star",   burstDur: 1.2, scale: 1.3 },
+  exp_splash:     { label: "Nổ Toé Nước",   colors: ["#38BDF8", "#7DD3FC", "#BFE3FF"],                       particles: 10, shape: "drop",   burstDur: 1.3, scale: 1.4 },
+  exp_nuclear:    { label: "Nổ Hạt Nhân",   colors: ["#FFD700", "#FF8C00", "#FF3D00", "#6B7280"],           particles: 14, shape: "circle", burstDur: 1.9, scale: 2 },
 };
 
 function ExplosionParticle({ shape, color, size }: { shape: string; color: string; size: number }) {
@@ -914,41 +914,50 @@ function ExplosionParticle({ shape, color, size }: { shape: string; color: strin
   return <circle r={size} fill={color} />;
 }
 
-/** Hiệu ứng nổ ở đúng điểm đạn chạm đích — đồng bộ begin/dur với ProjectileBall
- * để bùng nổ đúng lúc đạn tới nơi. Nuclear/Splash có hình riêng (nấm/giọt
- * nước), còn lại dùng chùm mảnh vỡ toé ra chung, chỉ khác màu/hình/độ to/lâu. */
-export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0, burstStartOverride }: {
-  svgKey: string; x: number; y: number; dur?: number; begin?: number; burstStartOverride?: number;
+/** Tạo danh sách các mốc "begin" lặp lại cách nhau đúng 1 vòng bay của đạn
+ * (cycleDur) — để hiệu ứng nổ tự có 1 vòng thời gian RIÊNG, không bị gò ép
+ * nhét vừa vào phần đuôi của vòng bay đạn nữa (đây là lý do trước đây nổ
+ * xong biến mất chỉ trong tích tắc, gần như không kịp nhìn thấy). */
+function repeatBegins(begin: number, cycleDur: number, count = 120): string {
+  const arr: string[] = [];
+  for (let i = 0; i < count; i++) arr.push(`${(begin + i * cycleDur).toFixed(3)}s`);
+  return arr.join(";");
+}
+
+/** Hiệu ứng nổ ở đúng điểm đạn chạm đích — bắt đầu đúng lúc đạn tới nơi (cuối
+ * vòng bay), nhưng có THỜI LƯỢNG NỔ RIÊNG (burstDur) để đủ lâu nhìn thấy rõ,
+ * không phụ thuộc vào việc vòng bay của đạn dài hay ngắn. Nuclear/Splash có
+ * hình riêng (nấm/giọt nước), còn lại dùng chùm mảnh vỡ toé ra chung. */
+export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0, burstDurOverride }: {
+  svgKey: string; x: number; y: number; dur?: number; begin?: number; burstDurOverride?: number;
 }) {
   const exp = EXPLOSION_SKINS[svgKey] || EXPLOSION_SKINS.exp_classic;
-  const burstAt = dur * (burstStartOverride ?? exp.burstStart);
-  const fadeAt = Math.min(dur * 0.99, burstAt + (dur - burstAt) * 0.85);
-  const keyTimes = `0;${(burstAt / dur).toFixed(3)};${(Math.min(burstAt + dur * 0.06, fadeAt) / dur).toFixed(3)};${(fadeAt / dur).toFixed(3)}`;
+  const burstDur = burstDurOverride ?? exp.burstDur;
+  // Đạn chạm đích ngay khi vòng bay (dur) kết thúc — bắt đầu nổ đúng lúc đó,
+  // rồi lặp lại đúng mỗi chu kỳ dur tiếp theo.
+  const beginList = repeatBegins(begin + dur * 0.97, dur);
+  const keyTimes = "0;0.06;0.5;1";
 
   if (svgKey === "exp_nuclear") {
     return (
       <g transform={`translate(${x} ${y})`}>
-        {/* Vòng sóng xung kích lan ra */}
         <circle r="4" fill="none" stroke="#FF8C00" strokeWidth="1.4" opacity={0}>
-          <animate attributeName="opacity" values="0;0;0.8;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-          <animate attributeName="r" values="2;2;20;26" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.8;0.4;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          <animate attributeName="r" values="2;20;26;26" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </circle>
-        {/* Cột khói bốc lên */}
         <rect x="-2.5" y="-14" width="5" height="14" opacity={0} fill="#8A8A8A">
-          <animate attributeName="opacity" values="0;0;0.9;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.9;0.6;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </rect>
-        {/* Đầu nấm */}
         <ellipse cx="0" cy="-15" rx="9" ry="6" opacity={0} fill="#FF8C00">
-          <animate attributeName="opacity" values="0;0;0.95;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-          <animate attributeName="ry" values="1;1;6;7" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.95;0.7;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          <animate attributeName="ry" values="1;6;7;7" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </ellipse>
         <ellipse cx="0" cy="-16" rx="6" ry="4" opacity={0} fill="#FFD700">
-          <animate attributeName="opacity" values="0;0;0.95;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.95;0.6;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </ellipse>
-        {/* Chớp sáng gốc nổ */}
         <circle r="8" fill="#FFD700" opacity={0}>
-          <animate attributeName="opacity" values="0;0;1;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-          <animate attributeName="r" values="2;2;12;14" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;1;0.5;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          <animate attributeName="r" values="2;12;14;14" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </circle>
       </g>
     );
@@ -958,13 +967,11 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0,
     const drops = Array.from({ length: exp.particles }, (_, i) => (360 / exp.particles) * i);
     return (
       <g transform={`translate(${x} ${y})`}>
-        {/* Vòng gợn nước lan ra */}
         <ellipse rx="3" ry="1.5" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity={0}>
-          <animate attributeName="opacity" values="0;0;0.8;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-          <animate attributeName="rx" values="2;2;16;20" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-          <animate attributeName="ry" values="1;1;7;9" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.8;0.3;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          <animate attributeName="rx" values="2;16;20;20" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          <animate attributeName="ry" values="1;7;9;9" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </ellipse>
-        {/* Giọt nước bắn tung toé lên rồi rơi xuống theo hình vòng cung nhỏ */}
         {drops.map((deg, i) => {
           const color = exp.colors[i % exp.colors.length];
           const dist = (10 + (i % 3) * 4) * exp.scale;
@@ -973,15 +980,15 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0,
           const fallY = dist * 0.3;
           return (
             <g key={i} opacity={0}>
-              <animate attributeName="opacity" values="0;0;1;1;0" keyTimes={`0;${(burstAt / dur).toFixed(3)};${((burstAt + dur * 0.02) / dur).toFixed(3)};${((fadeAt - dur * 0.05) / dur).toFixed(3)};${(fadeAt / dur).toFixed(3)}`} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-              <animateTransform attributeName="transform" type="translate" values={`0 0;0 0;${dx} ${riseY};${dx * 1.3} ${fallY}`} keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.7;1" dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+              <animateTransform attributeName="transform" type="translate" values={`0 0;${dx} ${riseY};${dx * 1.3} ${fallY};${dx * 1.3} ${fallY}`} keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
               <ExplosionParticle shape="drop" color={color} size={2 - (i % 3) * 0.3} />
             </g>
           );
         })}
         <circle r="6" fill="#7DD3FC" opacity={0}>
-          <animate attributeName="opacity" values="0;0;0.85;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-          <animate attributeName="r" values="2;2;8;3" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.85;0.3;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          <animate attributeName="r" values="2;8;3;3" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
         </circle>
       </g>
     );
@@ -997,16 +1004,16 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0,
         const dy = Math.sin((deg * Math.PI) / 180) * dist;
         return (
           <g key={i} opacity={0}>
-            <animate attributeName="opacity" values="0;0;1;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-            <animateTransform attributeName="transform" type="translate" values={`0 0;0 0;${dx} ${dy};${dx * 1.4} ${dy * 1.4}`} keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0;1;0.5;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+            <animateTransform attributeName="transform" type="translate" values={`0 0;${dx} ${dy};${dx * 1.4} ${dy * 1.4};${dx * 1.4} ${dy * 1.4}`} keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
             <ExplosionParticle shape={exp.shape} color={color} size={(2.4 - (i % 3) * 0.4) * Math.min(exp.scale, 1.4)} />
           </g>
         );
       })}
       {/* Chớp sáng trung tâm */}
       <circle r="7" fill={exp.colors[0]} opacity={0}>
-        <animate attributeName="opacity" values="0;0;0.9;0" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
-        <animate attributeName="r" values="3;3;10;3" keyTimes={keyTimes} dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0;0.9;0.4;0" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+        <animate attributeName="r" values="3;10;6;3" keyTimes={keyTimes} dur={`${burstDur}s`} begin={beginList} fill="freeze" />
       </circle>
     </g>
   );
@@ -1015,7 +1022,7 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0,
 export function ExplosionPreview({ svgKey, size = 64 }: { svgKey: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={1.3} begin={0} burstStartOverride={0.05} />
+      <ImpactExplosion svgKey={svgKey} x={size / 2} y={size / 2 + 10} dur={1.6} begin={0} />
     </svg>
   );
 }

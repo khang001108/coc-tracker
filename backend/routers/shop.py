@@ -20,7 +20,10 @@ async def my_inventory(x_member_token: str | None = Header(default=None)):
         raise HTTPException(401, "Cần đăng nhập")
     sb = get_supabase()
     inv = sb.table("member_inventory").select("item_id").eq("player_tag", tag).execute()
-    acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile,equipped_explosion").eq("player_tag", tag).execute()
+    try:
+        acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile,equipped_explosion").eq("player_tag", tag).execute()
+    except Exception:
+        acc = sb.table("member_accounts").select("coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect").eq("player_tag", tag).execute()
     if not acc.data:
         raise HTTPException(404, "Không tìm thấy tài khoản")
     return {

@@ -21,9 +21,22 @@ async def roster(request: Request):
     clan_id, tag = await get_tag_for_request(request)
     members = await get_clan_members(tag, clan_id=clan_id)
     sb = get_supabase()
-    res = sb.table("member_accounts").select(
-        "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile,equipped_explosion,claimed_at"
-    ).execute()
+    try:
+        res = sb.table("member_accounts").select(
+            "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile,equipped_explosion,claimed_at"
+        ).execute()
+    except Exception:
+        # Chưa chạy hết migration (thiếu cột equipped_projectile/equipped_explosion)
+        # — thử lại không có 2 cột mới, để ít nhất castle/cannon/effect vẫn hiện
+        # đúng thay vì cả API này lỗi 500 và MỌI trang bị đều rơi về mặc định.
+        try:
+            res = sb.table("member_accounts").select(
+                "player_tag,player_name,coins,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,claimed_at"
+            ).execute()
+        except Exception:
+            res = sb.table("member_accounts").select(
+                "player_tag,player_name,coins,equipped_castle,equipped_cannon,claimed_at"
+            ).execute()
     claimed = {r["player_tag"]: r for r in res.data}
     return [
         {
