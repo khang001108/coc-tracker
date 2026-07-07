@@ -29,14 +29,14 @@ export default function ShopSection() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const [it, my] = await Promise.all([api.getShopItems(), api.getMyInventory()]);
       setItems(it || []);
       setInv(my);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -47,7 +47,7 @@ export default function ShopSection() {
     setError("");
     try {
       await api.buyShopItem(item.id);
-      await load();
+      await load(true);
     } catch (e: any) {
       setError(e.message || "Lỗi mua vật phẩm");
     } finally {
@@ -60,7 +60,7 @@ export default function ShopSection() {
     setError("");
     try {
       await api.equipShopItem(item.item_type, item.svg_key);
-      await load();
+      await load(true);
     } catch (e: any) {
       setError(e.message || "Lỗi trang bị");
     } finally {
@@ -78,9 +78,17 @@ export default function ShopSection() {
   const explosions = items.filter(i => i.item_type === "explosion");
 
   function ItemGrid({ list }: { list: any[] }) {
+    // Vật phẩm đã sở hữu lên đầu để dễ thấy/dùng ngay, không bị kẹt ở vị trí
+    // cũ theo giá tiền nữa.
+    const sorted = [...list].sort((a, b) => {
+      const ownedA = a.price_coins === 0 || inv.owned_item_ids.includes(a.id);
+      const ownedB = b.price_coins === 0 || inv.owned_item_ids.includes(b.id);
+      if (ownedA !== ownedB) return ownedA ? -1 : 1;
+      return a.price_coins - b.price_coins;
+    });
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
-        {list.map(item => {
+      <div className="flex gap-2.5 overflow-x-auto pb-1 snap-x snap-mandatory" style={{ scrollbarWidth: "thin" }}>
+        {sorted.map(item => {
           const owned = item.price_coins === 0 || inv.owned_item_ids.includes(item.id);
           const equippedField = item.item_type === "castle" ? inv.equipped_castle
             : item.item_type === "cannon" ? inv.equipped_cannon
@@ -91,7 +99,8 @@ export default function ShopSection() {
           const equipped = equippedField === item.svg_key;
           return (
             <div key={item.id}
-              className={`card !p-3 flex flex-col items-center text-center gap-1.5 ${equipped ? "border-yellow-500/50" : ""}`}>
+              className={`card !p-3 flex flex-col items-center text-center gap-1.5 shrink-0 snap-start ${equipped ? "border-yellow-500/50" : ""}`}
+              style={{ width: 118 }}>
               {item.item_type === "castle" ? <CastlePreview svgKey={item.svg_key} />
                 : item.item_type === "cannon" ? <CannonPreview svgKey={item.svg_key} />
                 : item.item_type === "effect" ? <span className="text-sm font-bold py-2"><NameEffect effectKey={item.svg_key}>Tên Bạn</NameEffect></span>

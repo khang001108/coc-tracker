@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmberField } from "@/components/ui/EmberField";
 import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion, ProjectileMiniIcon, MechFortress } from "@/lib/gameIcons";
+import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion, ProjectileMiniIcon } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
@@ -62,11 +62,13 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
       <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-        {/* Pháo đài di động — 1 khối liền lâu đài + 2 pháo gắn 2 bên hông,
-            kiểu Mortal Engines. Vỡ nát nếu bị mất trọn 3 sao khi phòng thủ. */}
-        <div className="shrink-0">
-          <MechFortress svgKey={iconMap[member.tag]?.equipped_castle} size={44}
-            cannon1Damaged={0 < darkCannons} cannon2Damaged={1 < darkCannons} wrecked={castleRuined} />
+        {/* Lâu đài chibi ở giữa, 2 pháo phòng thủ đặt 2 bên (giữa chiều cao) —
+            to hơn hẳn trước, vỡ nát hẳn (không chỉ tối màu) nếu mất sao khi
+            phòng thủ. Lâu đài vỡ thành phế tích nếu mất trọn 3 sao. */}
+        <div className={`flex items-center gap-1 shrink-0 ${isRight ? "flex-row-reverse" : "flex-row"}`}>
+          <CannonIcon size={20} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
+          <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
+          <CannonIcon size={20} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
         </div>
 
         {/* Name + stars + lượt đánh */}

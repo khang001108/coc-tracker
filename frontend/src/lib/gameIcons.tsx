@@ -694,14 +694,22 @@ export function CastleIcon({ svgKey, th, size, animate = true, showTh = true }: 
 }
 
 /** Icon pháo trong War map */
-export function CannonIcon({ svgKey, fired, size }: {
-  svgKey?: string | null; fired?: boolean; size?: number;
+export function CannonIcon({ svgKey, fired, broken, size }: {
+  svgKey?: string | null; fired?: boolean; broken?: boolean; size?: number;
 }) {
   ensureStyles();
   const Comp = CANNON_COMPONENTS[svgKey || "cannon_basic"] || CannonBasic;
   return (
-    <div style={{ animation: fired ? undefined : "cannon-glow 2s ease-in-out infinite" }}>
-      <Comp fired={fired} size={size} />
+    <div style={{ position: "relative", animation: fired || broken ? undefined : "cannon-glow 2s ease-in-out infinite" }}>
+      <Comp fired={fired || broken} size={size} />
+      {broken && size && (
+        <svg width={size} height={size} viewBox="0 0 22 22" style={{ position: "absolute", inset: 0 }}>
+          {/* Vết nứt + khói — báo hiệu pháo phòng thủ này đã "hỏng" vì mất sao, rõ ràng hơn hẳn chỉ tối màu */}
+          <path d="M7 8 L10 12 L8 14 L11 17" stroke="#1F2937" strokeWidth="1.1" fill="none" strokeLinecap="round" opacity={0.85} />
+          <circle cx="14" cy="5" r="2" fill="#6B6B6B" opacity={0.7} />
+          <circle cx="16.5" cy="2.5" r="1.4" fill="#8A8A8A" opacity={0.55} />
+        </svg>
+      )}
     </div>
   );
 }
