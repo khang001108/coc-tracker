@@ -66,15 +66,41 @@ function CastleClassic({ size = 34 }: { size?: number }) {
   );
 }
 
+/** Khung lâu đài chibi dùng chung — mỗi biến thể chỉ đổi màu + phụ kiện
+ * riêng (sừng, băng, ngôi sao...) để nhìn đồng bộ phong cách tròn trịa dễ
+ * thương, thay vì mỗi cái 1 kiểu hình đa giác góc cạnh như trước. */
+function ChibiCastleBase({ wall, wallLight, wallDark, roof, roofDark, accent, door, decoration }: {
+  wall: string; wallLight: string; wallDark: string; roof: string; roofDark: string; accent: string; door: string; decoration?: React.ReactNode;
+}) {
+  return (
+    <>
+      <rect x="6" y="15" width="22" height="16" rx="3" fill={wall} stroke={wallDark} strokeWidth="1.2" />
+      <rect x="6" y="15" width="22" height="5" rx="2.5" fill={wallLight} />
+      <circle cx="8" cy="13" r="4.2" fill={wall} stroke={wallDark} strokeWidth="1.1" />
+      <circle cx="26" cy="13" r="4.2" fill={wall} stroke={wallDark} strokeWidth="1.1" />
+      <path d="M8 6 L10.4 10.5 L5.6 10.5 Z" fill={roof} stroke={roofDark} strokeWidth="0.8" />
+      <path d="M26 6 L28.4 10.5 L23.6 10.5 Z" fill={roof} stroke={roofDark} strokeWidth="0.8" />
+      <path d="M17 2 L22 11 L12 11 Z" fill={roof} stroke={roofDark} strokeWidth="1" />
+      <circle cx="17" cy="4.2" r="1.2" fill={accent} />
+      <circle cx="11" cy="21" r="2" fill="#2B3A55" />
+      <circle cx="11.7" cy="20.3" r="0.6" fill={accent} opacity={0.85} />
+      <circle cx="23" cy="21" r="2" fill="#2B3A55" />
+      <circle cx="23.7" cy="20.3" r="0.6" fill={accent} opacity={0.85} />
+      <path d="M13 31 L13 25 C13 22.2 21 22.2 21 25 L21 31 Z" fill={door} stroke={wallDark} strokeWidth="1" />
+      <rect x="16.2" y="26.5" width="1.6" height="2.2" rx="0.8" fill={accent} />
+      {decoration}
+    </>
+  );
+}
+
 function CastleRound({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <circle cx="9" cy="12" r="5"  fill={ORANGE} fillOpacity={0.65} stroke={ORANGE} strokeWidth="1.5"/>
-      <circle cx="25" cy="12" r="5" fill={ORANGE} fillOpacity={0.65} stroke={ORANGE} strokeWidth="1.5"/>
-      <rect x="6" y="16" width="22" height="14" rx="2" fill={ORANGE} fillOpacity={0.65} stroke={ORANGE} strokeWidth="1.5"/>
-      <polygon points="9,4 11,8 7,8"   fill={ORANGE}/>
-      <polygon points="25,4 27,8 23,8" fill={ORANGE}/>
-      <rect x="14" y="21" width="6" height="9" fill={ORANGE} fillOpacity={0.9} stroke={ORANGE} strokeWidth="1"/>
+      <ChibiCastleBase wall="#D9A85C" wallLight="#F5DFAE" wallDark="#A9752F" roof="#7ED0A0" roofDark="#3E9C6A" accent="#FFD700" door="#8B5A2B"
+        decoration={<>
+          <circle cx="8" cy="6.5" r="1.6" fill="#7ED0A0" stroke="#3E9C6A" strokeWidth="0.6" />
+          <circle cx="26" cy="6.5" r="1.6" fill="#7ED0A0" stroke="#3E9C6A" strokeWidth="0.6" />
+        </>} />
     </svg>
   );
 }
@@ -82,12 +108,12 @@ function CastleRound({ size = 34 }: { size?: number }) {
 function CastleFortress({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <rect x="4" y="14" width="26" height="17" fill={ORANGE} fillOpacity={0.65} stroke={ORANGE} strokeWidth="1.5"/>
-      {[4, 9.5, 15, 20.5, 26].map((x, i) => (
-        <rect key={i} x={x} y="9" width="3.5" height="6" fill={ORANGE} fillOpacity={0.8} stroke={ORANGE} strokeWidth="1"/>
-      ))}
-      <rect x="13" y="21" width="8" height="10" fill={ORANGE} fillOpacity={0.9} stroke={ORANGE} strokeWidth="1"/>
-      <polygon points="17,1 19,7 15,7" fill={ORANGE}/>
+      <ChibiCastleBase wall="#B0B8C4" wallLight="#DDE3EA" wallDark="#6B7684" roof="#7A8698" roofDark="#4A5563" accent="#FFD700" door="#5C4A32"
+        decoration={
+          [4, 9, 14, 19, 24, 29].map((x, i) => (
+            <rect key={i} x={x - 3} y="1" width="3.6" height="4" fill="#8A96A6" stroke="#4A5563" strokeWidth="0.5" />
+          ))
+        } />
     </svg>
   );
 }
@@ -95,16 +121,11 @@ function CastleFortress({ size = 34 }: { size?: number }) {
 function CastleRoyal({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <polygon points="17,2 30,13 30,31 4,31 4,13" fill={ORANGE} fillOpacity={0.65} stroke={ORANGE} strokeWidth="1.5"/>
-      <circle cx="6"  cy="11" r="3.5" fill={ORANGE} fillOpacity={0.75} stroke={ORANGE} strokeWidth="1.2"/>
-      <circle cx="28" cy="11" r="3.5" fill={ORANGE} fillOpacity={0.75} stroke={ORANGE} strokeWidth="1.2"/>
-      <polygon points="17,2 21,9 13,9" fill={GOLD} stroke={ORANGE} strokeWidth="0.8"/>
-      <rect x="13" y="20" width="8" height="11" fill={ORANGE} fillOpacity={0.9} stroke={ORANGE} strokeWidth="1"/>
-      <circle cx="17" cy="24" r="1.4" fill={GOLD}/>
+      <ChibiCastleBase wall="#F0DDB0" wallLight="#FFF3D6" wallDark="#C7A24E" roof="#6B93F0" roofDark="#2E56A8" accent="#FFD700" door="#8B5A2B"
+        decoration={<path d="M14 0 L15.5 3 L17 0.5 L18.5 3 L20 0 L19.3 4.2 L14.7 4.2 Z" fill="#FFD700" stroke="#C7961F" strokeWidth="0.4" />} />
     </svg>
   );
 }
-
 
 // ── Animal Castles ───────────────────────────────────────────────────────────
 
@@ -299,39 +320,54 @@ function CannonBasic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   );
 }
 
+/** Khung pháo chibi dùng chung — mập mạp tròn trịa, chỉ đổi màu theo biến thể. */
+function ChibiCannonBase({ fired, base, baseDark, body, bodyDark, barrel, barrelDark, muzzle, decoration }: {
+  fired?: boolean; base: string; baseDark: string; body: string; bodyDark: string; barrel: string; barrelDark: string; muzzle: string; decoration?: React.ReactNode;
+}) {
+  return (
+    <>
+      <ellipse cx="11" cy="17.5" rx="7" ry="3" fill={fired ? "#5C5C5C" : baseDark} />
+      <circle cx="11" cy="14.5" r="6.4" fill={fired ? "#8A8A8A" : body} stroke={fired ? "#4A4A4A" : bodyDark} strokeWidth="1.1" />
+      <circle cx="9" cy="12.5" r="2" fill={fired ? "#9A9A9A" : base} opacity={0.7} />
+      <g className={fired ? undefined : "cannon-spin-fast"} style={{ transformBox: "fill-box", transformOrigin: "50% 100%" }}>
+        <rect x="8" y="1.5" width="6" height="11" rx="3" fill={fired ? "#5C5C5C" : barrel} stroke={fired ? "#3A3A3A" : barrelDark} strokeWidth="0.8" />
+        <circle cx="11" cy="3" r="3.4" fill={fired ? "#4A4A4A" : barrelDark} stroke={fired ? "#2A2A2A" : "#111827"} strokeWidth="0.8" />
+        <circle cx="11" cy="3" r="1.6" fill={fired ? "#2A2A2A" : "#0B0F19"} />
+        {!fired && <circle cx="9.8" cy="1.9" r="0.8" fill={muzzle} opacity={0.85} />}
+        {!fired && decoration}
+      </g>
+    </>
+  );
+}
+
 function CannonDouble({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="15" r="6" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="6"  y="3" width="3" height="12" rx="1.3" fill={fired ? "#7A4810" : ORANGE}/>
-        <rect x="13" y="3" width="3" height="12" rx="1.3" fill={fired ? "#7A4810" : ORANGE}/>
-        {!fired && <><circle cx="7.5"  cy="3.5" r="2" fill={GOLD} fillOpacity={0.9}/><circle cx="14.5" cy="3.5" r="2" fill={GOLD} fillOpacity={0.9}/></>}
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <ellipse cx="11" cy="17.5" rx="8" ry="3" fill={fired ? "#5C5C5C" : "#6B4A21"} />
+      <circle cx="11" cy="14.5" r="6.6" fill={fired ? "#8A8A8A" : "#E4A857"} stroke={fired ? "#4A4A4A" : "#A9752F"} strokeWidth="1.1" />
+      <g className={fired ? undefined : "cannon-spin-fast"} style={{ transformBox: "fill-box", transformOrigin: "50% 100%" }}>
+        <rect x="4.5" y="2" width="4.5" height="11" rx="2.2" fill={fired ? "#5C5C5C" : "#3B4B63"} stroke={fired ? "#3A3A3A" : "#1F2937"} strokeWidth="0.7" />
+        <rect x="13" y="2" width="4.5" height="11" rx="2.2" fill={fired ? "#5C5C5C" : "#3B4B63"} stroke={fired ? "#3A3A3A" : "#1F2937"} strokeWidth="0.7" />
+        <circle cx="6.75" cy="3" r="2.5" fill={fired ? "#4A4A4A" : "#2B3A55"} />
+        <circle cx="15.25" cy="3" r="2.5" fill={fired ? "#4A4A4A" : "#2B3A55"} />
+        {!fired && <><circle cx="6" cy="2.2" r="0.6" fill="#8FB4FF" /><circle cx="14.5" cy="2.2" r="0.6" fill="#8FB4FF" /></>}
       </g>
     </svg>
   );
 }
 function CannonTurret({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <rect x="3" y="12" width="16" height="7" rx="1.5" fill={ORANGE} fillOpacity={0.5} stroke={ORANGE} strokeWidth="1.3"/>
-      <circle cx="11" cy="11" r="5" fill={ORANGE} fillOpacity={0.6} stroke={ORANGE} strokeWidth="1.3"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="9.5" y="1" width="3" height="11" rx="1.3" fill={fired ? "#7A4810" : ORANGE}/>
-        {!fired && <circle cx="11" cy="2" r="2.2" fill={GOLD} fillOpacity={0.9}/>}
-      </g>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <rect x="2.5" y="13" width="17" height="6.5" rx="2.5" fill={fired ? "#8A8A8A" : "#8B93A3"} stroke={fired ? "#4A4A4A" : "#525C6B"} strokeWidth="1" />
+      <ChibiCannonBase fired={fired} base="#F5DFAE" baseDark="#6B4A21" body="#D9A85C" bodyDark="#A9752F" barrel="#3B4B63" barrelDark="#2B3A55" muzzle="#8FB4FF" />
     </svg>
   );
 }
 function CannonMythic({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="14" r="6.5" fill={ORANGE} fillOpacity={0.45} stroke={GOLD} strokeWidth="1.5"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="9" y="1" width="4" height="13" rx="1.8" fill={fired ? "#7A4810" : ORANGE} stroke={GOLD} strokeWidth="0.8"/>
-        {!fired && <circle cx="11" cy="1.5" r="2.5" fill={GOLD}/>}
-      </g>
-      <circle cx="11" cy="14" r="2" fill={GOLD}/>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <ChibiCannonBase fired={fired} base="#FFF3D0" baseDark="#8B5A0F" body="#FFD700" bodyDark="#C7961F" barrel="#B8860B" barrelDark="#7A5A0A" muzzle="#FFF3D0"
+        decoration={<circle cx="11" cy="-1.5" r="1.4" fill="#FFF3D0" />} />
     </svg>
   );
 }
@@ -357,13 +393,13 @@ const CANNON_COMPONENTS: Record<string, React.FC<{ fired?: boolean; size?: numbe
 function CastleDragon({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <polygon points="17,2 31,13 31,31 3,31 3,13" fill="#FF6B35" fillOpacity={0.7} stroke="#FF6B35" strokeWidth={1.5}/>
-      <polygon points="17,2 21,9 13,9" fill="#FFD700"/>
-      <circle cx="6" cy="11" r="3" fill="#FF6B35" stroke="#FFD700" strokeWidth="1"/>
-      <circle cx="28" cy="11" r="3" fill="#FF6B35" stroke="#FFD700" strokeWidth="1"/>
-      <rect x="13" y="20" width="8" height="11" fill="#FF6B35" fillOpacity={0.9} stroke="#FF8C35" strokeWidth="1"/>
-      <path d="M3 20 Q1 25 3 28" stroke="#FFD700" strokeWidth="1.5" fill="none"/>
-      <path d="M31 20 Q33 25 31 28" stroke="#FFD700" strokeWidth="1.5" fill="none"/>
+      <ChibiCastleBase wall="#E8A87C" wallLight="#F7D3B8" wallDark="#A85C2E" roof="#E4482E" roofDark="#9C2A16" accent="#FFD700" door="#7A3A1A"
+        decoration={<>
+          <path d="M6 6 L4 1 L8 5 Z" fill="#FFD700" />
+          <path d="M28 6 L30 1 L26 5 Z" fill="#FFD700" />
+          <path d="M4 20 Q1 25 4 28" stroke="#FFD700" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <path d="M30 20 Q33 25 30 28" stroke="#FFD700" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        </>} />
     </svg>
   );
 }
@@ -371,13 +407,12 @@ function CastleDragon({ size = 34 }: { size?: number }) {
 function CastleIce({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <polygon points="17,2 31,13 31,31 3,31 3,13" fill="#60B8FF" fillOpacity={0.65} stroke="#A0D8FF" strokeWidth={1.5}/>
-      <polygon points="17,2 20,9 14,9" fill="#E0F4FF"/>
-      <rect x="8" y="16" width="4" height="4" fill="#A0D8FF" fillOpacity={0.6}/>
-      <rect x="22" y="16" width="4" height="4" fill="#A0D8FF" fillOpacity={0.6}/>
-      <rect x="13" y="20" width="8" height="11" fill="#60B8FF" fillOpacity={0.9} stroke="#A0D8FF" strokeWidth="1"/>
-      <line x1="3" y1="13" x2="17" y2="2" stroke="#E0F4FF" strokeWidth="0.8" opacity={0.5}/>
-      <line x1="31" y1="13" x2="17" y2="2" stroke="#E0F4FF" strokeWidth="0.8" opacity={0.5}/>
+      <ChibiCastleBase wall="#BFE3FF" wallLight="#EAF7FF" wallDark="#5FA8D9" roof="#8FCFFF" roofDark="#3E8FC7" accent="#E0F4FF" door="#4A7FA8"
+        decoration={<>
+          <path d="M11 15 L9.5 19 L12.5 19 Z" fill="#EAF7FF" opacity={0.9} />
+          <path d="M23 15 L21.5 19 L24.5 19 Z" fill="#EAF7FF" opacity={0.9} />
+          <path d="M17 11 L15.6 15 L18.4 15 Z" fill="#EAF7FF" opacity={0.9} />
+        </>} />
     </svg>
   );
 }
@@ -385,11 +420,12 @@ function CastleIce({ size = 34 }: { size?: number }) {
 function CastleShadow({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <polygon points="17,2 31,13 31,31 3,31 3,13" fill="#6B21A8" fillOpacity={0.75} stroke="#A855F7" strokeWidth={1.5}/>
-      {[4,9,14,19,24,29].map((x,i) => <rect key={i} x={x} y="8" width="3.5" height="6" fill="#A855F7" fillOpacity={0.7}/>)}
-      <rect x="13" y="20" width="8" height="11" fill="#6B21A8" fillOpacity={0.9} stroke="#A855F7" strokeWidth="1"/>
-      <circle cx="17" cy="25" r="1.5" fill="#A855F7"/>
-      <ellipse cx="17" cy="2" rx="3" ry="2" fill="#FFD700"/>
+      <ChibiCastleBase wall="#7C3FA8" wallLight="#B885E0" wallDark="#4A1F6B" roof="#3A1854" roofDark="#1F0D30" accent="#C8A2FF" door="#2E1440"
+        decoration={<>
+          <circle cx="17" cy="4.2" r="2.4" fill="#C8A2FF" opacity={0.35} />
+          <circle cx="8" cy="21" r="0.9" fill="#C8A2FF" opacity={0.7} />
+          <circle cx="26" cy="21" r="0.9" fill="#C8A2FF" opacity={0.7} />
+        </>} />
     </svg>
   );
 }
@@ -397,11 +433,12 @@ function CastleShadow({ size = 34 }: { size?: number }) {
 function CastleCelestial({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 34 34">
-      <polygon points="17,1 32,13 32,31 2,31 2,13" fill="#F4A130" fillOpacity={0.75} stroke="#FFD700" strokeWidth={2}/>
-      {[3,8,13,18,23,28].map((x,i) => <rect key={i} x={x} y="6" width="3.5" height="8" fill="#FFD700" fillOpacity={0.8}/>)}
-      <rect x="12" y="19" width="10" height="12" fill="#F4A130" fillOpacity={0.95} stroke="#FFD700" strokeWidth="1.2"/>
-      <polygon points="17,0 19.5,5 25,4 21,8 23,13 17,10 11,13 13,8 9,4 14.5,5" fill="#FFD700"/>
-      <circle cx="17" cy="25" r="2" fill="#FFD700"/>
+      <ChibiCastleBase wall="#FFEBB0" wallLight="#FFFAE8" wallDark="#D9A83C" roof="#FFD700" roofDark="#C7961F" accent="#FFFFFF" door="#B8860B"
+        decoration={<>
+          <path d="M17 -1 L18 2 L21 2.3 L18.6 4 L19.4 7 L17 5.3 L14.6 7 L15.4 4 L13 2.3 L16 2 Z" fill="#FFFFFF" opacity={0.9} />
+          <circle cx="4" cy="18" r="0.7" fill="#FFFFFF" opacity={0.8} />
+          <circle cx="30" cy="18" r="0.7" fill="#FFFFFF" opacity={0.8} />
+        </>} />
     </svg>
   );
 }
@@ -410,53 +447,41 @@ function CastleCelestial({ size = 34 }: { size?: number }) {
 
 function CannonLaser({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="14" r="6" fill="#00BFFF" fillOpacity={0.5} stroke="#00BFFF" strokeWidth="1.3"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="10" y="1" width="2" height="13" rx="1" fill="#00BFFF"/>
-        <rect x="9.5" y="1" width="3" height="8" rx="0.5" fill="white" fillOpacity={0.4}/>
-        {fired && <circle cx="11" cy="1.5" r="2.5" fill="#00FFFF" opacity={0.9}/>}
-      </g>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <ChibiCannonBase fired={fired} base="#CFF7FF" baseDark="#0E7FA8" body="#3FD4FF" bodyDark="#0E9FCC" barrel="#0E6E8F" barrelDark="#063E52" muzzle="#CFF7FF" />
     </svg>
   );
 }
 
 function CannonStorm({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="14" r="6.5" fill="#6B21A8" fillOpacity={0.5} stroke="#A855F7" strokeWidth="1.3"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="9.5" y="1" width="3" height="13" rx="1.5" fill="#A855F7"/>
-        {fired && <ellipse cx="11" cy="1" rx="3" ry="2" fill="#FFD700"/>}
-      </g>
-      {fired && <line x1="7" y1="12" x2="4" y2="10" stroke="#A855F7" strokeWidth="1.5"/>}
-      {fired && <line x1="15" y1="12" x2="18" y2="10" stroke="#A855F7" strokeWidth="1.5"/>}
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <ChibiCannonBase fired={fired} base="#E8D4FF" baseDark="#5B2D8A" body="#A855F7" bodyDark="#6B21A8" barrel="#4A1F6B" barrelDark="#2E1447" muzzle="#E8D4FF"
+        decoration={<>
+          {!fired && <path d="M3 8 L1 6.5 L3.4 6.2 Z" fill="#E8D4FF" />}
+          {!fired && <path d="M19 8 L21 6.5 L18.6 6.2 Z" fill="#E8D4FF" />}
+        </>} />
     </svg>
   );
 }
 
 function CannonDragon({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="14" r="6.5" fill="#FF6B35" fillOpacity={0.5} stroke="#FF8C35" strokeWidth="1.3"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <polygon points="11,1 14,13 11,14 8,13" fill={fired ? "#7A2A10" : "#FF6B35"}/>
-        <polygon points="11,1 13,8 11,10 9,8" fill="#FFD700" opacity={0.7}/>
-        {fired && <circle cx="11" cy="1" r="3" fill="#FFD700"/>}
-      </g>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <ChibiCannonBase fired={fired} base="#FFD9BF" baseDark="#9C2A16" body="#FF6B35" bodyDark="#C7451F" barrel="#B7391A" barrelDark="#7A2410" muzzle="#FFD700"
+        decoration={<>
+          <path d="M8 2.5 L6.5 -1 L9.5 1.5 Z" fill="#FFD700" />
+          <path d="M14 2.5 L15.5 -1 L12.5 1.5 Z" fill="#FFD700" />
+        </>} />
     </svg>
   );
 }
 
 function CannonCelestial({ fired, size = 22 }: { fired?: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.55 : 1}>
-      <circle cx="11" cy="14" r="7" fill="#F4A130" fillOpacity={0.45} stroke="#FFD700" strokeWidth="2"/>
-      <g className={fired ? undefined : "cannon-spin-fast"}>
-        <rect x="9.5" y="1" width="3" height="13" rx="1.5" fill="#FFD700" stroke="#F4A130" strokeWidth="0.8"/>
-        {fired && <polygon points="11,0 13,4 11,3 9,4" fill="#fff"/>}
-      </g>
-      <circle cx="11" cy="14" r="2.5" fill="#FFD700"/>
+    <svg width={size} height={size} viewBox="0 0 22 22" opacity={fired ? 0.6 : 1}>
+      <ChibiCannonBase fired={fired} base="#FFFAE8" baseDark="#C7961F" body="#FFD700" bodyDark="#D9A83C" barrel="#F4A130" barrelDark="#B8730F" muzzle="#FFFFFF"
+        decoration={<path d="M11 -2 L11.6 -0.4 L13.2 -0.2 L12 0.9 L12.4 2.5 L11 1.7 L9.6 2.5 L10 0.9 L8.8 -0.2 L10.4 -0.4 Z" fill="#FFFFFF" />} />
     </svg>
   );
 }

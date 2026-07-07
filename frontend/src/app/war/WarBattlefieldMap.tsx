@@ -5,7 +5,7 @@ import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
-import { Swords, Shield } from "lucide-react";
+import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
 const STAR_FILL = (s: number) =>
@@ -59,7 +59,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
 
         {/* Castle icon */}
         <div className="shrink-0">
-          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.equipped_castle} size={28} animate={false} />
+          <CastleIcon th={member.townHallLevel} svgKey={iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
         </div>
 
         {/* Name + stars + cannons */}
@@ -73,7 +73,7 @@ function MemberCard({ member, attacks, side, iconMap, selected, onSelect, maxAtt
           {/* Số pháo = số lượt đánh cho phép (1 ở CWL, 2 ở war thường) */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {Array.from({ length: maxAttacks }).map((_, i) => (
-              <CannonIcon key={i} size={10} svgKey={iconMap[member.tag]?.equipped_cannon} fired={!!attacks[i]} />
+              <CannonIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_cannon} fired={!!attacks[i]} />
             ))}
           </div>
         </div>
@@ -228,9 +228,10 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
         <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text, #fff)" }}>🗺️ Chiến trường</h3>
         <div className="flex items-center gap-2 text-[9px] text-gray-500 flex-wrap">
           <button onClick={() => { setViewMode(v => v === "all" ? "single" : "all"); setSelected(null); }}
-            className="px-2 py-1 rounded-lg font-bold flex items-center gap-1"
-            style={{ background: viewMode === "all" ? "rgba(244,161,48,0.2)" : "rgba(120,120,140,0.12)", color: viewMode === "all" ? "#F4A130" : undefined }}>
-            {viewMode === "all" ? "🎯 Đang xem tất cả" : "👤 Xem tất cả"}
+            title={viewMode === "all" ? "Đang xem tất cả — bấm để tắt" : "Xem tất cả"}
+            className="p-1.5 rounded-lg flex items-center justify-center"
+            style={{ background: viewMode === "all" ? "rgba(244,161,48,0.2)" : "rgba(120,120,140,0.12)", color: viewMode === "all" ? "#F4A130" : "#9CA3AF" }}>
+            {viewMode === "all" ? <Eye size={13}/> : <EyeOff size={13}/>}
           </button>
           <span>⚔ #X = vị trí tấn công</span>
           <span className="flex items-center gap-1">
@@ -276,11 +277,13 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
               // luôn cong lên) — trước đây cứ đẩy lên cố định nên đường nối
               // gần như thẳng đứng (rất hay gặp vì 2 đội xếp theo cột) bị
               // vẽ lệch sang ngang, nhìn như bắn không tới đích.
-              const arcHeight = Math.min(60, Math.max(14, dist * 0.28));
-              const perpX = -dy / dist;
-              const perpY = dx / dist;
-              const ctrlX = midX + perpX * arcHeight;
-              const ctrlY = midY + perpY * arcHeight;
+              // Luôn cong lên trên (đúng ý bạn thích) — nhưng cho phép cong
+              // CAO HƠN NHIỀU khi 2 người ở xa nhau (màn hình máy tính cột 2
+              // bên cách xa nhau) — trước giới hạn quá thấp (tối đa 60px) nên
+              // trên máy tính đường bay gần như phẳng, nhìn như không chạm đích.
+              const arcHeight = Math.min(140, Math.max(20, dist * 0.4));
+              const ctrlX = midX;
+              const ctrlY = midY - arcHeight;
               const pathD = `M ${a.x1} ${a.y1} Q ${ctrlX} ${ctrlY} ${a.x2} ${a.y2}`;
               const isOurs = a.side === "left";
               const color = isOurs ? "#38BDF8" : "#FF5A36";
