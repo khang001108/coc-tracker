@@ -62,13 +62,14 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
       <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-        {/* Lâu đài chibi ở giữa, 2 pháo phòng thủ đặt 2 bên (giữa chiều cao) —
-            to hơn hẳn trước, vỡ nát hẳn (không chỉ tối màu) nếu mất sao khi
-            phòng thủ. Lâu đài vỡ thành phế tích nếu mất trọn 3 sao. */}
-        <div className={`flex items-center gap-1 shrink-0 ${isRight ? "flex-row-reverse" : "flex-row"}`}>
-          <CannonIcon size={20} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
-          <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={38} animate={false} />
-          <CannonIcon size={20} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
+        {/* Lâu đài chibi ở giữa, 2 pháo phòng thủ đặt sát 2 bên (nhỏ + khít lại
+            để vừa màn hình điện thoại, trước to quá bị chèn sang cột bên
+            cạnh) — vỡ nát hẳn (không chỉ tối màu) nếu mất sao khi phòng thủ.
+            Lâu đài vỡ thành phế tích nếu mất trọn 3 sao. */}
+        <div className={`flex items-center shrink-0 ${isRight ? "flex-row-reverse" : "flex-row"}`} style={{ gap: 1 }}>
+          <CannonIcon size={14} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
+          <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={34} animate={false} />
+          <CannonIcon size={14} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
         </div>
 
         {/* Name + stars + lượt đánh */}
@@ -245,7 +246,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
           <span>⚔ #X = vị trí tấn công</span>
           <span className="flex items-center gap-1">
             {Array.from({ length: maxAttacks }).map((_, i) => (
-              <CannonIcon key={i} size={11} svgKey="cannon_basic" fired={false} />
+              <ProjectileMiniIcon key={i} size={11} fired={false} />
             ))}
             = {maxAttacks} lượt đánh
           </span>
