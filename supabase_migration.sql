@@ -791,3 +791,9 @@ DELETE FROM shop_items WHERE svg_key = 'castle_ruins';
 INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('castle', 'castle_shack', 'Túp Lều Xiêu Vẹo', 1200)
 ON CONFLICT (svg_key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 19 (Lịch sử trao thưởng sự kiện/CWL + cài đặt tự xoá)
+-- ════════════════════════════════════════════════════════════════
+INSERT INTO settings (key, value) VALUES ('reward_history_retention_days', '90')
+ON CONFLICT (key) DO NOTHING;

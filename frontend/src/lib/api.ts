@@ -217,6 +217,7 @@ export const api = {
   confirmDeleteEvent: (id: number) => apiFetch(`/api/events/${id}/confirm-delete`, { method: "POST" }),
   cancelDeleteEvent: (id: number) => apiFetch(`/api/events/${id}/cancel-delete`, { method: "POST" }),
   getLeaderboard:   (id: number) => apiFetch(`/api/events/${id}/leaderboard`),
+  getRewardHistory: (limit = 30) => apiFetch(`/api/events/history?limit=${limit}`),
   saveClaims:       (id: number, entries: any[]) => apiFetch(`/api/events/${id}/claim`, { method: "POST", body: JSON.stringify({ entries }) }),
   getClaims:        (id: number) => apiFetch(`/api/events/${id}/claims`),
   markClaimed:      (eventId: number, claimId: number, claimed: boolean) =>

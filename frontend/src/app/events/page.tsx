@@ -1010,6 +1010,62 @@ function CreateEventGate({ children }: { children: React.ReactNode }) {
 }
 
 /* ─── Main Page ───────────────────────────────────────────────────────── */
+/* ─── Lịch sử trao thưởng — sự kiện/CWL đã đóng, xem lại ai từng thắng ──── */
+function RewardHistorySection() {
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try { setHistory(await api.getRewardHistory()); } catch {} finally { setLoading(false); setLoaded(true); }
+  }
+
+  return (
+    <div className="card !p-0">
+      <button onClick={() => { setOpen(v => !v); if (!loaded) load(); }}
+        className="w-full flex items-center justify-between p-4 text-left">
+        <span className="font-bold text-white flex items-center gap-2">🏆 Lịch sử trao thưởng</span>
+        <span className="text-gray-500 text-sm">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          {loading ? (
+            <div className="h-16 rounded-xl animate-pulse bg-gray-800" />
+          ) : history.length === 0 ? (
+            <p className="text-sm text-gray-600 text-center py-4">Chưa có sự kiện nào đã kết thúc.</p>
+          ) : (
+            history.map(ev => (
+              <div key={ev.id} className="p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="font-semibold text-white text-sm">{ev.title}</p>
+                  <span className="text-[11px] text-gray-500">{fmtDateTime(ev.end_time)}</span>
+                </div>
+                {ev.reward_name && <p className="text-xs text-yellow-500 mt-0.5">🎁 {ev.reward_name}</p>}
+                {ev.claims?.length > 0 ? (
+                  <div className="mt-2 space-y-1">
+                    {ev.claims.map((c: any) => (
+                      <div key={c.id} className="flex items-center justify-between text-xs">
+                        <span className="text-gray-300">#{c.rank} {c.player_name}</span>
+                        <span className={c.claimed ? "text-green-400" : "text-gray-500"}>
+                          {c.claimed ? "✓ Đã nhận" : "Chưa nhận"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-600 mt-1">Không có người thắng được ghi nhận.</p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EventsPage() {
   const [events, setEvents]       = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -1089,6 +1145,8 @@ export default function EventsPage() {
           ))}
         </div>
       )}
+
+      <RewardHistorySection />
 
       {selected && (
         <EventDetailModal

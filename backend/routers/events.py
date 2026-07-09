@@ -28,6 +28,7 @@ from member_auth import verify_member_token
 from services.coc_api import get_current_war, get_war_log, get_clan_members, get_cwl_group, get_cwl_war, get_raid_seasons, get_cwl_season_rounds
 from services.push_service import send_push_to_clan
 import uuid
+import datetime
 
 router = APIRouter()
 
@@ -185,6 +186,30 @@ async def upload_image(file: UploadFile = File(...), _: bool = Depends(require_a
 # ─────────────────────────────────────────────────────────────────────────────
 # Events CRUD
 # ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/history")
+async def reward_history(request: Request, limit: int = Query(30, le=100)):
+    """Lịch sử trao thưởng — các sự kiện đã kết thúc (kể cả CWL) kèm người
+    thắng đã ghi nhận, để xem lại ai từng được thưởng gì mà không cần tìm
+    trong đống sự kiện cũ."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    now = datetime.datetime.utcnow().isoformat()
+    res = sb.table("events").select("*").eq("clan_id", clan_id) \
+        .or_(f"status.in.(closed,rejected),end_time.lt.{now}") \
+        .order("end_time", desc=True).limit(limit).execute()
+    events = res.data or []
+    if not events:
+        return []
+    ids = [e["id"] for e in events]
+    claims_res = sb.table("event_claims").select("*").in_("event_id", ids).order("rank").execute()
+    claims_by_event: dict[int, list] = {}
+    for c in (claims_res.data or []):
+        claims_by_event.setdefault(c["event_id"], []).append(c)
+    for e in events:
+        e["claims"] = claims_by_event.get(e["id"], [])
+    return events
+
 
 @router.get("/")
 async def list_events(request: Request):

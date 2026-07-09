@@ -42,6 +42,7 @@ async def start_scheduler():
     scheduler.add_job(poll_donations, IntervalTrigger(minutes=donate_minutes),  id="poll_donations", replace_existing=True)
     scheduler.add_job(poll_asset_cleanup, IntervalTrigger(hours=6), id="poll_asset_cleanup", replace_existing=True)
     scheduler.add_job(poll_stats_cleanup, IntervalTrigger(hours=12), id="poll_stats_cleanup", replace_existing=True)
+    scheduler.add_job(poll_reward_history_cleanup, IntervalTrigger(hours=12), id="poll_reward_history_cleanup", replace_existing=True)
     scheduler.add_job(poll_global_chat_cleanup, IntervalTrigger(hours=1), id="poll_global_chat_cleanup", replace_existing=True)
     # Job "canh" cấu hình — cho phép đổi chu kỳ quét Donate/Thành viên trong Cài
     # đặt có hiệu lực NGAY, không cần khởi động lại server.
@@ -662,3 +663,24 @@ async def poll_stats_cleanup():
         log.info(f"Stats cleanup: removed records older than {days} days")
     except Exception as e:
         log.error(f"poll_stats_cleanup error: {e}")
+
+
+async def poll_reward_history_cleanup():
+    """Xoá lịch sử trao thưởng (sự kiện đã đóng/từ chối + claims kèm theo) cũ
+    hơn N ngày (Cài đặt → 'reward_history_retention_days'). Chỉ xoá sự kiện
+    ĐÃ ĐÓNG hẳn — không đụng tới sự kiện đang chạy dù có cũ tới đâu. Để
+    trống/0 = giữ vĩnh viễn."""
+    try:
+        sb = get_supabase()
+        cfg = sb.table("settings").select("value").eq("key", "reward_history_retention_days").execute()
+        days = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 0
+        if days <= 0:
+            return
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        old = sb.table("events").select("id").in_("status", ["closed", "rejected"]).lt("end_time", cutoff).execute()
+        ids = [r["id"] for r in (old.data or [])]
+        if ids:
+            sb.table("events").delete().in_("id", ids).execute()  # event_claims tự xoá theo (ON DELETE CASCADE)
+            log.info(f"Reward history cleanup: removed {len(ids)} old closed events")
+    except Exception as e:
+        log.error(f"poll_reward_history_cleanup error: {e}")

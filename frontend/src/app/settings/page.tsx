@@ -730,6 +730,22 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
       </div>
 
+      {/* ── Xoá lịch sử trao thưởng ── */}
+      <div className="card space-y-3">
+        <h2 className="font-bold text-white">🏆 Lịch sử trao thưởng</h2>
+        <p className="text-xs text-gray-500">
+          Sự kiện/CWL đã đóng kèm người thắng sẽ tự động bị xoá sau số ngày dưới đây — để trống/0 để giữ vĩnh viễn.
+        </p>
+        <div className="flex items-center gap-2">
+          <input type="number" min={0} max={3650} className="input !w-28"
+            value={settings.reward_history_retention_days ?? "90"}
+            onChange={e => set("reward_history_retention_days", e.target.value)} />
+          <span className="text-sm text-gray-400">ngày</span>
+          <button onClick={() => api.saveSetting("reward_history_retention_days", settings.reward_history_retention_days || "90")}
+            className="btn-gold text-sm ml-auto">Lưu</button>
+        </div>
+      </div>
+
       {/* ── Ảnh nền Chat ── */}
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🖼️ Ảnh nền Chat</h2>
