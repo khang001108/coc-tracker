@@ -8,6 +8,7 @@ import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
+import { MedalRewardBox } from "@/components/ui/MedalRewardBox";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -182,7 +183,7 @@ function WeeklyReportTab() {
 }
 
 export default function StatsPage() {
-  const [tab, setTab] = useState<"overview" | "weekly">("overview");
+  const [tab, setTab] = useState<"overview" | "weekly" | "medals">("overview");
   const [members, setMembers] = useState<any[]>([]);
   const bannerSrc = usePageBanner("stats", "/art/ruins-aftermath.jpg");
   const [war, setWar] = useState<any>(null);
@@ -276,12 +277,16 @@ export default function StatsPage() {
         </div>
       </div>
 
-      <SlidingTabs
-        tabs={[{id:"overview",label:"Tổng quan"},{id:"weekly",label:"Báo cáo tuần"}]}
-        active={tab} onChange={(id) => setTab(id as any)} />
+      <div className="overflow-x-auto -mx-1 px-1 pb-1">
+        <SlidingTabs
+          tabs={[{id:"overview",label:"Tổng quan"},{id:"weekly",label:"Báo cáo tuần"},{id:"medals",label:"Huy chương CWL"}]}
+          active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
+      </div>
 
       {tab === "weekly" ? (
         <WeeklyReportTab/>
+      ) : tab === "medals" ? (
+        <MedalRewardBox/>
       ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <CocLoader text="Đang tải thống kê..." minHeight={200} />

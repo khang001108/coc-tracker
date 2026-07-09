@@ -238,6 +238,7 @@ function UploadFromDeviceButton({ onUploaded }: { onUploaded: (url: string) => v
 }
 
 function SettingsPageInner({ embedded }: { embedded?: boolean }) {
+  const [subTab, setSubTab] = useState<"clan"|"discord"|"telegram"|"notify"|"chat_log"|"stats_data"|"reward_log"|"chat_bg"|"overview_cards"|"ember"|"banners"|"cleanup"|"manual_notify">("clan");
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -406,16 +407,13 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
       )}
 
-      <div className={embedded ? "contents" : "columns-1 lg:columns-2 gap-6 [&_.card]:break-inside-avoid [&_.card]:mb-6"}>
+      <div className={embedded ? "contents" : ""}>
+        <div className="overflow-x-auto -mx-1 px-1 pb-2 mb-3">
+          <SlidingTabs tabs={[{ id:"clan", label:"Quản lý Clan" },{ id:"discord", label:"Discord" },{ id:"telegram", label:"Telegram" },{ id:"notify", label:"Loại thông báo" },{ id:"chat_log", label:"Chat công khai" },{ id:"stats_data", label:"Thống kê tích luỹ" },{ id:"reward_log", label:"Lịch sử trao thưởng" },{ id:"chat_bg", label:"Ảnh nền Chat" },{ id:"overview_cards", label:"Thẻ Tổng quan" },{ id:"ember", label:"Màu tia lửa" },{ id:"banners", label:"Ảnh nền từng mục" },{ id:"cleanup", label:"Dọn dẹp tài sản" },{ id:"manual_notify", label:"Thông báo thủ công" }]} active={subTab} onChange={(id) => setSubTab(id as any)} className="w-max"/>
+        </div>
 
-      {/* ── Quản lý Clan (đã gộp chung với cấu hình CoC API — mỗi clan, kể cả
-           clan chính, đều sửa Tag + API Key ngay trong danh sách bên dưới) ── */}
-      <details className="card !p-0 group" open>
-        <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
-          <span className="font-bold text-white flex items-center gap-2">🏰 Quản lý Clan</span>
-          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
-        </summary>
-        <div className="px-4 pb-4 space-y-4">
+      {subTab === "clan" && (
+        <div className="card space-y-4">
         <p className="text-xs text-gray-500">Thêm/sửa/xoá clan. Mỗi clan cần CoC API key riêng.</p>
 
         <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
@@ -432,20 +430,10 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
         <ClanManagement />
         </div>
-      </details>
+      )}
 
-      {/* ── Discord ── */}
-      <details className="card !p-0 group">
-        <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
-          <span className="font-bold text-white flex items-center gap-2">
-            <MessageSquare size={16} className="text-indigo-400" /> Discord Webhook
-            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300">
-              {getCurrentClanInfo()?.clan_name || `Clan #${getCurrentClanId()}`}
-            </span>
-          </span>
-          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
-        </summary>
-        <div className="px-4 pb-4 space-y-4">
+      {subTab === "discord" && (
+        <div className="card space-y-4">
 
         <div className="p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-xs text-indigo-300 space-y-1">
           <p className="font-semibold">📌 Cách lấy Webhook:</p>
@@ -490,20 +478,10 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           </button>
         </div>
         </div>
-      </details>
+      )}
 
-      {/* ── Telegram ── */}
-      <details className="card !p-0 group">
-        <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
-          <span className="font-bold text-white flex items-center gap-2">
-            <Send size={16} className="text-blue-400" /> Telegram Bot
-            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-300">
-              {getCurrentClanInfo()?.clan_name || `Clan #${getCurrentClanId()}`}
-            </span>
-          </span>
-          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
-        </summary>
-        <div className="px-4 pb-4 space-y-4">
+      {subTab === "telegram" && (
+        <div className="card space-y-4">
 
         <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1">
           <p className="font-semibold">📌 Cách tạo Bot Telegram:</p>
@@ -590,20 +568,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           </button>
         </div>
         </div>
-      </details>
+      )}
 
-      {/* ── Cài đặt nâng cao (thu gọn bớt cho đỡ dài) ── */}
-      <details className="group">
-        <summary className="cursor-pointer list-none flex items-center justify-between p-3 rounded-xl mb-3"
-          style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
-          <span className="font-bold text-sm flex items-center gap-2" style={{ color: "var(--py-card-text)" }}>
-            ⚙️ Cài đặt nâng cao
-          </span>
-          <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
-        </summary>
-        <div className="space-y-6">
-
-      {/* ── Notification toggles ── */}
+      {subTab === "notify" && (
       <div className="card space-y-4">
         <h2 className="font-bold text-white">🔔 Loại thông báo</h2>
         <p className="text-xs text-gray-500">Bật/tắt từng loại thông báo gửi qua Discord & Telegram</p>
@@ -693,8 +660,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </button>
         {testNotifyMsg && <p className="text-[11px] text-gray-500">{testNotifyMsg}</p>}
       </div>
+      )}
 
-      {/* ── Xoá lịch sử chat tự động ── */}
+      {subTab === "chat_log" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">💬 Lịch sử Chat công khai</h2>
         <p className="text-xs text-gray-500">Tin nhắn ở Chat công khai cũ hơn số ngày dưới đây sẽ tự động bị xoá. Chat Clan không bị ảnh hưởng, luôn được giữ lại.</p>
@@ -708,8 +676,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
         <p className="text-[11px] text-gray-600">Đặt 0 để không tự xoá.</p>
       </div>
+      )}
 
-      {/* ── Xoá dữ liệu thống kê tích luỹ ── */}
+      {subTab === "stats_data" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">📊 Dữ liệu thống kê tích luỹ</h2>
         <p className="text-xs text-gray-500">
@@ -730,8 +699,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           catch (e: any) { showToast(e.message, "error"); }
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
       </div>
+      )}
 
-      {/* ── Xoá lịch sử trao thưởng ── */}
+      {subTab === "reward_log" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🏆 Lịch sử trao thưởng</h2>
         <p className="text-xs text-gray-500">
@@ -746,8 +716,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             className="btn-gold text-sm ml-auto">Lưu</button>
         </div>
       </div>
+      )}
 
-      {/* ── Ảnh nền Chat ── */}
+      {subTab === "chat_bg" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🖼️ Ảnh nền Chat</h2>
         <p className="text-xs text-gray-500">Chọn ảnh nền mờ phía sau khung chat (áp dụng cho mọi người, cả Chat Clan lẫn Chat công khai).</p>
@@ -775,8 +746,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         <button onClick={() => save("chat_background_image")} disabled={!!saving}
           className="btn-gold text-sm w-full">Lưu ảnh nền Chat</button>
       </div>
+      )}
 
-      {/* ── Thẻ hiển thị ở Tổng quan ── */}
+      {subTab === "overview_cards" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🏠 Thẻ hiển thị ở Tổng quan</h2>
         <p className="text-xs text-gray-500">Ẩn/hiện các thẻ War, CWL, Clan Capital ở trang Tổng quan (chỉ ẩn khi có sự kiện đang diễn ra, không ảnh hưởng trang riêng của từng mục).</p>
@@ -798,8 +770,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           </label>
         ))}
       </div>
+      )}
 
-      {/* ── Màu tia lửa hiệu ứng ── */}
+      {subTab === "ember" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">✨ Màu tia lửa hiệu ứng</h2>
         <p className="text-xs text-gray-500">Đổi màu tia lửa bay ở các khung có hiệu ứng lửa (Đăng nhập, Cửa hàng, War, Tổng quan, Clan Capital, Clan Games...) — áp dụng chung cho toàn bộ web.</p>
@@ -820,8 +793,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           ))}
         </div>
       </div>
+      )}
 
-      {/* ── Ảnh nền từng mục ── */}
+      {subTab === "banners" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🖼️ Ảnh nền từng mục</h2>
         <p className="text-xs text-gray-500">Đổi ảnh nền riêng cho từng trang — chọn trang, rồi chọn ảnh (hoặc dán link ảnh khác), Lưu là áp dụng ngay.</p>
@@ -885,8 +859,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           );
         })()}
       </div>
+      )}
 
-      {/* ── Dọn dẹp tài sản thành viên rời clan ── */}
+      {subTab === "cleanup" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">🧹 Dọn dẹp tài sản người rời clan</h2>
         <p className="text-xs text-gray-500">
@@ -901,8 +876,9 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
             className="btn-gold text-sm ml-auto">Lưu</button>
         </div>
       </div>
+      )}
 
-      {/* ── Manual notify ── */}
+      {subTab === "manual_notify" && (
       <div className="card space-y-4">
         <h2 className="font-bold text-white">📢 Gửi thông báo thủ công</h2>
         <div>
@@ -926,9 +902,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           <Send size={16} /> Gửi ngay
         </button>
       </div>
-
-        </div>
-      </details>
+      )}
 
       </div>
 
@@ -1689,6 +1663,7 @@ function PushNotificationSettings() {
 }
 
 export default function SettingsPage() {
+  const [outerTab, setOuterTab] = useState<"general" | "admin">("general");
   const [tab, setTab] = useState<"general" | "events" | "music" | "members" | "shop">("general");
   return (
     <div className="space-y-6 max-w-7xl animate-fade-up">
@@ -1699,32 +1674,46 @@ export default function SettingsPage() {
         <p className="page-subtitle">Cấu hình API key, clan và thông báo</p>
       </div>
 
-      {/* Ai cũng chỉnh được — không cần đăng nhập admin, vì đây là quyền của
-          từng trình duyệt/thiết bị, không phải cấu hình clan. */}
-      <InstallAppButton />
-      <ShareWebsite />
-      <JoinGroupLinks />
-      <PushNotificationSettings />
+      <div className="overflow-x-auto -mx-1 px-1 pb-1">
+        <SlidingTabs
+          tabs={[{ id: "general", label: "Cài đặt thường" }, { id: "admin", label: "Quản trị viên" }]}
+          active={outerTab} onChange={(id) => setOuterTab(id as any)} className="w-max"/>
+      </div>
 
-      <AdminGate>
-        <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">
-          <SlidingTabs
-            tabs={[
-              { id: "general", label: "Chung" },
-              { id: "events",  label: "Sự kiện" },
-              { id: "music",   label: "Âm nhạc" },
-              { id: "members", label: "Thành viên" },
-              { id: "shop",    label: "Cửa hàng" },
-            ]}
-            active={tab} onChange={(id) => setTab(id as any)} />
+      {outerTab === "general" && (
+        <>
+          {/* Ai cũng chỉnh được — không cần đăng nhập admin, vì đây là quyền của
+              từng trình duyệt/thiết bị, không phải cấu hình clan. */}
+          <InstallAppButton />
+          <ShareWebsite />
+          <JoinGroupLinks />
+          <PushNotificationSettings />
+        </>
+      )}
 
-          {tab === "general" && <SettingsPageInner embedded />}
-          {tab === "events" && <EventReportsSettings />}
-          {tab === "music" && <MusicSettings />}
-          {tab === "members" && <MemberAccountsSettings />}
-          {tab === "shop" && <ShopPricingSettings />}
-        </div>
-      </AdminGate>
+      {outerTab === "admin" && (
+        <AdminGate>
+          <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">
+            <div className="overflow-x-auto -mx-1 px-1 pb-1">
+              <SlidingTabs
+                tabs={[
+                  { id: "general", label: "Chung" },
+                  { id: "events",  label: "Sự kiện" },
+                  { id: "music",   label: "Âm nhạc" },
+                  { id: "members", label: "Thành viên" },
+                  { id: "shop",    label: "Cửa hàng" },
+                ]}
+                active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
+            </div>
+
+            {tab === "general" && <SettingsPageInner embedded />}
+            {tab === "events" && <EventReportsSettings />}
+            {tab === "music" && <MusicSettings />}
+            {tab === "members" && <MemberAccountsSettings />}
+            {tab === "shop" && <ShopPricingSettings />}
+          </div>
+        </AdminGate>
+      )}
     </div>
   );
 }

@@ -13,7 +13,6 @@ import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Co
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
-import { MedalRewardBox } from "@/components/ui/MedalRewardBox";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -317,8 +316,6 @@ export default function DashboardPage() {
           </div>
         </Link>
       )}
-
-      <MedalRewardBox/>
 
       {/* Top members */}
       <div className="card">
