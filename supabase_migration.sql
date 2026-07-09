@@ -797,3 +797,12 @@ ON CONFLICT (svg_key) DO NOTHING;
 -- ════════════════════════════════════════════════════════════════
 INSERT INTO settings (key, value) VALUES ('reward_history_retention_days', '90')
 ON CONFLICT (key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 20 (Mã nhận thưởng bảo mật cho event_claims — mỗi
+-- người thắng có 1 mã ngẫu nhiên riêng, chỉ người đó và người tổ chức
+-- (admin) nhìn thấy được, dùng để xác nhận khi đổi thưởng thay vì
+-- công khai số Zalo của người tổ chức)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE event_claims ADD COLUMN IF NOT EXISTS redeem_code TEXT DEFAULT upper(substr(md5(random()::text), 1, 6));
+UPDATE event_claims SET redeem_code = upper(substr(md5(random()::text), 1, 6)) WHERE redeem_code IS NULL;

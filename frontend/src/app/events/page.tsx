@@ -45,13 +45,6 @@ const STATUS_BORDER: Record<string, string> = {
   rejected:       "from-gray-600 via-gray-500 to-gray-600",
 };
 
-function zaloLink(contact: string): string {
-  const trimmed = (contact || "").trim();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  const digits = trimmed.replace(/[^0-9]/g, "");
-  return digits ? `https://zalo.me/${digits}` : "#";
-}
-
 /** DB không tự chuyển status khi hết giờ (chỉ đổi khi admin bấm) — nên phải
  * tự kiểm tra thêm end_time, nếu không sự kiện hết hạn vẫn hiện "đang diễn
  * ra" mãi mãi (đây là lỗi đã gặp). */
@@ -268,17 +261,23 @@ function JoinButton({ event, participants, onChanged }: { event: any; participan
 }
 
 /* ─── Participant List ────────────────────────────────────────────────── */
+const PARTICIPANT_COLLAPSED_COUNT = 3;
+
 function ParticipantList({ participants }: { participants: any[] }) {
+  // Mặc định LUÔN thu gọn — chỉ hiện đủ khi người dùng bấm "Xem tất cả".
   const [expanded, setExpanded] = useState(false);
   if (!participants.length) return null;
-  const show = expanded ? participants : participants.slice(0, 5);
+  const show = expanded ? participants : participants.slice(0, PARTICIPANT_COLLAPSED_COUNT);
+  const hiddenCount = participants.length - PARTICIPANT_COLLAPSED_COUNT;
   return (
     <div>
       <button onClick={() => setExpanded(e => !e)}
         className="flex items-center gap-1.5 text-sm font-bold text-white mb-2 w-full text-left">
         <Users size={14} className="text-blue-400"/>
         Người tham gia ({participants.length})
-        <span className="text-gray-600 text-xs ml-auto">{expanded ? "Thu gọn ▲" : "Xem tất cả ▼"}</span>
+        {hiddenCount > 0 && (
+          <span className="text-gray-600 text-xs ml-auto">{expanded ? "Thu gọn ▲" : "Xem tất cả ▼"}</span>
+        )}
       </button>
       <div className="space-y-1">
         {show.map((p: any, i: number) => (
@@ -288,8 +287,8 @@ function ParticipantList({ participants }: { participants: any[] }) {
             <span className="text-[10px] text-gray-600">{fmtDateTime(p.joined_at)}</span>
           </div>
         ))}
-        {!expanded && participants.length > 5 && (
-          <p className="text-xs text-gray-600 text-center py-1">...và {participants.length - 5} người khác</p>
+        {!expanded && hiddenCount > 0 && (
+          <p className="text-xs text-gray-600 text-center py-1">...và {hiddenCount} người khác</p>
         )}
       </div>
     </div>
@@ -304,6 +303,8 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   const [lbNote, setLbNote]           = useState("");
   const [loading, setLoading]         = useState(true);
   const [busy, setBusy]               = useState(false);
+  const [myClaim, setMyClaim]         = useState<any>(null);
+  const [showMyCode, setShowMyCode]   = useState(false);
   const member = getMemberAuth();
   const eventReallyActive = isEventActive(event);
   const displayStatus2 = event.status === "active" && !eventReallyActive ? "ended" : event.status;
@@ -343,15 +344,17 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   async function load() {
     setLoading(true);
     try {
-      const [lb, cl, pt] = await Promise.all([
+      const [lb, cl, pt, mc] = await Promise.all([
         api.getLeaderboard(event.id).catch(() => ({ leaderboard: [], note: "" })),
         api.getClaims(event.id).catch(() => []),
         api.getParticipants(event.id).catch(() => []),
+        member ? api.getMyClaim(event.id).catch(() => null) : Promise.resolve(null),
       ]);
       setLeaderboard(lb.leaderboard || []);
       setLbNote(lb.note || "");
       setClaims(cl || []);
       setParticipants(pt || []);
+      setMyClaim(mc || null);
     } finally { setLoading(false); }
   }
 
@@ -390,7 +393,15 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
     await load(); onChanged?.();
   }
   async function toggleClaim(claim: any) {
-    await api.markClaimed(event.id, claim.id, !claim.claimed);
+    let code: string | undefined;
+    if (!claim.claimed) {
+      const entered = window.prompt(`Nhập mã nhận thưởng mà ${claim.player_name} cung cấp để xác nhận trao thưởng:`);
+      if (entered === null) return; // Admin đã huỷ
+      code = entered.trim();
+    }
+    try {
+      await api.markClaimed(event.id, claim.id, !claim.claimed, code);
+    } catch (e: any) { alert(e.message || "Mã nhận thưởng không khớp"); return; }
     await load(); onChanged?.();
   }
 
@@ -510,14 +521,24 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                   </div>
                 </div>
 
-                {/* Nút nhận thưởng khi sự kiện kết thúc (đã trúng top) */}
-                {!eventReallyActive && event.creator_zalo && (
-                  <div className="mt-3 pt-3 border-t border-yellow-500/20">
-                    {member && claims.some((c: any) => c.player_tag === member.player_tag) && (
-                      <a href={zaloLink(event.creator_zalo)} target="_blank" rel="noreferrer"
+                {/* Nút nhận thưởng khi sự kiện kết thúc (đã trúng top) — hiện
+                    mã nhận thưởng riêng của người thắng, KHÔNG lộ Zalo công khai */}
+                {!eventReallyActive && myClaim && (
+                  <div className="mt-3 pt-3 border-t border-yellow-500/20 space-y-2">
+                    <p className="text-sm font-bold text-yellow-400">
+                      🎉 Chúc mừng bạn đã xếp Top {myClaim.rank}! Ấn để nhận phần thưởng.
+                    </p>
+                    {showMyCode ? (
+                      <div className="rounded-xl bg-black/30 border border-yellow-500/30 px-4 py-3 text-center">
+                        <p className="text-[11px] text-gray-400 mb-1">Mã nhận thưởng của bạn — chỉ bạn và người tổ chức biết mã này</p>
+                        <p className="text-2xl font-mono font-bold tracking-[0.3em] text-yellow-400">{myClaim.redeem_code}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">Gửi mã này cho người tổ chức để đổi thưởng</p>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowMyCode(true)}
                         className="btn-gold w-full flex items-center justify-center gap-2 text-sm animate-gold-pulse">
-                        🎁 Bạn đã trúng thưởng — Nhận thưởng ngay
-                      </a>
+                        <Gift size={16}/> Nhận thưởng ngay
+                      </button>
                     )}
                   </div>
                 )}
@@ -581,7 +602,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
               )}
             </div>
 
-            {isAdmin && leaderboard.length > 0 && (
+            {isAdmin && leaderboard.length > 0 && claims.length === 0 && (
               <button onClick={saveLeaderboardAsClaims} className="btn-secondary w-full text-sm">
                 Lưu danh sách top vào trao thưởng
               </button>
@@ -597,6 +618,9 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                       <span className="text-xs text-gray-500 w-5 text-right">{c.rank}</span>
                       <span className="text-sm text-white flex-1 truncate">{c.player_name}</span>
                       <span className="text-xs text-gray-500">{c.metric_value}</span>
+                      {isAdmin && c.redeem_code && (
+                        <span className="text-[10px] font-mono text-yellow-500/80 bg-black/30 rounded px-1.5 py-0.5">{c.redeem_code}</span>
+                      )}
                       {isAdmin ? (
                         <button onClick={() => toggleClaim(c)} className="shrink-0">
                           {c.claimed ? <CheckCircle2 size={18} className="text-green-400"/> : <Circle size={18} className="text-gray-600"/>}
@@ -607,17 +631,13 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                     </div>
                   ))}
                 </div>
-                {/* Hướng dẫn nhận thưởng */}
-                {event.creator_zalo && (
-                  <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/15">
-                    <p className="text-xs text-yellow-600 font-semibold mb-1">📦 Người thắng: cách nhận quà</p>
-                    <ol className="text-xs text-gray-400 space-y-0.5 list-decimal list-inside">
-                      <li>Nhắn Zalo: <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g,"")}`} target="_blank" rel="noreferrer" className="text-blue-400 underline">{event.creator_zalo}</a></li>
-                      <li>Gửi tên · số điện thoại · địa chỉ nhận</li>
-                      <li>Chờ nhận mã đơn Shopee</li>
-                    </ol>
-                  </div>
-                )}
+                {/* Hướng dẫn nhận thưởng — dùng mã nhận thưởng riêng, không lộ Zalo công khai */}
+                <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/15">
+                  <p className="text-xs text-yellow-600 font-semibold mb-1">📦 Người thắng: cách nhận quà</p>
+                  <p className="text-xs text-gray-400">
+                    Lấy mã nhận thưởng ở trên và ấn nút nhận thưởng, dùng mã nhận thưởng để đổi thưởng.
+                  </p>
+                </div>
               </div>
             )}
 
