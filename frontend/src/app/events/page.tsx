@@ -541,20 +541,20 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                     {showMyCode ? (
                       <div className="rounded-xl bg-black/30 border border-yellow-500/30 px-4 py-3 text-center space-y-2">
                         <p className="text-[11px] text-gray-400">Mã nhận thưởng của bạn — chỉ bạn và người tổ chức biết mã này</p>
-                        <p className="text-2xl font-mono font-bold tracking-[0.3em] text-yellow-400">{myClaim.redeem_code}</p>
-                        <p className="text-[11px] text-gray-500">Gửi mã này cho người tổ chức để đổi thưởng</p>
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={copyMyCode}
-                            className="btn-secondary flex-1 text-xs flex items-center justify-center gap-1.5">
-                            {codeCopied ? <><CheckCircle2 size={13} className="text-green-400"/> Đã copy</> : <><Copy size={13}/> Copy mã</>}
+                        <div className="flex items-center justify-center gap-2">
+                          <p className="text-2xl font-mono font-bold tracking-[0.3em] text-yellow-400">{myClaim.redeem_code}</p>
+                          <button onClick={copyMyCode} title="Copy mã"
+                            className="p-1.5 rounded-lg hover:bg-white/10 shrink-0 text-gray-400 hover:text-yellow-400 transition-colors">
+                            {codeCopied ? <CheckCircle2 size={16} className="text-green-400"/> : <Copy size={16}/>}
                           </button>
-                          {event.creator_zalo && (
-                            <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
-                              className="btn-gold flex-1 text-xs flex items-center justify-center gap-1.5">
-                              <Send size={13}/> Gửi mã qua Zalo
-                            </a>
-                          )}
                         </div>
+                        <p className="text-[11px] text-gray-500">Gửi mã này cho người tổ chức để đổi thưởng</p>
+                        {event.creator_zalo && (
+                          <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
+                            className="btn-gold w-full text-xs flex items-center justify-center gap-1.5 mt-1">
+                            <Send size={13}/> Gửi mã qua Zalo
+                          </a>
+                        )}
                       </div>
                     ) : (
                       <button onClick={() => setShowMyCode(true)}
