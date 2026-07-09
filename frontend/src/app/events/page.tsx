@@ -30,6 +30,7 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   pending:        { label: "⏳ Chờ duyệt",         cls: "badge-purple" },
   active:         { label: "🔥 Đang diễn ra",       cls: "badge-green"  },
+  ended:          { label: "🏁 Đã kết thúc",        cls: "badge-red"    },
   pending_delete: { label: "⚠️ Chờ xác nhận xoá",  cls: "badge-red"    },
   closed:         { label: "Đã đóng",               cls: "badge-red"    },
   rejected:       { label: "Đã từ chối",            cls: "badge-red"    },
@@ -37,6 +38,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 // Màu viền theo trạng thái
 const STATUS_BORDER: Record<string, string> = {
   active:         "from-yellow-500 via-orange-400 to-yellow-600",
+  ended:          "from-gray-600 via-gray-500 to-gray-600",
   pending:        "from-purple-500 via-purple-400 to-purple-600",
   pending_delete: "from-red-500 via-red-400 to-red-600",
   closed:         "from-gray-600 via-gray-500 to-gray-600",
@@ -48,6 +50,15 @@ function zaloLink(contact: string): string {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   const digits = trimmed.replace(/[^0-9]/g, "");
   return digits ? `https://zalo.me/${digits}` : "#";
+}
+
+/** DB không tự chuyển status khi hết giờ (chỉ đổi khi admin bấm) — nên phải
+ * tự kiểm tra thêm end_time, nếu không sự kiện hết hạn vẫn hiện "đang diễn
+ * ra" mãi mãi (đây là lỗi đã gặp). */
+function isEventActive(event: any): boolean {
+  if (event.status !== "active") return false;
+  if (event.end_time && new Date(event.end_time) <= new Date()) return false;
+  return true;
 }
 
 function fmtDateTime(s?: string) {
@@ -86,10 +97,11 @@ function DiamondCorner({ pos }: { pos: "tl"|"tr"|"bl"|"br" }) {
 
 /* ─── Event card với viền hoa văn ─────────────────────────────────────── */
 function EventCard({ event, myTag, onOpen }: { event: any; myTag?: string; onOpen: () => void }) {
-  const badge    = STATUS_BADGE[event.status] || STATUS_BADGE.active;
-  const gradient = STATUS_BORDER[event.status] || STATUS_BORDER.active;
+  const isActive = isEventActive(event);
+  const displayStatus = event.status === "active" && !isActive ? "ended" : event.status;
+  const badge    = STATUS_BADGE[displayStatus] || STATUS_BADGE.active;
+  const gradient = STATUS_BORDER[displayStatus] || STATUS_BORDER.active;
   const iJoined  = event._iJoined;
-  const isActive = event.status === "active";
 
   return (
     <div className="relative cursor-pointer group" onClick={onOpen}>
@@ -219,7 +231,7 @@ function JoinButton({ event, participants, onChanged }: { event: any; participan
   }
 
   const joined = participants.some(p => p.player_tag === member.player_tag);
-  if (event.status !== "active") return null;
+  if (!isEventActive(event)) return null;
 
   async function handleJoin() {
     setBusy(true);
@@ -293,7 +305,9 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   const [loading, setLoading]         = useState(true);
   const [busy, setBusy]               = useState(false);
   const member = getMemberAuth();
-  const gradient = STATUS_BORDER[event.status] || STATUS_BORDER.active;
+  const eventReallyActive = isEventActive(event);
+  const displayStatus2 = event.status === "active" && !eventReallyActive ? "ended" : event.status;
+  const gradient = STATUS_BORDER[displayStatus2] || STATUS_BORDER.active;
   const [showEdit, setShowEdit] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -380,7 +394,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
     await load(); onChanged?.();
   }
 
-  const badge = STATUS_BADGE[event.status] || STATUS_BADGE.active;
+  const badge = STATUS_BADGE[displayStatus2] || STATUS_BADGE.active;
 
   return (
     <Portal>
@@ -497,7 +511,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                 </div>
 
                 {/* Hướng dẫn nhận thưởng khi sự kiện kết thúc */}
-                {event.status !== "active" && event.creator_zalo && (
+                {!eventReallyActive && event.creator_zalo && (
                   <div className="mt-3 pt-3 border-t border-yellow-500/20">
                     <p className="text-xs text-yellow-600 font-semibold mb-1">📦 Cách nhận quà:</p>
                     <ol className="text-xs text-gray-400 space-y-0.5 list-decimal list-inside">

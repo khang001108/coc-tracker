@@ -1,5 +1,6 @@
 import httpx
 import re
+from datetime import datetime
 from supabase_client import get_supabase
 
 async def get_notify_config(clan_id: int = 1) -> dict:
@@ -92,12 +93,21 @@ async def notify_all(message: str, discord_color: int = 0x5865F2, title: str = "
 # Tất cả đều viết theo 1 kiểu thống nhất: **in đậm** cho tên/số liệu quan
 # trọng — notify_all() tự lo phần chuyển đổi cho đúng từng nền tảng.
 
-async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: int = 1, attacks_used: int = None, attacks_total: int = None):
+def _fmt_coc_time(coc_time: str) -> str:
+    """Đổi giờ dạng CoC ('20260709T142757.000Z') sang dễ đọc ('14:27 09/07/2026')."""
+    try:
+        dt = datetime.strptime(coc_time, "%Y%m%dT%H%M%S.%fZ")
+        return dt.strftime("%H:%M %d/%m/%Y") + " UTC"
+    except Exception:
+        return coc_time
+
+async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: int = 1, attacks_used: int = None, attacks_total: int = None, opponent_name: str = None):
     if not missing:
         return
     names = ", ".join(missing)
     progress = f"\n📊 Đã đánh: **{attacks_used}/{attacks_total}** lượt" if attacks_used is not None and attacks_total is not None else ""
-    msg = f"⚔️ Nhắc đánh War!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}{progress}\nKết thúc: {war_end}"
+    vs = f" vs **{opponent_name}**" if opponent_name else ""
+    msg = f"⚔️ Nhắc đánh War{vs}!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}{progress}\nKết thúc: {_fmt_coc_time(war_end)}"
     await notify_all(msg, discord_color=0xED4245, title="⚔️ Chưa đánh War", clan_id=clan_id)
 
 async def notify_raid_reminder(missing: list[str], clan_id: int = 1, raided: int = None, total: int = None):

@@ -316,7 +316,7 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
             if (missing and c.get("notify_war", True) and end_time
                     and hours_left is not None and hours_left <= war_reminder_hours
                     and should_notify_once(sb, c["id"], "war_reminder", end_time)):
-                await notify_war_attack_reminder(missing, end_time, clan_id=c["id"], attacks_used=attacks_used, attacks_total=attacks_total)
+                await notify_war_attack_reminder(missing, end_time, clan_id=c["id"], attacks_used=attacks_used, attacks_total=attacks_total, opponent_name=data.get("opponent", {}).get("name"))
                 await send_push_to_clan(c["id"], "\u2694\ufe0f Nhac danh War",
                     f"{len(missing)} thanh vien chua danh, con {war_reminder_hours}h la ket thuc! (Da danh {attacks_used}/{attacks_total} luot)", kind="war")
 
@@ -338,7 +338,7 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
                 cwl_attacks_total = len(cwl_clan_members)  # CWL: mỗi người 1 lượt
                 if (cwl_missing and cwl_end and cwl_hours_left is not None and cwl_hours_left <= war_reminder_hours
                         and should_notify_once(sb, c["id"], "cwl_reminder", cwl_end)):
-                    await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"], attacks_used=cwl_attacks_used, attacks_total=cwl_attacks_total)
+                    await notify_war_attack_reminder(cwl_missing, cwl_end, clan_id=c["id"], attacks_used=cwl_attacks_used, attacks_total=cwl_attacks_total, opponent_name=cwl_current.get("opponent", {}).get("name"))
                     await send_push_to_clan(c["id"], "\U0001F3C6 Nhac danh CWL",
                         f"{len(cwl_missing)} thanh vien chua danh CWL, con {war_reminder_hours}h la ket thuc! (Da danh {cwl_attacks_used}/{cwl_attacks_total})", kind="war")
         except Exception as e:

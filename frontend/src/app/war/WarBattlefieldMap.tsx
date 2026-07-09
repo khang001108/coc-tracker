@@ -62,14 +62,17 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
       <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
 
-        {/* Lâu đài chibi ở giữa, 2 pháo phòng thủ đặt sát 2 bên (nhỏ + khít lại
-            để vừa màn hình điện thoại, trước to quá bị chèn sang cột bên
-            cạnh) — vỡ nát hẳn (không chỉ tối màu) nếu mất sao khi phòng thủ.
-            Lâu đài vỡ thành phế tích nếu mất trọn 3 sao. */}
-        <div className={`flex items-center shrink-0 ${isRight ? "flex-row-reverse" : "flex-row"}`} style={{ gap: 1 }}>
-          <CannonIcon size={14} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
+        {/* Lâu đài + 2 pháo phòng thủ dạng "huy hiệu" nhỏ đè lên 2 góc dưới —
+            không còn tốn thêm bề ngang như đặt cạnh nữa (đây là lý do bị chèn
+            trên điện thoại trước đó) — cả khối gọn trong đúng khung lâu đài. */}
+        <div className="shrink-0 relative" style={{ width: 34, height: 34 }}>
           <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={34} animate={false} />
-          <CannonIcon size={14} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
+          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, left: -2, bottom: -2, background: "rgba(20,15,10,0.55)" }}>
+            <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
+          </div>
+          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, right: -2, bottom: -2, background: "rgba(20,15,10,0.55)" }}>
+            <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
+          </div>
         </div>
 
         {/* Name + stars + lượt đánh */}
