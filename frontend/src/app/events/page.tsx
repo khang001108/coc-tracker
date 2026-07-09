@@ -11,6 +11,7 @@ import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
   ThumbsUp, ThumbsDown, AlertTriangle, Users, LogIn, LogOut, Lock, Coins, Edit3, Flag, Loader2,
+  Copy, Send,
 } from "lucide-react";
 
 /* ─── Constants ───────────────────────────────────────────────────────── */
@@ -305,6 +306,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   const [busy, setBusy]               = useState(false);
   const [myClaim, setMyClaim]         = useState<any>(null);
   const [showMyCode, setShowMyCode]   = useState(false);
+  const [codeCopied, setCodeCopied]   = useState(false);
   const member = getMemberAuth();
   const eventReallyActive = isEventActive(event);
   const displayStatus2 = event.status === "active" && !eventReallyActive ? "ended" : event.status;
@@ -391,6 +393,14 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
     if (!leaderboard.length) return;
     await api.saveClaims(event.id, leaderboard);
     await load(); onChanged?.();
+  }
+  async function copyMyCode() {
+    if (!myClaim?.redeem_code) return;
+    try {
+      await navigator.clipboard.writeText(myClaim.redeem_code);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch { /* clipboard không khả dụng — bỏ qua */ }
   }
   async function toggleClaim(claim: any) {
     let code: string | undefined;
@@ -529,10 +539,22 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                       🎉 Chúc mừng bạn đã xếp Top {myClaim.rank}! Ấn để nhận phần thưởng.
                     </p>
                     {showMyCode ? (
-                      <div className="rounded-xl bg-black/30 border border-yellow-500/30 px-4 py-3 text-center">
-                        <p className="text-[11px] text-gray-400 mb-1">Mã nhận thưởng của bạn — chỉ bạn và người tổ chức biết mã này</p>
+                      <div className="rounded-xl bg-black/30 border border-yellow-500/30 px-4 py-3 text-center space-y-2">
+                        <p className="text-[11px] text-gray-400">Mã nhận thưởng của bạn — chỉ bạn và người tổ chức biết mã này</p>
                         <p className="text-2xl font-mono font-bold tracking-[0.3em] text-yellow-400">{myClaim.redeem_code}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">Gửi mã này cho người tổ chức để đổi thưởng</p>
+                        <p className="text-[11px] text-gray-500">Gửi mã này cho người tổ chức để đổi thưởng</p>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={copyMyCode}
+                            className="btn-secondary flex-1 text-xs flex items-center justify-center gap-1.5">
+                            {codeCopied ? <><CheckCircle2 size={13} className="text-green-400"/> Đã copy</> : <><Copy size={13}/> Copy mã</>}
+                          </button>
+                          {event.creator_zalo && (
+                            <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
+                              className="btn-gold flex-1 text-xs flex items-center justify-center gap-1.5">
+                              <Send size={13}/> Gửi mã qua Zalo
+                            </a>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <button onClick={() => setShowMyCode(true)}
