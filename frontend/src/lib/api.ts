@@ -45,7 +45,6 @@ async function apiFetch(path: string, opts?: RequestInit, retries = 1) {
 
       const res = await fetch(`${API}${path}`, {
         ...opts,
-        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "X-Admin-Token": token } : {}),
@@ -222,19 +221,9 @@ export const api = {
   getRewardHistory: (limit = 30) => apiFetch(`/api/events/history?limit=${limit}`),
   saveClaims:       (id: number, entries: any[]) => apiFetch(`/api/events/${id}/claim`, { method: "POST", body: JSON.stringify({ entries }) }),
   getClaims:        (id: number) => apiFetch(`/api/events/${id}/claims`),
-  markClaimed:      (eventId: number, claimId: number, claimed: boolean, code?: string) =>
-    apiFetch(`/api/events/${eventId}/claims/${claimId}/mark`, { method: "POST", body: JSON.stringify({ claimed, code }) }),
+  markClaimed:      (eventId: number, claimId: number, claimed: boolean) =>
+    apiFetch(`/api/events/${eventId}/claims/${claimId}/mark`, { method: "POST", body: JSON.stringify({ claimed }) }),
   getParticipants:  (id: number) => apiFetch(`/api/events/${id}/participants`),
-  getMyClaim: async (id: number) => {
-    const member = getMemberAuth();
-    if (!member) return null;
-    const res = await fetch(`${API}/api/events/${id}/my-claim`, {
-      cache: "no-store",
-      headers: { "X-Member-Token": member.token },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  },
   joinEvent: async (id: number) => {
     const member = getMemberAuth();
     if (!member) throw new Error("Cần đăng nhập thành viên");
