@@ -20,7 +20,7 @@ Phạm vi (visibility):
   - top_donations          : donate cao nhất hiện tại
   - manual                 : admin tự chọn người thắng
 """
-from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File, Header, BackgroundTasks, Query
 from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin, verify_admin_token
