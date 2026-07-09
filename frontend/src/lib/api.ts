@@ -284,14 +284,28 @@ export const api = {
 
   // Huy chương CWL (trao thưởng trong game — giới hạn suất, xoay vòng)
   getMedalEligibility: () => apiFetch("/api/medals/eligibility"),
+  getMedalPermission: async () => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/medals/my-permission`, {
+      cache: "no-store",
+      headers: {
+        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+    });
+    if (!res.ok) return { is_admin: false, can_award: false };
+    return res.json();
+  },
+  getMedalSuggestions: (weeks = 8) => apiFetch(`/api/medals/suggestions?weeks=${weeks}`),
   awardMedal: async (player_tag: string, player_name: string, note?: string) => {
+    // CHỈ Đồng thủ lĩnh trở lên xác nhận được (backend tự kiểm tra role) —
+    // không gửi X-Admin-Token vì admin không được phép bấm thay.
     const member = getMemberAuth();
     const res = await fetch(`${API}/api/medals/award`, {
       method: "POST",
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
         ...(member ? { "X-Member-Token": member.token } : {}),
       },
       body: JSON.stringify({ player_tag, player_name, note }),
@@ -304,13 +318,12 @@ export const api = {
   },
   getMedalHistory: (limit = 50) => apiFetch(`/api/medals/history?limit=${limit}`),
   deleteMedalHistory: async (id: number) => {
-    const member = getMemberAuth();
+    // CHỈ Admin xoá được (backend yêu cầu require_admin).
     const res = await fetch(`${API}/api/medals/history/${id}`, {
       method: "DELETE",
       cache: "no-store",
       headers: {
         ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
-        ...(member ? { "X-Member-Token": member.token } : {}),
       },
     });
     if (!res.ok) {

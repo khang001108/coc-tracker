@@ -3,8 +3,17 @@ Trao thưởng huy chương CWL TRONG GAME — suất có giới hạn, xoay vò
 
 CoC API KHÔNG trả về việc ai đã được trao huy chương trong game (đây là phần
 thưởng Supercell tự động cấp theo league+sao, không phải thứ leader tự chọn
-người nhận) — nên phần này là admin/đồng thủ lĩnh TỰ ĐÁNH DẤU sau khi đã trao
-thật trong game.
+người nhận) — nên phần này là Đồng thủ lĩnh TỰ ĐÁNH DẤU sau khi đã trao thật
+trong game.
+
+PHÂN QUYỀN (theo yêu cầu người dùng):
+  - Xác nhận ĐÃ TRAO (tích + lưu)  → CHỈ thành viên có vai trò Đồng thủ lĩnh
+    trở lên (role leader/coLeader) — KHÔNG cho phép admin (mật khẩu web) tự
+    bấm thay, để đảm bảo người xác nhận là 1 thành viên có thật trong clan,
+    đúng người đã trao huy chương trong game.
+  - SỬA/XOÁ 1 lượt đã xác nhận (đánh dấu nhầm) và đổi cấu hình số mùa khôi
+    phục → CHỈ Admin (mật khẩu web) — để có 1 lớp kiểm soát/đối chiếu độc
+    lập, tránh Đồng thủ lĩnh tự ý xoá lịch sử của nhau.
 
 Sau khi được đánh dấu, người đó bị "tích và mờ" — tạm loại khỏi danh sách ưu
 tiên nhận huy chương ở (các) mùa CWL kế tiếp, để nhường suất cho người khác.
@@ -17,13 +26,13 @@ người đó tự động đủ điều kiện nhận lại.
 from fastapi import APIRouter, HTTPException, Request, Depends, Header, Query
 from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
-from auth import verify_admin_token
+from auth import verify_admin_token, require_admin
 from member_auth import verify_member_token
 from services.coc_api import get_clan_members
 
 router = APIRouter()
 
-CREATOR_ROLES = {"leader", "coLeader"}
+LEADER_ROLES = {"leader", "coLeader"}
 
 
 def _reset_count(sb) -> int:
@@ -34,22 +43,40 @@ def _reset_count(sb) -> int:
         return 3
 
 
-async def _resolve_actor(clan_id: int, x_admin_token: str | None, x_member_token: str | None) -> str:
-    """Trả về tên người thao tác (admin hoặc Đồng thủ lĩnh+) — raise nếu
-    không đủ quyền. Cùng quy tắc quyền với việc tạo sự kiện (events.py)."""
-    if verify_admin_token(x_admin_token):
-        return "Admin"
-    member_tag = verify_member_token(x_member_token)
-    if not member_tag:
-        raise HTTPException(401, "Cần đăng nhập admin hoặc thành viên (Đồng thủ lĩnh trở lên)")
+async def _get_member_role(clan_id: int, member_tag: str) -> str | None:
     tag = await get_tag_by_clan_id(clan_id)
     members = await get_clan_members(tag, clan_id=clan_id) if tag else []
     me = next((m for m in members if m["tag"] == member_tag), None)
-    if not me or me.get("role") not in CREATOR_ROLES:
-        raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên mới được thao tác")
+    return me.get("role") if me else None
+
+
+async def _require_leader_member(clan_id: int, x_member_token: str | None) -> str:
+    """Chỉ member có vai trò Đồng thủ lĩnh trở lên mới được xác nhận trao
+    huy chương — admin web KHÔNG được bấm thay (xem giải thích ở đầu file)."""
+    member_tag = verify_member_token(x_member_token)
+    if not member_tag:
+        raise HTTPException(401, "Cần đăng nhập bằng tài khoản thành viên (Đồng thủ lĩnh trở lên) để xác nhận")
+    role = await _get_member_role(clan_id, member_tag)
+    if role not in LEADER_ROLES:
+        raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên mới được xác nhận trao huy chương")
     sb = get_supabase()
     acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
-    return acc.data[0]["player_name"] if acc.data else me.get("name", "Thành viên")
+    return acc.data[0]["player_name"] if acc.data else "Thành viên"
+
+
+@router.get("/my-permission")
+async def my_permission(request: Request, x_admin_token: str | None = Header(default=None),
+                         x_member_token: str | None = Header(default=None)):
+    """Cho frontend biết người đang xem có quyền gì — để hiện đúng nút thao
+    tác (tránh hiện nút rồi bị từ chối, gây khó hiểu)."""
+    clan_id = get_clan_id(request)
+    is_admin = verify_admin_token(x_admin_token)
+    can_award = False
+    member_tag = verify_member_token(x_member_token)
+    if member_tag:
+        role = await _get_member_role(clan_id, member_tag)
+        can_award = role in LEADER_ROLES
+    return {"is_admin": is_admin, "can_award": can_award}
 
 
 @router.get("/eligibility")
@@ -65,6 +92,7 @@ async def get_eligibility(request: Request):
     seasons_res = (sb.table("cwl_season_log").select("season").eq("clan_id", clan_id)
                    .order("season").execute())
     all_seasons = sorted({r["season"] for r in (seasons_res.data or [])})
+    current_season = all_seasons[-1] if all_seasons else None
 
     awards_res = (sb.table("medal_reward_log").select("*").eq("clan_id", clan_id)
                   .order("created_at", desc=True).execute())
@@ -74,31 +102,40 @@ async def get_eligibility(request: Request):
             last_award_by_tag[a["player_tag"]] = a
 
     result = []
+    awarded_this_season = 0
     for m in members:
         tag_ = m["tag"]
         last = last_award_by_tag.get(tag_)
         if not last:
             result.append({"player_tag": tag_, "player_name": m["name"], "eligible": True,
-                            "remaining_seasons": 0, "last_award": None})
+                            "remaining_seasons": 0, "last_award": None, "awarded_this_season": False})
             continue
         seasons_passed = sum(1 for s in all_seasons if s > last["season"])
         remaining = max(0, reset_count - seasons_passed)
+        awarded_this_season_flag = current_season is not None and last["season"] == current_season
+        if awarded_this_season_flag:
+            awarded_this_season += 1
         result.append({
             "player_tag": tag_, "player_name": m["name"],
             "eligible": remaining <= 0, "remaining_seasons": remaining,
             "last_award": {"season": last["season"], "created_at": last["created_at"], "awarded_by": last.get("awarded_by")},
+            "awarded_this_season": awarded_this_season_flag,
         })
     result.sort(key=lambda r: (r["eligible"] is False, -r["remaining_seasons"], r["player_name"]))
-    return {"reset_cwl_count": reset_count, "members": result}
+    return {
+        "reset_cwl_count": reset_count,
+        "current_season": current_season,
+        "awarded_this_season": awarded_this_season,
+        "members": result,
+    }
 
 
 @router.post("/award")
-async def award_medal(request: Request, x_admin_token: str | None = Header(default=None),
-                       x_member_token: str | None = Header(default=None)):
-    """Admin/Đồng thủ lĩnh đánh dấu 1 người ĐÃ được trao huy chương thật
-    trong game — ghi lại mùa CWL hiện tại làm mốc xoay vòng."""
+async def award_medal(request: Request, x_member_token: str | None = Header(default=None)):
+    """Đồng thủ lĩnh đánh dấu 1 người ĐÃ được trao huy chương thật trong
+    game — ghi lại mùa CWL hiện tại làm mốc xoay vòng."""
     clan_id = get_clan_id(request)
-    actor_name = await _resolve_actor(clan_id, x_admin_token, x_member_token)
+    actor_name = await _require_leader_member(clan_id, x_member_token)
     body = await request.json()
     player_tag = (body.get("player_tag") or "").strip()
     player_name = (body.get("player_name") or "").strip()
@@ -137,12 +174,55 @@ async def get_history(request: Request, limit: int = Query(50, le=200)):
 
 
 @router.delete("/history/{entry_id}")
-async def delete_history_entry(entry_id: int, request: Request,
-                                x_admin_token: str | None = Header(default=None),
-                                x_member_token: str | None = Header(default=None)):
-    """Xoá 1 lần trao thưởng đã đánh dấu nhầm — trả lại quyền xoay vòng cho người đó."""
+async def delete_history_entry(entry_id: int, request: Request, _: bool = Depends(require_admin)):
+    """Xoá 1 lần trao thưởng đã đánh dấu nhầm — CHỈ Admin — trả lại quyền
+    xoay vòng cho người đó."""
     clan_id = get_clan_id(request)
-    await _resolve_actor(clan_id, x_admin_token, x_member_token)
     sb = get_supabase()
     sb.table("medal_reward_log").delete().eq("id", entry_id).eq("clan_id", clan_id).execute()
     return {"ok": True}
+
+
+@router.get("/suggestions")
+async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
+    """Gợi ý ứng viên tiềm năng cho mùa CWL kế tiếp — dựa vào số lần lọt Top 5
+    'tốt' của Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng thủ anh
+    dũng, Coins) trong N tuần gần nhất. KHÔNG gợi ý người đang bị giới hạn
+    (vừa được thưởng, còn trong thời gian chờ khôi phục)."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+
+    reset_count = _reset_count(sb)
+    seasons_res = sb.table("cwl_season_log").select("season").eq("clan_id", clan_id).order("season").execute()
+    all_seasons = sorted({r["season"] for r in (seasons_res.data or [])})
+    awards_res = (sb.table("medal_reward_log").select("*").eq("clan_id", clan_id)
+                  .order("created_at", desc=True).execute())
+    last_award_by_tag: dict = {}
+    for a in (awards_res.data or []):
+        if a["player_tag"] not in last_award_by_tag:
+            last_award_by_tag[a["player_tag"]] = a
+    limited_tags = set()
+    for tag_, last in last_award_by_tag.items():
+        seasons_passed = sum(1 for s in all_seasons if s > last["season"])
+        if max(0, reset_count - seasons_passed) > 0:
+            limited_tags.add(tag_)
+
+    reports_res = (sb.table("weekly_report_log").select("report,created_at").eq("clan_id", clan_id)
+                   .order("created_at", desc=True).limit(weeks).execute())
+    POINTS = [5, 4, 3, 2, 1]
+    score_by_tag: dict = {}
+    for row in (reports_res.data or []):
+        report = row.get("report") or {}
+        for cat_key, cat in report.items():
+            for i, e in enumerate((cat or {}).get("good", [])[:5]):
+                tag_ = e.get("player_tag")
+                if not tag_ or tag_ in limited_tags:
+                    continue
+                entry = score_by_tag.setdefault(tag_, {
+                    "player_tag": tag_, "player_name": e.get("player_name"), "score": 0, "highlights": 0,
+                })
+                entry["score"] += POINTS[i]
+                entry["highlights"] += 1
+
+    ranked = sorted(score_by_tag.values(), key=lambda e: -e["score"])
+    return {"weeks_considered": len(reports_res.data or []), "candidates": ranked[:10]}

@@ -135,10 +135,25 @@ async def me(x_member_token: str | None = Header(default=None)):
             left_at = datetime.fromisoformat(left_at_str)
             now = datetime.utcnow().replace(tzinfo=left_at.tzinfo) if left_at.tzinfo else datetime.utcnow()
             days_since = (now - left_at).days
+
+            # Sự kiện đang tham gia sẽ KHÔNG được xét thưởng nữa vì đã rời clan
+            # (leaderboard chỉ tính người còn trong clan) — báo cho họ biết luôn,
+            # tránh trường hợp cứ tưởng vẫn còn được xét top.
+            at_risk_events: list[str] = []
+            try:
+                parts = sb.table("event_participants").select("event_id").eq("player_tag", player_tag).execute()
+                event_ids = [p["event_id"] for p in (parts.data or [])]
+                if event_ids:
+                    evs = sb.table("events").select("id,title,status").in_("id", event_ids).eq("status", "active").execute()
+                    at_risk_events = [e["title"] for e in (evs.data or [])]
+            except Exception:
+                pass
+
             row["leave_info"] = {
                 "days_since_left": days_since,
                 "days_until_wipe": max(0, cleanup_days - days_since),
                 "cleanup_days": cleanup_days,
+                "at_risk_events": at_risk_events,
             }
     except Exception:
         pass

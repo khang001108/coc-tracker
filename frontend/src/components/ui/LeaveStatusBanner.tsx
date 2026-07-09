@@ -10,7 +10,7 @@ import { api, getMemberAuth } from "@/lib/api";
  * ngay khi quay lại web, bất kể đang xem trang nào.
  */
 export function LeaveStatusBanner() {
-  const [info, setInfo] = useState<{ days_since_left: number; days_until_wipe: number; cleanup_days: number } | null>(null);
+  const [info, setInfo] = useState<{ days_since_left: number; days_until_wipe: number; cleanup_days: number; at_risk_events?: string[] } | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -24,6 +24,7 @@ export function LeaveStatusBanner() {
   if (!info || dismissed) return null;
 
   const urgent = info.days_until_wipe <= 2;
+  const atRiskEvents = info.at_risk_events || [];
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-[90] px-4 py-2.5 flex items-center gap-2 text-xs sm:text-sm ${urgent ? "bg-red-600" : "bg-amber-600"} text-white`}>
@@ -33,6 +34,9 @@ export function LeaveStatusBanner() {
         {info.days_until_wipe > 0
           ? <>Coins & vật phẩm sẽ bị xoá sau <strong>{info.days_until_wipe} ngày</strong> nếu không quay lại clan.</>
           : <>Coins & vật phẩm của bạn có thể bị xoá bất cứ lúc nào.</>}
+        {atRiskEvents.length > 0 && (
+          <> {" "}Bạn đang tham gia <strong>{atRiskEvents.join(", ")}</strong> — vì đã rời clan nên sẽ <strong>không được xét thưởng</strong> ở (các) sự kiện này nữa.</>
+        )}
       </p>
       <button onClick={() => setDismissed(true)} className="shrink-0 p-1 hover:bg-white/20 rounded-full">
         <X size={14} />

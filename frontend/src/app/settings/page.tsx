@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
+import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons";
@@ -936,137 +937,6 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
   );
 }
 
-function MedalRewardSettings() {
-  const [members, setMembers] = useState<any[]>([]);
-  const [resetCount, setResetCount] = useState(3);
-  const [resetCountInput, setResetCountInput] = useState("3");
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busyTag, setBusyTag] = useState<string | null>(null);
-  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
-  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-
-  function flashMsg(text: string, type: "error" | "success" = "error") {
-    setMsg({ text, type });
-    setTimeout(() => setMsg(null), 4000);
-  }
-
-  async function load() {
-    setLoading(true);
-    try {
-      const [elig, hist] = await Promise.all([
-        api.getMedalEligibility(),
-        api.getMedalHistory(50).catch(() => []),
-      ]);
-      setMembers(elig.members || []);
-      setResetCount(elig.reset_cwl_count || 3);
-      setResetCountInput(String(elig.reset_cwl_count || 3));
-      setHistory(hist || []);
-    } catch {} finally { setLoading(false); }
-  }
-  useEffect(() => { load(); }, []);
-
-  async function saveResetCount() {
-    const n = parseInt(resetCountInput, 10);
-    if (!n || n < 1) { flashMsg("Số lần WCL phải ≥ 1"); return; }
-    try {
-      await api.saveSetting("medal_reward_reset_cwl_count", String(n));
-      flashMsg("Đã lưu thời gian khôi phục", "success");
-      load();
-    } catch (e: any) { flashMsg(e.message || "Lỗi lưu"); }
-  }
-
-  async function handleAward(m: any) {
-    if (!confirm(`Xác nhận ĐÃ trao huy chương trong game cho "${m.player_name}"? Người này sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.`)) return;
-    setBusyTag(m.player_tag);
-    try {
-      await api.awardMedal(m.player_tag, m.player_name, noteDraft[m.player_tag] || undefined);
-      flashMsg(`Đã ghi nhận trao huy chương cho ${m.player_name}`, "success");
-      setNoteDraft(d => ({ ...d, [m.player_tag]: "" }));
-      await load();
-    } catch (e: any) { flashMsg(e.message || "Lỗi ghi nhận"); }
-    finally { setBusyTag(null); }
-  }
-
-  async function handleDeleteHistory(id: number, name: string) {
-    if (!confirm(`Xoá lượt trao thưởng của "${name}"? Người này sẽ được xét nhận lại ngay.`)) return;
-    try { await api.deleteMedalHistory(id); await load(); }
-    catch (e: any) { flashMsg(e.message || "Lỗi xoá"); }
-  }
-
-  const limited = members.filter(m => !m.eligible);
-  const eligible = members.filter(m => m.eligible);
-
-  return (
-    <details className="card !p-0 group">
-      <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
-        <span className="font-bold text-white flex items-center gap-2">
-          🎖️ Trao thưởng huy chương CWL {limited.length > 0 && <span className="badge-purple text-[10px]">{limited.length} đang giới hạn</span>}
-        </span>
-        <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
-      </summary>
-      <div className="px-4 pb-4 space-y-4">
-        <p className="text-xs text-gray-500">
-          CoC không cho biết ai đã được trao huy chương trong game — sau khi bạn trao thật trong
-          game, đánh dấu ở đây để hệ thống tự xoay vòng công bằng: người đã nhận sẽ tạm bị giới hạn,
-          nhường suất cho người khác ở các mùa CWL kế tiếp.
-        </p>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-400 shrink-0">Khôi phục sau (mùa CWL thật):</label>
-          <input type="number" min={1} value={resetCountInput} onChange={e => setResetCountInput(e.target.value)}
-            className="input !py-1 !px-2 w-16 text-sm"/>
-          <button onClick={saveResetCount} className="btn-secondary text-xs px-2 py-1">Lưu</button>
-        </div>
-
-        {loading ? (
-          <p className="text-xs text-gray-600">Đang tải...</p>
-        ) : (
-          <div className="space-y-1.5">
-            {limited.map(m => (
-              <div key={m.player_tag} className="flex items-center gap-2 bg-purple-500/5 border border-purple-500/15 rounded-xl px-3 py-2 opacity-60">
-                <span className="text-sm text-white flex-1 truncate">{m.player_name}</span>
-                <span className="text-[10px] text-purple-300">🔒 Còn {m.remaining_seasons} mùa</span>
-              </div>
-            ))}
-            {eligible.map(m => (
-              <div key={m.player_tag} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-                <span className="text-sm text-white flex-1 truncate">✅ {m.player_name}</span>
-                <input placeholder="Ghi chú (tuỳ chọn)" value={noteDraft[m.player_tag] || ""}
-                  onChange={e => setNoteDraft(d => ({ ...d, [m.player_tag]: e.target.value }))}
-                  className="input !py-1 !px-2 text-xs w-28 shrink-0"/>
-                <button onClick={() => handleAward(m)} disabled={busyTag === m.player_tag}
-                  className="btn-gold text-[11px] px-2 py-1 shrink-0">
-                  {busyTag === m.player_tag ? "..." : "Đã trao"}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <button onClick={() => setShowHistory(s => !s)} className="text-xs text-gray-500 hover:text-yellow-400">
-          {showHistory ? "Ẩn lịch sử ▲" : `Xem lịch sử (${history.length}) ▼`}
-        </button>
-        {showHistory && (
-          <div className="space-y-1.5">
-            {history.length === 0 && <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>}
-            {history.map(h => (
-              <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
-                <span className="text-white flex-1 truncate">{h.player_name}</span>
-                <span className="text-gray-500 shrink-0">Mùa {h.season}</span>
-                <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
-                <button onClick={() => handleDeleteHistory(h.id, h.player_name)} className="text-red-400 hover:underline shrink-0">Xoá</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      {msg && <MiniToast msg={msg.text} type={msg.type} />}
-    </details>
-  );
-}
-
 function EventReportsSettings() {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1819,6 +1689,7 @@ function PushNotificationSettings() {
 }
 
 export default function SettingsPage() {
+  const [tab, setTab] = useState<"general" | "events" | "music" | "members" | "shop">("general");
   return (
     <div className="space-y-6 max-w-7xl animate-fade-up">
       <div>
@@ -1837,12 +1708,21 @@ export default function SettingsPage() {
 
       <AdminGate>
         <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">
-          <SettingsPageInner embedded />
-          <MedalRewardSettings />
-          <EventReportsSettings />
-          <MusicSettings />
-          <MemberAccountsSettings />
-          <ShopPricingSettings />
+          <SlidingTabs
+            tabs={[
+              { id: "general", label: "Chung" },
+              { id: "events",  label: "Sự kiện" },
+              { id: "music",   label: "Âm nhạc" },
+              { id: "members", label: "Thành viên" },
+              { id: "shop",    label: "Cửa hàng" },
+            ]}
+            active={tab} onChange={(id) => setTab(id as any)} />
+
+          {tab === "general" && <SettingsPageInner embedded />}
+          {tab === "events" && <EventReportsSettings />}
+          {tab === "music" && <MusicSettings />}
+          {tab === "members" && <MemberAccountsSettings />}
+          {tab === "shop" && <ShopPricingSettings />}
         </div>
       </AdminGate>
     </div>
