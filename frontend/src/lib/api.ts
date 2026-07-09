@@ -277,6 +277,49 @@ export const api = {
     return res.json();
   },
 
+  // Weekly report (Top 5 tốt/xấu theo tuần)
+  getWeeklyLatest:  () => apiFetch("/api/weekly-stats/latest"),
+  getWeeklyHistory: (limit = 20) => apiFetch(`/api/weekly-stats/history?limit=${limit}`),
+  generateWeeklyNow: () => apiFetch("/api/weekly-stats/generate-now", { method: "POST" }),
+
+  // Huy chương CWL (trao thưởng trong game — giới hạn suất, xoay vòng)
+  getMedalEligibility: () => apiFetch("/api/medals/eligibility"),
+  awardMedal: async (player_tag: string, player_name: string, note?: string) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/medals/award`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+      body: JSON.stringify({ player_tag, player_name, note }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi trao huy chương" }));
+      throw new Error(err.detail || "Lỗi trao huy chương");
+    }
+    return res.json();
+  },
+  getMedalHistory: (limit = 50) => apiFetch(`/api/medals/history?limit=${limit}`),
+  deleteMedalHistory: async (id: number) => {
+    const member = getMemberAuth();
+    const res = await fetch(`${API}/api/medals/history/${id}`, {
+      method: "DELETE",
+      cache: "no-store",
+      headers: {
+        ...(getAdminToken() ? { "X-Admin-Token": getAdminToken()! } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Lỗi xoá" }));
+      throw new Error(err.detail || "Lỗi xoá");
+    }
+    return res.json();
+  },
+
   // Music
   getTracks:    () => apiFetch("/api/music/tracks"),
   getMusicConfig: () => apiFetch("/api/music/config"),

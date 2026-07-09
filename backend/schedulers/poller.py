@@ -8,10 +8,12 @@ donate, và coin thưởng sao war hoạt động độc lập, đúng của cla
 """
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 import asyncio
 from services.coc_api import get_clan, get_current_war, get_raid_seasons, get_clan_members, get_coc_config, get_cwl_group, get_cwl_war
 from services.notify_service import notify_war_attack_reminder, notify_raid_reminder, notify_member_join, notify_member_leave, notify_donate_coins, notify_war_coins
 from services.push_service import send_push_to_clan
+from services.weekly_report import generate_weekly_report
 from supabase_client import get_supabase
 from datetime import datetime, timedelta
 import json, logging
@@ -44,6 +46,9 @@ async def start_scheduler():
     scheduler.add_job(poll_stats_cleanup, IntervalTrigger(hours=12), id="poll_stats_cleanup", replace_existing=True)
     scheduler.add_job(poll_reward_history_cleanup, IntervalTrigger(hours=12), id="poll_reward_history_cleanup", replace_existing=True)
     scheduler.add_job(poll_global_chat_cleanup, IntervalTrigger(hours=1), id="poll_global_chat_cleanup", replace_existing=True)
+    # Báo cáo thống kê tuần — chạy tự động mỗi thứ 2 lúc 08:00 (giờ server),
+    # tổng hợp Top 5 tốt/xấu của tuần vừa qua cho TỪNG clan.
+    scheduler.add_job(poll_weekly_report, CronTrigger(day_of_week="mon", hour=8, minute=0), id="poll_weekly_report", replace_existing=True)
     # Job "canh" cấu hình — cho phép đổi chu kỳ quét Donate/Thành viên trong Cài
     # đặt có hiệu lực NGAY, không cần khởi động lại server.
     scheduler.add_job(poll_check_intervals, IntervalTrigger(minutes=2), id="poll_check_intervals", replace_existing=True)
@@ -202,7 +207,16 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
     đang ở battle day cuối) — dùng upsert nên gọi lặp lại nhiều lần (mỗi lần
     poll) vẫn an toàn, không bị nhân đôi dữ liệu. Đồng thời tính sẵn đòn đánh/
     phòng thủ 'anh dũng nhất' của từng người, và ghi tổng kết war vào
-    war_history_log."""
+    war_history_log.
+
+    Từ PART 21: tính thêm 3 chỉ số phục vụ "Thống kê tuần — War/CWL giỏi
+    nhất" (CoC API không có sẵn, tự tính theo yêu cầu người dùng):
+      - three_star_count      : số lượt đánh đạt trọn 3 sao
+      - good_th_attack_count  : số lượt đánh vào nhà NGANG hoặc CAO HƠN nhà
+                                mình (so townhallLevel người đánh vs người bị đánh)
+      - attack_duration_total : tổng thời gian (giây) các lượt đã đánh, để
+                                sau này tính trung bình (thời gian càng ngắn
+                                càng tốt khi xếp hạng)."""
     end_time = war_data.get("endTime")
     if not end_time:
         return
@@ -213,6 +227,8 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
 
     name_by_tag = {m.get("tag"): m.get("name", "?") for m in members}
     name_by_tag.update({m.get("tag"): m.get("name", "?") for m in opponent.get("members", [])})
+    th_by_tag = {m.get("tag"): m.get("townhallLevel") for m in members}
+    th_by_tag.update({m.get("tag"): m.get("townhallLevel") for m in opponent.get("members", [])})
     opponent_attacks = [a for m in opponent.get("members", []) for a in m.get("attacks", [])]
 
     rows = []
@@ -220,6 +236,14 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
         attacks = m.get("attacks", [])
         ba = _best_attack(attacks, name_by_tag)
         bd = _best_defense(opponent_attacks, m.get("tag"), name_by_tag)
+        own_th = m.get("townhallLevel")
+        three_star_count = sum(1 for a in attacks if a.get("stars", 0) >= 3)
+        good_th_attack_count = sum(
+            1 for a in attacks
+            if th_by_tag.get(a.get("defenderTag")) is not None and own_th is not None
+            and th_by_tag.get(a.get("defenderTag")) >= own_th
+        )
+        attack_duration_total = sum(a.get("duration", 0) for a in attacks)
         rows.append({
             "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
             "player_tag": m.get("tag"), "player_name": m.get("name", "?"),
@@ -232,15 +256,22 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
             "best_defense_stars": bd["stars"] if bd else None,
             "best_defense_destruction": bd["destruction"] if bd else None,
             "best_defense_attacker": bd["attacker"] if bd else None,
+            "three_star_count": three_star_count,
+            "good_th_attack_count": good_th_attack_count,
+            "attack_duration_total": attack_duration_total,
+            "own_townhall": own_th,
         })
     if rows:
         try:
             sb.table("war_participation_log").upsert(rows, on_conflict="clan_id,war_end_time,player_tag").execute()
         except Exception as e:
-            # Cột best_attack_*/best_defense_* có thể chưa tồn tại (chưa chạy
-            # migration PART 7) — thử lại chỉ với các cột cũ để không chặn hẳn.
+            # Cột best_attack_*/best_defense_*/three_star_count/... có thể chưa
+            # tồn tại (chưa chạy hết migration) — thử lại chỉ với các cột cũ
+            # nhất để không chặn hẳn việc ghi log.
             try:
-                basic_rows = [{k: v for k, v in r.items() if not k.startswith("best_")} for r in rows]
+                basic_rows = [{k: v for k, v in r.items() if not k.startswith("best_") and k not in
+                               ("three_star_count", "good_th_attack_count", "attack_duration_total", "own_townhall")}
+                              for r in rows]
                 sb.table("war_participation_log").upsert(basic_rows, on_conflict="clan_id,war_end_time,player_tag").execute()
             except Exception as e2:
                 log.error(f"_log_war_participation error (clan_id={clan_id}): {e2}")
@@ -259,6 +290,27 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
         }, on_conflict="clan_id,war_end_time").execute()
     except Exception as e:
         log.error(f"_log_war_history error (clan_id={clan_id}): {e}")
+
+
+async def _check_cwl_season_completed(sb, clan_id: int, tag: str):
+    """Ghi lại 1 mùa CWL THẬT đã kết thúc (leaguegroup.state == 'ended') —
+    dùng làm mốc đếm '1 lần WCL' cho hệ thống xoay vòng huy chương (PART 23),
+    tách khỏi việc tạo/kết thúc sự kiện trong app vì admin có thể không tạo
+    sự kiện CWL nào cả nhưng mùa CWL thật vẫn diễn ra và cần được đếm.
+    Upsert với UNIQUE(clan_id, season) nên gọi lặp lại (mỗi lần poll) vẫn an
+    toàn, không bị đếm trùng."""
+    try:
+        group = await get_cwl_group(tag, clan_id=clan_id)
+    except Exception:
+        return
+    season = group.get("season")
+    if group.get("state") == "ended" and season:
+        try:
+            sb.table("cwl_season_log").upsert(
+                {"clan_id": clan_id, "season": season}, on_conflict="clan_id,season"
+            ).execute()
+        except Exception as e:
+            log.error(f"_check_cwl_season_completed error (clan_id={clan_id}): {e}")
 
 
 async def _log_cwl_participation(sb, clan_id: int, tag: str):
@@ -325,6 +377,7 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
             _log_war_participation(sb, c["id"], data, war_type="random")
 
         await _log_cwl_participation(sb, c["id"], tag)
+        await _check_cwl_season_completed(sb, c["id"], tag)
 
         try:
             from services.coc_api import get_cwl_season_rounds
@@ -684,3 +737,14 @@ async def poll_reward_history_cleanup():
             log.info(f"Reward history cleanup: removed {len(ids)} old closed events")
     except Exception as e:
         log.error(f"poll_reward_history_cleanup error: {e}")
+
+
+async def poll_weekly_report():
+    """Tổng hợp + gửi báo cáo thống kê tuần cho TỪNG clan (Top 5 tốt/xấu —
+    xem services/weekly_report.py)."""
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            await generate_weekly_report(c["id"])
+        except Exception as e:
+            log.error(f"poll_weekly_report error (clan_id={c.get('id')}): {e}")

@@ -17,6 +17,7 @@ ALLOWED_KEYS = [
     "war_reminder_hours", "raid_reminder_hours", "poll_interval_donate_minutes", "poll_interval_members_minutes",
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
     "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners",
+    "medal_reward_reset_cwl_count",
 ]
 
 @router.post("/login")

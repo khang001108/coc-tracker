@@ -806,3 +806,94 @@ ON CONFLICT (key) DO NOTHING;
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE event_claims ADD COLUMN IF NOT EXISTS redeem_code TEXT DEFAULT upper(substr(md5(random()::text), 1, 6));
 UPDATE event_claims SET redeem_code = upper(substr(md5(random()::text), 1, 6)) WHERE redeem_code IS NULL;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 21 (Dữ liệu chi tiết hơn cho war_participation_log —
+-- dùng để tính điểm "War/CWL giỏi nhất tuần": số lượt đạt 3 sao, số lượt
+-- đánh vào nhà NGANG hoặc CAO HƠN nhà mình, tổng thời gian đánh (để tính
+-- trung bình) — CoC API không có sẵn các chỉ số tổng hợp này.)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS three_star_count      INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS good_th_attack_count  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS attack_duration_total INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE war_participation_log ADD COLUMN IF NOT EXISTS own_townhall          INTEGER;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 22 (Báo cáo thống kê tuần — Top 5 tốt/xấu theo 6 tiêu
+-- chí: War/CWL giỏi, Donate, Clan Capital, Tấn công anh dũng, Phòng thủ
+-- anh dũng, Coins. Lưu lại lịch sử để xem lại trong app + snapshot Coins
+-- làm mốc tính "kiếm được coin trong tuần" cho lần tổng hợp kế tiếp.)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS weekly_report_log (
+  id            SERIAL PRIMARY KEY,
+  clan_id       INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  period_start  TIMESTAMPTZ NOT NULL,
+  period_end    TIMESTAMPTZ NOT NULL,
+  report        JSONB NOT NULL,
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_weekly_report_clan_time ON weekly_report_log(clan_id, created_at);
+
+CREATE TABLE IF NOT EXISTS coin_weekly_baseline (
+  clan_id     INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  coins       INTEGER NOT NULL DEFAULT 0,
+  updated_at  TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (clan_id, player_tag)
+);
+
+ALTER TABLE weekly_report_log     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE coin_weekly_baseline  ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON weekly_report_log;
+CREATE POLICY "service_all" ON weekly_report_log FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON coin_weekly_baseline;
+CREATE POLICY "service_all" ON coin_weekly_baseline FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.weekly_report_log    TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.coin_weekly_baseline TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 23 (Trao thưởng huy chương CWL trong game — giới hạn
+-- số suất, xoay vòng công bằng. "1 lần WCL" đếm theo MÙA CWL THẬT lấy từ
+-- CoC API (field `season` của /currentwar/leaguegroup, dạng "YYYY-MM"),
+-- KHÔNG đếm theo sự kiện tạo trong app, vì API không trả lại được việc
+-- ai đã nhận huy chương trong game — phải tự ghi nhận thủ công.)
+-- ════════════════════════════════════════════════════════════════
+
+-- Ghi lại MỖI mùa CWL thật đã kết thúc (tự động, khi poller phát hiện
+-- leaguegroup.state == 'ended') — dùng làm "đồng hồ" đếm số lần WCL đã
+-- trôi qua kể từ lần trao thưởng gần nhất của từng người.
+CREATE TABLE IF NOT EXISTS cwl_season_log (
+  id         SERIAL PRIMARY KEY,
+  clan_id    INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  season     TEXT NOT NULL,
+  ended_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, season)
+);
+
+-- Lịch sử trao huy chương trong game — admin/đồng thủ lĩnh tự đánh dấu
+-- sau khi đã trao thật trong game (app không có cách nào tự biết được).
+CREATE TABLE IF NOT EXISTS medal_reward_log (
+  id            SERIAL PRIMARY KEY,
+  clan_id       INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag    TEXT NOT NULL,
+  player_name   TEXT NOT NULL,
+  season        TEXT NOT NULL,
+  awarded_by    TEXT,
+  note          TEXT,
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_medal_reward_clan_tag ON medal_reward_log(clan_id, player_tag);
+
+ALTER TABLE cwl_season_log     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medal_reward_log   ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON cwl_season_log;
+CREATE POLICY "service_all" ON cwl_season_log FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON medal_reward_log;
+CREATE POLICY "service_all" ON medal_reward_log FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cwl_season_log   TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.medal_reward_log TO service_role;
+
+-- Mặc định: sau 3 mùa CWL thật thì được xét nhận huy chương lại (admin có
+-- thể đổi số này trong Cài đặt).
+INSERT INTO settings (key, value) VALUES ('medal_reward_reset_cwl_count', '3')
+ON CONFLICT (key) DO NOTHING;
