@@ -539,9 +539,49 @@ def _compute_war_metric_from_log(row: dict, condition_type: str) -> float:
     return 0.0
 
 
-async def _war_members_from_log(sb, war_end_time: str, clan_ids: list[int]) -> list:
-    """Lấy đúng dữ liệu của war CỤ THỂ mà sự kiện này gắn vào lúc tạo (không
-    phải war hiện tại) — nguồn đáng tin cậy hơn vì không đổi theo thời gian."""
+async def _war_members_from_log(sb, event: dict, clan_ids: list[int]) -> list:
+    """Lấy đúng dữ liệu ĐÃ LƯU của war/CWL mà sự kiện này gắn vào lúc tạo
+    (không phải war hiện tại — cái này đổi liên tục theo thời gian).
+    CWL kéo dài ~7 vòng, MỖI vòng là 1 war_end_time riêng trong log — nếu chỉ
+    khớp đúng 1 mốc giờ đã lưu ở sự kiện sẽ bỏ sót mọi vòng khác (đây là lý do
+    sự kiện CWL trước đây hay báo "không ai xuất hiện" dù có người tham gia
+    đánh rất tốt). Giờ với sự kiện CWL sẽ CỘNG DỒN mọi vòng trong khoảng thời
+    gian diễn ra sự kiện, thay vì chỉ khớp đúng 1 mốc.
+    """
+    war_end_time = event.get("war_end_time")
+    is_cwl = event.get("event_type") == "cwl"
+
+    if is_cwl and event.get("start_time") and event.get("end_time"):
+        try:
+            res = sb.table("war_participation_log").select("*") \
+                .eq("war_type", "cwl").in_("clan_id", clan_ids) \
+                .gte("created_at", event["start_time"]).lte("created_at", event["end_time"]).execute()
+        except Exception:
+            res = None
+        rows = res.data if res else []
+        if rows:
+            merged: dict[str, dict] = {}
+            for r in rows:
+                m = merged.setdefault(r["player_tag"], {
+                    "tag": r["player_tag"], "name": r["player_name"],
+                    "_log": {"stars_earned": 0, "attacks_used": 0, "best_attack_stars": 0,
+                              "best_attack_destruction": 0, "best_attack_duration": None, "best_defense_stars": 0},
+                })
+                log = m["_log"]
+                log["stars_earned"] += r.get("stars_earned") or 0
+                log["attacks_used"] += r.get("attacks_used") or 0
+                # "Đánh hay nhất" lấy vòng tốt nhất trong cả mùa, không cộng dồn
+                if (r.get("best_attack_stars") or 0) > log["best_attack_stars"] or \
+                   ((r.get("best_attack_stars") or 0) == log["best_attack_stars"] and (r.get("best_attack_destruction") or 0) > log["best_attack_destruction"]):
+                    log["best_attack_stars"] = r.get("best_attack_stars") or 0
+                    log["best_attack_destruction"] = r.get("best_attack_destruction") or 0
+                    log["best_attack_duration"] = r.get("best_attack_duration")
+                log["best_defense_stars"] = max(log["best_defense_stars"], r.get("best_defense_stars") or 0)
+                m["name"] = r["player_name"]
+            return list(merged.values())
+
+    if not war_end_time:
+        return []
     try:
         res = sb.table("war_participation_log").select("*") \
             .eq("war_end_time", war_end_time).in_("clan_id", clan_ids).execute()
@@ -755,10 +795,8 @@ async def get_leaderboard(event_id: int):
     # (war_end_time) — vì "war hiện tại" đổi liên tục theo thời gian, sự kiện
     # có thể mở nhiều ngày sau khi war đó đã kết thúc từ lâu.
     war_members: list = []
-    used_log = False
-    if event.get("war_end_time"):
-        war_members = await _war_members_from_log(sb, event["war_end_time"], clan_ids_involved)
-        used_log = bool(war_members)
+    war_members = await _war_members_from_log(sb, event, clan_ids_involved)
+    used_log = bool(war_members)
 
     if not used_log:
         for cid in clan_ids_involved:
