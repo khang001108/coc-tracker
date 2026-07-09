@@ -519,6 +519,37 @@ def _compute_war_metric(member: dict, condition_type: str) -> float:
     return 0.0
 
 
+def _compute_war_metric_from_log(row: dict, condition_type: str) -> float:
+    """Tính điểm từ war_participation_log (dữ liệu ĐÃ LƯU đúng lúc war đó kết
+    thúc) thay vì gọi CoC API lấy war hiện tại — sự kiện có thể vẫn mở nhiều
+    ngày sau khi war đã qua, lúc đó 'war hiện tại' đã là 1 trận khác hẳn rồi,
+    lấy nhầm sẽ báo sai là "không ai tham gia war này"."""
+    if condition_type == "total_stars":
+        return float(row.get("stars_earned") or 0)
+    if condition_type == "best_destruction":
+        return float(row.get("best_attack_destruction") or 0)
+    if condition_type == "perfect_war":
+        used = row.get("attacks_used") or 0
+        stars = row.get("stars_earned") or 0
+        return 1.0 if used > 0 and stars == used * 3 else 0.0
+    if condition_type == "most_attacks_used":
+        return float(row.get("attacks_used") or 0)
+    if condition_type == "fewest_stars_conceded":
+        return -float(row.get("best_defense_stars") or 0)
+    return 0.0
+
+
+async def _war_members_from_log(sb, war_end_time: str, clan_ids: list[int]) -> list:
+    """Lấy đúng dữ liệu của war CỤ THỂ mà sự kiện này gắn vào lúc tạo (không
+    phải war hiện tại) — nguồn đáng tin cậy hơn vì không đổi theo thời gian."""
+    try:
+        res = sb.table("war_participation_log").select("*") \
+            .eq("war_end_time", war_end_time).in_("clan_id", clan_ids).execute()
+    except Exception:
+        return []
+    return [{"tag": r["player_tag"], "name": r["player_name"], "_log": r} for r in (res.data or [])]
+
+
 def _fmt_metric(condition_type: str, score: float) -> str:
     if condition_type == "total_stars": return f"{int(score)} sao"
     if condition_type == "best_destruction": return f"{score:.1f}%"
@@ -720,13 +751,21 @@ async def get_leaderboard(event_id: int):
         note = None if leaderboard else "Chưa ai donate thêm kể từ lúc tham gia sự kiện."
         return {"event": event, "leaderboard": leaderboard, "note": note, "participant_count": len(participants)}
 
-    # Điều kiện war — gộp war hiện tại/gần nhất của từng clan liên quan
+    # Điều kiện war — ưu tiên dữ liệu ĐÃ LƯU của đúng war lúc tạo sự kiện
+    # (war_end_time) — vì "war hiện tại" đổi liên tục theo thời gian, sự kiện
+    # có thể mở nhiều ngày sau khi war đó đã kết thúc từ lâu.
     war_members: list = []
-    for cid in clan_ids_involved:
-        try:
-            war_members += await _war_members_for_clan(cid, event.get("event_type", "war"))
-        except Exception:
-            continue
+    used_log = False
+    if event.get("war_end_time"):
+        war_members = await _war_members_from_log(sb, event["war_end_time"], clan_ids_involved)
+        used_log = bool(war_members)
+
+    if not used_log:
+        for cid in clan_ids_involved:
+            try:
+                war_members += await _war_members_for_clan(cid, event.get("event_type", "war"))
+            except Exception:
+                continue
 
     # Chỉ xét thành viên đã tham gia sự kiện
     war_members = [m for m in war_members if m["tag"] in participant_tags]
@@ -740,7 +779,7 @@ async def get_leaderboard(event_id: int):
         }
 
     scored = [
-        {"member": m, "score": _compute_war_metric(m, condition_type)}
+        {"member": m, "score": _compute_war_metric_from_log(m["_log"], condition_type) if used_log else _compute_war_metric(m, condition_type)}
         for m in war_members
     ]
     if condition_type == "perfect_war":

@@ -93,6 +93,8 @@ export default function WarPage() {
   const emberColor = useEmberColor();
   const bannerSrc = usePageBanner("war", "/art/pekka-lava.jpg");
   const [expandedWar, setExpandedWar] = useState<number | null>(null);
+  const [logTop3ByIdx, setLogTop3ByIdx] = useState<Record<number, any[]>>({});
+  const [logTop3Loading, setLogTop3Loading] = useState<number | null>(null);
   const [cwl, setCwl] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"current" | "log" | "cwl">(() => {
@@ -377,10 +379,23 @@ export default function WarPage() {
                   const draw = w.clan?.stars === w.opponent?.stars;
                   const ringColor = won ? "ring-green-400" : draw ? "ring-yellow-400" : "ring-red-400";
                   const expanded = expandedWar === i;
-                  const top3 = expanded ? computeTop3(w.clan?.members || [], w.opponent?.members || []) : [];
+                  const liveTop3 = expanded ? computeTop3(w.clan?.members || [], w.opponent?.members || []) : [];
+                  // CoC API warlog chính thức không kèm chi tiết từng đòn đánh
+                  // của war cũ — nếu rỗng thì lấy lại từ dữ liệu web đã tự ghi.
+                  const top3 = liveTop3.length > 0 ? liveTop3 : (logTop3ByIdx[i] || []);
                   return (
                     <div key={i} className="rounded-xl bg-gray-800 overflow-hidden">
-                      <button onClick={() => setExpandedWar(expanded ? null : i)} className="w-full flex items-center gap-4 p-3 text-left">
+                      <button onClick={() => {
+                        const next = expanded ? null : i;
+                        setExpandedWar(next);
+                        if (next !== null && liveTop3.length === 0 && !logTop3ByIdx[i] && w.endTime) {
+                          setLogTop3Loading(i);
+                          api.getWarLogTopAttackers(w.endTime)
+                            .then((res: any) => setLogTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
+                            .catch(() => setLogTop3ByIdx(prev => ({ ...prev, [i]: [] })))
+                            .finally(() => setLogTop3Loading(null));
+                        }
+                      }} className="w-full flex items-center gap-4 p-3 text-left">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-2 ${ringColor} overflow-hidden bg-gray-900`}>
                           {w.opponent?.badgeUrls?.small ? (
                             <img src={w.opponent.badgeUrls.small} alt="" className="w-full h-full object-contain" />
@@ -402,10 +417,12 @@ export default function WarPage() {
                       {expanded && (
                         <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
                           <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
-                          {top3.length === 0 ? (
-                            <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh</p>
+                          {logTop3Loading === i ? (
+                            <p className="text-xs text-gray-600">Đang tải...</p>
+                          ) : top3.length === 0 ? (
+                            <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
                           ) : top3.map((m, idx) => (
-                            <div key={m.tag} className="flex items-center gap-2 text-sm">
+                            <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
                               <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
                               <span className="flex-1 text-gray-200 truncate">{m.name}</span>
                               <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>

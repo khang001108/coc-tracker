@@ -132,7 +132,15 @@ export default function ChatPage() {
     try {
       const data = await api.getMessages(room, lastIdRef.current);
       if (data.length) {
-        setMessages(prev => [...prev, ...data]);
+        // Chặn trùng: nếu gửi tin xong gọi pollNew() ĐÚNG lúc bộ đếm tự động
+        // (setInterval) cũng đang chạy, cả 2 có thể cùng lấy về đúng tin nhắn
+        // đó rồi cùng thêm vào — nhìn thành 2 tin (chỉ hết khi tải lại trang
+        // vì lúc đó lấy lại đúng 1 bản từ server). Lọc theo id đã có để tránh.
+        setMessages(prev => {
+          const seen = new Set(prev.map((m: any) => m.id));
+          const fresh = data.filter((m: any) => !seen.has(m.id));
+          return fresh.length ? [...prev, ...fresh] : prev;
+        });
         lastIdRef.current = data[data.length - 1].id;
         scrollToBottom();
       }

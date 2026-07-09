@@ -510,18 +510,12 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                   </div>
                 </div>
 
-                {/* Hướng dẫn nhận thưởng khi sự kiện kết thúc */}
+                {/* Nút nhận thưởng khi sự kiện kết thúc (đã trúng top) */}
                 {!eventReallyActive && event.creator_zalo && (
                   <div className="mt-3 pt-3 border-t border-yellow-500/20">
-                    <p className="text-xs text-yellow-600 font-semibold mb-1">📦 Cách nhận quà:</p>
-                    <ol className="text-xs text-gray-400 space-y-0.5 list-decimal list-inside">
-                      <li>Nhắn Zalo cho người tổ chức: <a href={zaloLink(event.creator_zalo)} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{event.creator_zalo}</a></li>
-                      <li>Gửi: Tên · Số điện thoại · Địa chỉ nhận hàng</li>
-                      <li>Người tổ chức đặt hàng Shopee & gửi mã vận đơn</li>
-                    </ol>
                     {member && claims.some((c: any) => c.player_tag === member.player_tag) && (
                       <a href={zaloLink(event.creator_zalo)} target="_blank" rel="noreferrer"
-                        className="btn-gold w-full flex items-center justify-center gap-2 text-sm mt-3 animate-gold-pulse">
+                        className="btn-gold w-full flex items-center justify-center gap-2 text-sm animate-gold-pulse">
                         🎁 Bạn đã trúng thưởng — Nhận thưởng ngay
                       </a>
                     )}

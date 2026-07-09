@@ -72,6 +72,7 @@ export const api = {
   // War
   getCurrentWar:  () => apiFetch("/api/war/current"),
   getWarLog:      () => apiFetch("/api/war/log"),
+  getWarLogTopAttackers: (war_end_time: string) => apiFetch(`/api/war/log/top-attackers?war_end_time=${encodeURIComponent(war_end_time)}`),
   getCWL:         () => apiFetch("/api/war/cwl"),
   getCWLStandings: () => apiFetch("/api/war/cwl/standings"),
   getCWLTopWarriors: () => apiFetch("/api/war/cwl/top-warriors"),

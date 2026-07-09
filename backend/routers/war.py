@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from supabase_client import get_supabase
-from clan_context import get_tag_for_request
+from clan_context import get_tag_for_request, get_clan_id
 from services.coc_api import get_current_war, get_war_log, get_cwl_group, get_cwl_war, get_cwl_season_rounds, summarize_cwl_season_members
 import httpx
 import json
@@ -44,6 +44,25 @@ async def war_log(request: Request):
         if e.response.status_code == 403:
             return {"items": [], "error": "war_log_private"}
         raise HTTPException(e.response.status_code, f"Lỗi CoC API: {e.response.text[:200]}")
+
+@router.get("/log/top-attackers")
+async def war_log_top_attackers(request: Request, war_end_time: str = Query(...)):
+    """Top người đánh hay nhất cho 1 war CỤ THỂ đã qua — CoC API warlog chính
+    thức KHÔNG trả về chi tiết từng đòn đánh của từng người cho war cũ (chỉ
+    có tổng sao/% phá huỷ cấp clan), nên phải lấy lại từ dữ liệu web đã tự
+    ghi lúc war đó vừa kết thúc (war_participation_log)."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    res = sb.table("war_participation_log").select(
+        "player_name,best_attack_stars,best_attack_destruction,best_attack_duration,best_attack_opponent"
+    ).eq("clan_id", clan_id).eq("war_end_time", war_end_time).execute()
+    rows = [r for r in (res.data or []) if r.get("best_attack_stars") is not None]
+    rows.sort(key=lambda r: (-(r["best_attack_stars"] or 0), -(r["best_attack_destruction"] or 0), r["best_attack_duration"] or 99999))
+    top3 = [{
+        "name": r["player_name"], "stars": r["best_attack_stars"],
+        "destruction": r["best_attack_destruction"], "duration": r["best_attack_duration"],
+    } for r in rows[:3]]
+    return {"top3": top3}
 
 @router.get("/cwl")
 async def cwl(request: Request):
