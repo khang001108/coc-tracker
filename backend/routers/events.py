@@ -864,18 +864,49 @@ async def upsert_claim(event_id: int, request: Request, _: bool = Depends(requir
 
 
 @router.get("/{event_id}/claims")
-async def get_claims(event_id: int):
+async def get_claims(event_id: int, x_admin_token: str | None = Header(default=None)):
+    """Danh sách trao thưởng công khai — KHÔNG kèm mã nhận thưởng (redeem_code),
+    vì mã đó chỉ dành riêng cho người thắng và người tổ chức (admin) xem được."""
     sb = get_supabase()
     res = sb.table("event_claims").select("*").eq("event_id", event_id).order("rank").execute()
-    return res.data
+    rows = res.data or []
+    if verify_admin_token(x_admin_token):
+        return rows
+    for r in rows:
+        r.pop("redeem_code", None)
+    return rows
+
+
+@router.get("/{event_id}/my-claim")
+async def get_my_claim(event_id: int, x_member_token: str | None = Header(default=None)):
+    """Trả về mã nhận thưởng riêng của người thắng (nếu có tên trong danh sách
+    trao thưởng của sự kiện này) — chỉ chính người đó xem được mã của mình."""
+    member_tag = verify_member_token(x_member_token)
+    if not member_tag:
+        raise HTTPException(401, "Cần đăng nhập thành viên")
+    sb = get_supabase()
+    res = sb.table("event_claims").select("*").eq("event_id", event_id).eq("player_tag", member_tag).execute()
+    if not res.data:
+        return None
+    return res.data[0]
 
 
 @router.post("/{event_id}/claims/{claim_id}/mark")
 async def mark_claimed(event_id: int, claim_id: int, request: Request, _: bool = Depends(require_admin)):
     body = await request.json()
     claimed = bool(body.get("claimed", True))
+    entered_code = (body.get("code") or "").strip().upper()
     sb = get_supabase()
     import datetime
+
+    if claimed and entered_code:
+        existing = sb.table("event_claims").select("redeem_code").eq("id", claim_id).eq("event_id", event_id).execute()
+        if not existing.data:
+            raise HTTPException(404, "Không tìm thấy")
+        real_code = (existing.data[0].get("redeem_code") or "").strip().upper()
+        if real_code and entered_code != real_code:
+            raise HTTPException(400, "Mã nhận thưởng không khớp")
+
     update = {"claimed": claimed, "claimed_at": datetime.datetime.utcnow().isoformat() if claimed else None}
     res = sb.table("event_claims").update(update).eq("id", claim_id).eq("event_id", event_id).execute()
     if not res.data:
