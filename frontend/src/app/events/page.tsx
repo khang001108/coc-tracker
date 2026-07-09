@@ -7,11 +7,12 @@ import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { Portal } from "@/components/ui/Portal";
 import { FireworkField } from "@/components/ui/FireworkField";
+import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
   ThumbsUp, ThumbsDown, AlertTriangle, Users, LogIn, LogOut, Lock, Coins, Edit3, Flag, Loader2,
-  Copy, Send,
+  Copy, Send, Check,
 } from "lucide-react";
 
 /* ─── Constants ───────────────────────────────────────────────────────── */
@@ -1046,10 +1047,75 @@ function CreateEventGate({ children }: { children: React.ReactNode }) {
 }
 
 /* ─── Main Page ───────────────────────────────────────────────────────── */
-/* Lịch sử trao thưởng đã chuyển sang tab "Lịch sử trao thưởng" ở trang
-   Thống kê (/stats) — xem RewardHistoryTab trong stats/page.tsx. */
+/* Lịch sử trao thưởng — sự kiện/CWL đã đóng, xem lại ai từng thắng ────── */
+function CopyWinnersButton({ ev }: { ev: any }) {
+  const [copied, setCopied] = useState(false);
+  function copyText() {
+    const lines = [`🏆 ${ev.title}`, ev.reward_name ? `🎁 ${ev.reward_name}` : null,
+      ...(ev.claims || []).map((c: any) => `#${c.rank} ${c.player_name} — ${c.claimed ? "Đã nhận" : "Chưa nhận"}`)]
+      .filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <button onClick={copyText} title="Copy danh sách top được nhận thưởng"
+      className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-yellow-400 transition-colors px-2 py-1 rounded-lg hover:bg-yellow-500/10 shrink-0">
+      {copied ? <><Check size={11}/> Đã copy</> : <><Copy size={11}/> Copy</>}
+    </button>
+  );
+}
+
+function RewardHistorySection() {
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getRewardHistory().then(setHistory).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-20 rounded-2xl animate-pulse bg-gray-800"/>)}</div>;
+  if (history.length === 0) return (
+    <div className="card text-center py-12">
+      <Trophy size={40} className="mx-auto mb-3 text-yellow-500/50"/>
+      <p className="text-gray-300 font-medium">Chưa có sự kiện nào đã kết thúc</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {history.map(ev => (
+        <div key={ev.id} className="p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="font-semibold text-white text-sm">{ev.title}</p>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-gray-500">{fmtDateTime(ev.end_time)}</span>
+              {ev.claims?.length > 0 && <CopyWinnersButton ev={ev}/>}
+            </div>
+          </div>
+          {ev.reward_name && <p className="text-xs text-yellow-500 mt-0.5">🎁 {ev.reward_name}</p>}
+          {ev.claims?.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              {ev.claims.map((c: any) => (
+                <div key={c.id} className="flex items-center justify-between text-xs">
+                  <span className="text-gray-300">#{c.rank} {c.player_name}</span>
+                  <span className={c.claimed ? "text-green-400" : "text-gray-500"}>
+                    {c.claimed ? "✓ Đã nhận" : "Chưa nhận"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-600 mt-1">Không có người thắng được ghi nhận.</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function EventsPage() {
+  const [evTab, setEvTab] = useState<"active" | "history">("active");
   const [events, setEvents]       = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<any>(null);
@@ -1113,7 +1179,13 @@ export default function EventsPage() {
         </CreateEventGate>
       </div>
 
-      {loading ? (
+      <SlidingTabs
+        tabs={[{id:"active",label:"Sự kiện"},{id:"history",label:"Lịch sử"}]}
+        active={evTab} onChange={(id) => setEvTab(id as any)} />
+
+      {evTab === "history" ? (
+        <RewardHistorySection/>
+      ) : loading ? (
         <div className="grid gap-4">{[1,2].map(i=><div key={i} className="h-24 rounded-2xl animate-pulse bg-gray-800"/>)}</div>
       ) : visible.length === 0 ? (
         <div className="card text-center py-12">
