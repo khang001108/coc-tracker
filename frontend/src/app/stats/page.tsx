@@ -1,6 +1,6 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
 import { formatNumber, thColor, roleLabel } from "@/lib/utils";
@@ -267,7 +267,7 @@ function WeeklyReportTab() {
   );
 }
 
-export default function StatsPage() {
+function StatsPageInner() {
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as any) || "overview";
   const initialSub = (searchParams.get("sub") as any) || "general";
@@ -635,5 +635,13 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
         </p>
       </div>
     </div>
+  );
+}
+
+export default function StatsPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><CocLoader text="Đang tải..." minHeight={200} /></div>}>
+      <StatsPageInner />
+    </Suspense>
   );
 }
