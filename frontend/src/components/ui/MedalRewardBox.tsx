@@ -29,7 +29,7 @@ export function MedalRewardBox() {
   const [members, setMembers] = useState<any[]>([]);
   const [resetCount, setResetCount] = useState(3);
   const [resetCountInput, setResetCountInput] = useState("3");
-  const [currentSeason, setCurrentSeason] = useState<string | null>(null);
+  const [currentSeasonNumber, setCurrentSeasonNumber] = useState<number | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export function MedalRewardBox() {
       setMembers(elig.members || []);
       setResetCount(elig.reset_cwl_count || 3);
       setResetCountInput(String(elig.reset_cwl_count || 3));
-      setCurrentSeason(elig.current_season || null);
+      setCurrentSeasonNumber(elig.current_season_number ?? null);
       setHistory(hist || []);
       setSuggestions(sug.candidates || []);
       setPerm(permRes);
@@ -122,7 +122,7 @@ export function MedalRewardBox() {
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="font-bold text-white flex items-center gap-2">
             <Award size={18} className="text-yellow-400"/> Đã trao thưởng mùa này
-            {currentSeason && <span className="badge-gold text-[10px]">Mùa {currentSeason}</span>}
+            {currentSeasonNumber != null && <span className="badge-gold text-[10px]">Mùa {currentSeasonNumber}</span>}
           </h3>
           <span className="text-xs text-gray-500">{awardedThisSeason.length}/{members.length} thành viên</span>
         </div>
@@ -192,15 +192,20 @@ export function MedalRewardBox() {
       </div>
 
       {/* Gợi ý tiềm năng mùa sau */}
-      {suggestions.length > 0 && (
-        <div className="card">
-          <p className="text-xs font-semibold text-white flex items-center gap-1.5 mb-2">
-            <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa sau
+      <div className="card">
+        <p className="text-xs font-semibold text-white flex items-center gap-1.5 mb-2">
+          <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa sau
+        </p>
+        <p className="text-[10px] text-gray-600 mb-2">
+          Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
+          thủ anh dũng, Coins) trong 8 tuần gần nhất — đã loại người đang bị giới hạn.
+        </p>
+        {suggestions.length === 0 ? (
+          <p className="text-sm text-gray-600 text-center py-3">
+            Chưa có dữ liệu — Báo cáo tuần cần chạy ít nhất 1 lần (tự động mỗi thứ 2, hoặc admin bấm
+            "Tạo lại ngay" ở tab Báo cáo tuần) mới có gợi ý ở đây.
           </p>
-          <p className="text-[10px] text-gray-600 mb-2">
-            Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
-            thủ anh dũng, Coins) trong 8 tuần gần nhất — đã loại người đang bị giới hạn.
-          </p>
+        ) : (
           <div className="space-y-1.5">
             {suggestions.slice(0, 6).map((s, i) => (
               <div key={s.player_tag} className="flex items-center gap-2">
@@ -214,8 +219,8 @@ export function MedalRewardBox() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Lịch sử — chỉ Admin xoá được */}
       <div className="card">
@@ -228,7 +233,7 @@ export function MedalRewardBox() {
             {history.map(h => (
               <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
                 <span className="text-white flex-1 truncate">{h.player_name}</span>
-                <span className="text-gray-500 shrink-0">Mùa {h.season}</span>
+                <span className="text-gray-500 shrink-0">Mùa {h.season_number ?? "?"}</span>
                 <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
                 {perm.is_admin && (
                   <button onClick={() => handleDeleteHistory(h.id, h.player_name)} className="text-red-400 hover:underline shrink-0">Xoá</button>

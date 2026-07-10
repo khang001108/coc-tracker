@@ -897,3 +897,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.medal_reward_log TO service_role;
 -- thể đổi số này trong Cài đặt).
 INSERT INTO settings (key, value) VALUES ('medal_reward_reset_cwl_count', '3')
 ON CONFLICT (key) DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 24 (Đánh số MÙA CWL tuần tự 1, 2, 3... cho tính năng
+-- huy chương — thay vì chỉ dựa vào field `season` thô của CoC API (dạng
+-- "YYYY-MM" hoặc "unknown" nếu clan chưa từng có mùa CWL nào hoàn thành
+-- được ghi nhận). season_number = số mùa CWL thật đã hoàn thành + 1, tức
+-- "đang ở mùa thứ mấy kể từ khi bắt đầu dùng tính năng này".)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE medal_reward_log ADD COLUMN IF NOT EXISTS season_number INTEGER;
+-- Dữ liệu test trước đó (season = 'unknown', chưa có mùa CWL thật nào được
+-- ghi nhận) coi như thuộc Mùa 1.
+UPDATE medal_reward_log SET season_number = 1 WHERE season_number IS NULL;

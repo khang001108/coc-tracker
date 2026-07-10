@@ -17,11 +17,15 @@ PHÂN QUYỀN (theo yêu cầu người dùng):
 
 Sau khi được đánh dấu, người đó bị "tích và mờ" — tạm loại khỏi danh sách ưu
 tiên nhận huy chương ở (các) mùa CWL kế tiếp, để nhường suất cho người khác.
-"1 lần WCL" được đếm theo MÙA CWL THẬT (bảng cwl_season_log, tự động ghi nhận
-bởi poller khi 1 mùa CWL thật kết thúc — xem services/coc_api + schedulers/
-poller.py::_check_cwl_season_completed), KHÔNG đếm theo sự kiện tạo trong app.
-Sau đủ số lần cấu hình ở Cài đặt (medal_reward_reset_cwl_count, mặc định 3),
-người đó tự động đủ điều kiện nhận lại.
+
+ĐÁNH SỐ MÙA: dùng số tuần tự 1, 2, 3... (season_number) thay vì chuỗi
+"YYYY-MM" thô của CoC API — vì lúc đang trao thưởng, clan có thể KHÔNG ở
+trong mùa CWL nào (CoC không trả về season lúc đó), và bảng cwl_season_log
+(mùa CWL thật đã hoàn thành — PART 23) có thể vẫn còn rỗng lúc mới dùng tính
+năng này. season_number = số mùa CWL thật ĐÃ hoàn thành + 1, tức "đang ở mùa
+thứ mấy kể từ khi bắt đầu dùng tính năng". Sau đủ số lần cấu hình ở Cài đặt
+(medal_reward_reset_cwl_count, mặc định 3), người đó tự động đủ điều kiện
+nhận lại (remaining = reset_count - (current_season_number - awarded_season_number)).
 """
 from fastapi import APIRouter, HTTPException, Request, Depends, Header, Query
 from supabase_client import get_supabase
@@ -41,6 +45,14 @@ def _reset_count(sb) -> int:
         return max(1, int(res.data[0]["value"])) if res.data and res.data[0]["value"] else 3
     except (ValueError, TypeError):
         return 3
+
+
+def _current_season_number(sb, clan_id: int) -> int:
+    """Số mùa CWL thật đã hoàn thành (bảng cwl_season_log) + 1 = đang ở mùa
+    thứ mấy. Chưa có mùa nào hoàn thành → đang ở Mùa 1."""
+    res = sb.table("cwl_season_log").select("season").eq("clan_id", clan_id).execute()
+    completed = len(res.data or [])
+    return completed + 1
 
 
 async def _get_member_role(clan_id: int, member_tag: str) -> str | None:
@@ -88,11 +100,7 @@ async def get_eligibility(request: Request):
     tag = await get_tag_by_clan_id(clan_id)
     members = await get_clan_members(tag, clan_id=clan_id) if tag else []
     reset_count = _reset_count(sb)
-
-    seasons_res = (sb.table("cwl_season_log").select("season").eq("clan_id", clan_id)
-                   .order("season").execute())
-    all_seasons = sorted({r["season"] for r in (seasons_res.data or [])})
-    current_season = all_seasons[-1] if all_seasons else None
+    current_season_number = _current_season_number(sb, clan_id)
 
     awards_res = (sb.table("medal_reward_log").select("*").eq("clan_id", clan_id)
                   .order("created_at", desc=True).execute())
@@ -110,21 +118,22 @@ async def get_eligibility(request: Request):
             result.append({"player_tag": tag_, "player_name": m["name"], "eligible": True,
                             "remaining_seasons": 0, "last_award": None, "awarded_this_season": False})
             continue
-        seasons_passed = sum(1 for s in all_seasons if s > last["season"])
+        last_season_number = last.get("season_number") or 1
+        seasons_passed = current_season_number - last_season_number
         remaining = max(0, reset_count - seasons_passed)
-        awarded_this_season_flag = current_season is not None and last["season"] == current_season
+        awarded_this_season_flag = last_season_number == current_season_number
         if awarded_this_season_flag:
             awarded_this_season += 1
         result.append({
             "player_tag": tag_, "player_name": m["name"],
             "eligible": remaining <= 0, "remaining_seasons": remaining,
-            "last_award": {"season": last["season"], "created_at": last["created_at"], "awarded_by": last.get("awarded_by")},
+            "last_award": {"season_number": last_season_number, "created_at": last["created_at"], "awarded_by": last.get("awarded_by")},
             "awarded_this_season": awarded_this_season_flag,
         })
     result.sort(key=lambda r: (r["eligible"] is False, -r["remaining_seasons"], r["player_name"]))
     return {
         "reset_cwl_count": reset_count,
-        "current_season": current_season,
+        "current_season_number": current_season_number,
         "awarded_this_season": awarded_this_season,
         "members": result,
     }
@@ -133,7 +142,7 @@ async def get_eligibility(request: Request):
 @router.post("/award")
 async def award_medal(request: Request, x_member_token: str | None = Header(default=None)):
     """Đồng thủ lĩnh đánh dấu 1 người ĐÃ được trao huy chương thật trong
-    game — ghi lại mùa CWL hiện tại làm mốc xoay vòng."""
+    game — ghi lại số mùa hiện tại làm mốc xoay vòng."""
     clan_id = get_clan_id(request)
     actor_name = await _require_leader_member(clan_id, x_member_token)
     body = await request.json()
@@ -144,22 +153,21 @@ async def award_medal(request: Request, x_member_token: str | None = Header(defa
         raise HTTPException(400, "Thiếu player_tag/player_name")
 
     sb = get_supabase()
-    tag = await get_tag_by_clan_id(clan_id)
-    season = None
+    season_number = _current_season_number(sb, clan_id)
+
+    # Chuỗi season thô của CoC (nếu có) — chỉ để tham khảo, không dùng để tính toán
+    raw_season = None
     try:
         from services.coc_api import get_cwl_group
+        tag = await get_tag_by_clan_id(clan_id)
         group = await get_cwl_group(tag, clan_id=clan_id) if tag else {}
-        season = group.get("season")
+        raw_season = group.get("season")
     except Exception:
         pass
-    if not season:
-        # Không đang trong mùa CWL nào (hoặc lỗi API) — dùng mùa gần nhất đã ghi nhận
-        last = (sb.table("cwl_season_log").select("season").eq("clan_id", clan_id)
-                .order("season", desc=True).limit(1).execute())
-        season = last.data[0]["season"] if last.data else "unknown"
 
     row = {"clan_id": clan_id, "player_tag": player_tag, "player_name": player_name,
-           "season": season, "awarded_by": actor_name, "note": note}
+           "season": raw_season or f"season-{season_number}", "season_number": season_number,
+           "awarded_by": actor_name, "note": note}
     sb.table("medal_reward_log").insert(row).execute()
     return {"ok": True}
 
@@ -193,8 +201,7 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
     sb = get_supabase()
 
     reset_count = _reset_count(sb)
-    seasons_res = sb.table("cwl_season_log").select("season").eq("clan_id", clan_id).order("season").execute()
-    all_seasons = sorted({r["season"] for r in (seasons_res.data or [])})
+    current_season_number = _current_season_number(sb, clan_id)
     awards_res = (sb.table("medal_reward_log").select("*").eq("clan_id", clan_id)
                   .order("created_at", desc=True).execute())
     last_award_by_tag: dict = {}
@@ -203,7 +210,8 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
             last_award_by_tag[a["player_tag"]] = a
     limited_tags = set()
     for tag_, last in last_award_by_tag.items():
-        seasons_passed = sum(1 for s in all_seasons if s > last["season"])
+        last_season_number = last.get("season_number") or 1
+        seasons_passed = current_season_number - last_season_number
         if max(0, reset_count - seasons_passed) > 0:
             limited_tags.add(tag_)
 
