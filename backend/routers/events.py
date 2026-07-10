@@ -42,6 +42,7 @@ CONDITION_LABELS = {
     "capital_most_loot": "Clan Capital: Gold cướp được nhiều nhất",
     "capital_most_attacks": "Clan Capital: Số lượt tấn công nhiều nhất",
     "donate_total": "Donate: Tổng donate từ lúc tham gia sự kiện",
+    "top_reputation": "Danh vọng cao nhất",
     "manual": "Admin tự chọn thủ công",
 }
 
@@ -738,7 +739,26 @@ async def get_leaderboard(event_id: int):
         ]
         return {"event": event, "leaderboard": leaderboard, "participant_count": len(participants)}
 
-    # Điều kiện Clan Capital: gộp raid mới nhất của từng clan liên quan
+    # Điều kiện Danh vọng: dùng làm "nhiệm vụ" khuyến khích uy tín lâu dài
+    # (không reset theo war/tuần như các điều kiện khác) — gộp theo từng clan
+    # liên quan vì Danh vọng được tính riêng cho mỗi clan.
+    if condition_type == "top_reputation":
+        from services.reputation import get_all_totals
+        scored = []
+        for cid in clan_ids_involved:
+            try:
+                totals = get_all_totals(sb, cid)
+            except Exception:
+                continue
+            for tag_, info in totals.items():
+                if tag_ in participant_tags:
+                    scored.append({"tag": tag_, "name": info["player_name"], "total": info["total"]})
+        ranked = sorted(scored, key=lambda e: -e["total"])
+        leaderboard = [
+            {"player_tag": e["tag"], "player_name": e["name"], "rank": i + 1, "metric_value": f"{e['total']} Danh vọng"}
+            for i, e in enumerate(ranked[:top_n])
+        ]
+        return {"event": event, "leaderboard": leaderboard, "participant_count": len(participants)}
     if condition_type in ("capital_most_loot", "capital_most_attacks"):
         all_capital_members: list = []
         for cid in clan_ids_involved:

@@ -909,3 +909,39 @@ ALTER TABLE medal_reward_log ADD COLUMN IF NOT EXISTS season_number INTEGER;
 -- Dữ liệu test trước đó (season = 'unknown', chưa có mùa CWL thật nào được
 -- ghi nhận) coi như thuộc Mùa 1.
 UPDATE medal_reward_log SET season_number = 1 WHERE season_number IS NULL;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 25 (Hệ thống DANH VỌNG — thước đo uy tín thành viên,
+-- tính theo CHẤT LƯỢNG đóng góp (tham gia/thắng/3 sao/donate/raid/Clan
+-- Games...), KHÔNG dùng để tiêu — chỉ để xếp hạng uy tín + mở khoá vật
+-- phẩm Cửa hàng theo ngưỡng Danh vọng + nhân hệ số Coins thưởng theo tier.)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS member_reputation_log (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  reason      TEXT NOT NULL,   -- war_participate | war_win | three_star | cwl_participate |
+                                -- cwl_three_star | donate_500 | clan_games | raid_weekend |
+                                -- top_weekly_donor | top_monthly_donor | war_skip | cwl_skip | manual
+  points      INTEGER NOT NULL,
+  ref_key     TEXT,            -- mốc chống trùng: war_end_time / tuần / tháng tuỳ loại
+  note        TEXT,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, player_tag, reason, ref_key)
+);
+CREATE INDEX IF NOT EXISTS idx_reputation_clan_tag ON member_reputation_log(clan_id, player_tag);
+CREATE INDEX IF NOT EXISTS idx_reputation_clan_time ON member_reputation_log(clan_id, created_at);
+
+ALTER TABLE member_reputation_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON member_reputation_log;
+CREATE POLICY "service_all" ON member_reputation_log FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.member_reputation_log TO service_role;
+
+-- Ngưỡng điểm Clan Games (achievement "Games Champion") coi là "hoàn thành" —
+-- mặc định 4000 (mốc phổ biến), admin có thể đổi nếu clan chơi thử thách nhỏ hơn.
+INSERT INTO settings (key, value) VALUES ('reputation_clan_games_target', '4000')
+ON CONFLICT (key) DO NOTHING;
+
+-- Ngưỡng Danh vọng để mở khoá vật phẩm Cửa hàng (0 = không yêu cầu).
+ALTER TABLE shop_items ADD COLUMN IF NOT EXISTS unlock_reputation INTEGER NOT NULL DEFAULT 0;

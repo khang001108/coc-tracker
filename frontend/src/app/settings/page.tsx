@@ -1026,11 +1026,80 @@ function MemberAccountsSettings() {
   );
 }
 
+function ReputationAdjustSettings() {
+  const [members, setMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTag, setSelectedTag] = useState("");
+  const [points, setPoints] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  useEffect(() => {
+    api.getMembers().then((r: any) => setMembers(r.items || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  async function handleAdjust() {
+    const m = members.find(x => x.tag === selectedTag);
+    const n = parseInt(points, 10);
+    if (!m) { flashMsg("Chọn thành viên trước"); return; }
+    if (!n) { flashMsg("Nhập số điểm (khác 0, có thể âm)"); return; }
+    if (!confirm(`Xác nhận ${n > 0 ? "cộng" : "trừ"} ${Math.abs(n)} Danh vọng cho "${m.name}"?`)) return;
+    setBusy(true);
+    try {
+      await api.adjustReputation(m.tag, m.name, n, note || undefined);
+      flashMsg(`Đã ${n > 0 ? "cộng" : "trừ"} ${Math.abs(n)} Danh vọng cho ${m.name}`, "success");
+      setPoints(""); setNote("");
+    } catch (e: any) {
+      flashMsg(e.message || "Lỗi điều chỉnh Danh vọng");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card space-y-4">
+      <h3 className="font-bold text-white flex items-center gap-2">🏵️ Điều chỉnh Danh vọng thủ công</h3>
+      <p className="text-sm text-gray-400">
+        Dùng khi cần cộng bù (hệ thống tính thiếu) hoặc trừ điểm khi thành viên vi phạm nội quy.
+        Nhập số âm để trừ (vd -20).
+      </p>
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
+      {loading ? (
+        <div className="h-10 bg-gray-800 rounded-xl animate-pulse" />
+      ) : (
+        <div className="space-y-2">
+          <select className="input text-sm" value={selectedTag} onChange={e => setSelectedTag(e.target.value)}>
+            <option value="">— Chọn thành viên —</option>
+            {members.map(m => <option key={m.tag} value={m.tag}>{m.name}</option>)}
+          </select>
+          <div className="flex gap-2">
+            <input type="number" placeholder="Số điểm (vd -20 hoặc 10)" className="input text-sm flex-1"
+              value={points} onChange={e => setPoints(e.target.value)} />
+            <button onClick={handleAdjust} disabled={busy} className="btn-gold text-xs px-3 shrink-0">
+              {busy ? "..." : "Áp dụng"}
+            </button>
+          </div>
+          <input placeholder="Ghi chú (lý do — vd 'Vi phạm nội quy chat')" className="input text-sm w-full"
+            value={note} onChange={e => setNote(e.target.value)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ShopPricingSettings() {
   const [items, setItems] = useState<any[]>([]);
   const [edits, setEdits] = useState<Record<number, string>>({});
+  const [repEdits, setRepEdits] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [savingRepId, setSavingRepId] = useState<number | null>(null);
   const [toastMsg, setToastMsg] = useState("");
   const [toastErr, setToastErr] = useState("");
 
@@ -1057,6 +1126,23 @@ function ShopPricingSettings() {
     }
   }
 
+  async function saveReputation(item: any) {
+    const val = repEdits[item.id];
+    if (val === undefined) return;
+    setSavingRepId(item.id);
+    try {
+      await api.updateShopItemUnlockReputation(item.id, Number(val));
+      setToastMsg(`Đã cập nhật ngưỡng Danh vọng "${item.name}"`);
+      setTimeout(() => setToastMsg(""), 2000);
+      await load();
+    } catch (e: any) {
+      setToastErr(e.message || "Lỗi cập nhật ngưỡng Danh vọng");
+      setTimeout(() => setToastErr(""), 4000);
+    } finally {
+      setSavingRepId(null);
+    }
+  }
+
   const TYPE_LABEL: Record<string, string> = { castle: "🏰 Lâu đài", cannon: "💣 Pháo", effect: "✨ Hiệu ứng tên" };
   const grouped = items.reduce((acc: Record<string, any[]>, it) => {
     (acc[it.item_type] ||= []).push(it);
@@ -1080,15 +1166,27 @@ function ShopPricingSettings() {
           <div key={type} className="space-y-1.5">
             <p className="text-xs text-gray-500 font-medium">{TYPE_LABEL[type] || type}</p>
             {list.map(item => (
-              <div key={item.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-                <span className="text-sm text-white flex-1 truncate">{item.name}</span>
-                <input type="number" min={0} className="input !w-24 !py-1 text-xs"
-                  defaultValue={item.price_coins}
-                  onChange={e => setEdits({ ...edits, [item.id]: e.target.value })} />
-                <button onClick={() => save(item)} disabled={savingId === item.id}
-                  className="btn-secondary !px-2 !py-1 text-xs">
-                  {savingId === item.id ? "..." : "Lưu"}
-                </button>
+              <div key={item.id} className="bg-gray-800/50 rounded-xl px-3 py-2 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white flex-1 truncate">{item.name}</span>
+                  <input type="number" min={0} className="input !w-24 !py-1 text-xs"
+                    defaultValue={item.price_coins}
+                    onChange={e => setEdits({ ...edits, [item.id]: e.target.value })} />
+                  <button onClick={() => save(item)} disabled={savingId === item.id}
+                    className="btn-secondary !px-2 !py-1 text-xs">
+                    {savingId === item.id ? "..." : "Lưu"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500 flex-1">🏵️ Ngưỡng Danh vọng mở khoá (0 = không yêu cầu)</span>
+                  <input type="number" min={0} className="input !w-24 !py-1 text-xs"
+                    defaultValue={item.unlock_reputation || 0}
+                    onChange={e => setRepEdits({ ...repEdits, [item.id]: e.target.value })} />
+                  <button onClick={() => saveReputation(item)} disabled={savingRepId === item.id}
+                    className="btn-secondary !px-2 !py-1 text-xs">
+                    {savingRepId === item.id ? "..." : "Lưu"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1709,7 +1807,7 @@ export default function SettingsPage() {
             {tab === "general" && <SettingsPageInner embedded />}
             {tab === "events" && <EventReportsSettings />}
             {tab === "music" && <MusicSettings />}
-            {tab === "members" && <MemberAccountsSettings />}
+            {tab === "members" && (<><MemberAccountsSettings /><ReputationAdjustSettings /></>)}
             {tab === "shop" && <ShopPricingSettings />}
           </div>
         </AdminGate>

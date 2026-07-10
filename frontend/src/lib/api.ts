@@ -333,6 +333,12 @@ export const api = {
     return res.json();
   },
 
+  // Danh vọng
+  getReputationLeaderboard: (limit = 50) => apiFetch(`/api/reputation/leaderboard?limit=${limit}`),
+  getMemberReputation: (playerTag: string) => apiFetch(`/api/reputation/member/${encodeURIComponent(playerTag)}`),
+  adjustReputation: (player_tag: string, player_name: string, points: number, note?: string) =>
+    apiFetch("/api/reputation/adjust", { method: "POST", body: JSON.stringify({ player_tag, player_name, points, note }) }),
+
   // Music
   getTracks:    () => apiFetch("/api/music/tracks"),
   getMusicConfig: () => apiFetch("/api/music/config"),
@@ -466,4 +472,6 @@ export const api = {
   },
   updateShopItemPrice: (itemId: number, price_coins: number) =>
     apiFetch(`/api/shop/items/${itemId}/price`, { method: "PUT", body: JSON.stringify({ price_coins }) }),
+  updateShopItemUnlockReputation: (itemId: number, unlock_reputation: number) =>
+    apiFetch(`/api/shop/items/${itemId}/unlock-reputation`, { method: "PUT", body: JSON.stringify({ unlock_reputation }) }),
 };

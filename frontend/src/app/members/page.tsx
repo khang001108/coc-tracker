@@ -133,6 +133,7 @@ export default function MembersPage() {
   const [tab, setTab] = useState<"list" | "pyramid" | "log">("pyramid");
   const [selected, setSelected] = useState<any>(null);
   const [playerDetail, setPlayerDetail] = useState<any>(null);
+  const [reputation, setReputation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [war, setWar] = useState<any>(null);
@@ -161,6 +162,9 @@ export default function MembersPage() {
       const detail = await api.getPlayer(member.tag);
       setPlayerDetail(detail);
     } catch { setPlayerDetail(null); }
+    try {
+      setReputation(await api.getMemberReputation(member.tag));
+    } catch { setReputation(null); }
     setDetailLoading(false);
   }
 
@@ -280,7 +284,7 @@ export default function MembersPage() {
       {/* Player detail modal */}
       {selected && (
         <Portal>
-        <div className="modal-overlay" onClick={() => { setSelected(null); setPlayerDetail(null); }}>
+        <div className="modal-overlay" onClick={() => { setSelected(null); setPlayerDetail(null); setReputation(null); }}>
           <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
             <div className="p-5">
               <div className="flex items-center gap-3 mb-4">
@@ -298,9 +302,19 @@ export default function MembersPage() {
                     </p>
                   )}
                 </div>
-                <button onClick={() => { setSelected(null); setPlayerDetail(null); }}
+                <button onClick={() => { setSelected(null); setPlayerDetail(null); setReputation(null); }}
                   className="ml-auto p-2 rounded-xl hover:bg-gray-800 text-gray-400">✕</button>
               </div>
+
+              {reputation && (
+                <div className="mb-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-yellow-500/10 border border-yellow-500/20 p-3 flex items-center gap-3">
+                  <span className="text-2xl">🏵️</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-white">{reputation.total} Danh vọng</p>
+                    <p className="text-xs text-yellow-400">Tier {reputation.tier.name} (x{reputation.tier.multiplier} Coins thưởng)</p>
+                  </div>
+                </div>
+              )}
 
               {detailLoading ? (
                 <div className="space-y-2">

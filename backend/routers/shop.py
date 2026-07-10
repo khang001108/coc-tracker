@@ -51,6 +51,20 @@ async def update_price(item_id: int, request: Request, _: bool = Depends(require
     return res.data[0]
 
 
+@router.put("/items/{item_id}/unlock-reputation")
+async def update_unlock_reputation(item_id: int, request: Request, _: bool = Depends(require_admin)):
+    """Admin đặt ngưỡng Danh vọng cần có để mở khoá mua vật phẩm này (0 = không yêu cầu)."""
+    body = await request.json()
+    unlock_reputation = body.get("unlock_reputation")
+    if unlock_reputation is None or int(unlock_reputation) < 0:
+        raise HTTPException(400, "Ngưỡng Danh vọng không hợp lệ")
+    sb = get_supabase()
+    res = sb.table("shop_items").update({"unlock_reputation": int(unlock_reputation)}).eq("id", item_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Không tìm thấy vật phẩm")
+    return res.data[0]
+
+
 @router.post("/buy/{item_id}")
 async def buy_item(item_id: int, x_member_token: str | None = Header(default=None)):
     tag = verify_member_token(x_member_token)
@@ -61,6 +75,15 @@ async def buy_item(item_id: int, x_member_token: str | None = Header(default=Non
     if not item.data:
         raise HTTPException(404, "Không tìm thấy vật phẩm")
     price = item.data[0]["price_coins"]
+    unlock_rep = item.data[0].get("unlock_reputation", 0) or 0
+
+    if unlock_rep > 0:
+        acc_clan = sb.table("member_accounts").select("clan_id").eq("player_tag", tag).execute()
+        clan_id = (acc_clan.data[0].get("clan_id") or 1) if acc_clan.data else 1
+        from services.reputation import get_total_reputation
+        my_rep = get_total_reputation(sb, clan_id, tag)
+        if my_rep < unlock_rep:
+            raise HTTPException(403, f"Cần {unlock_rep} Danh vọng để mở khoá vật phẩm này (hiện có {my_rep})")
 
     acc = sb.table("member_accounts").select("coins").eq("player_tag", tag).execute()
     if not acc.data:

@@ -66,7 +66,7 @@ async def _war_category(sb, clan_id: int, period_start_iso: str) -> dict:
     return {"good": [fmt(e) for e in good[:5]], "bad": [fmt(e) for e in bad[:5]]}
 
 
-async def _donate_category(clan_id: int) -> dict:
+async def _donate_category(sb, clan_id: int, week_ref: str) -> dict:
     tag = await get_tag_by_clan_id(clan_id)
     if not tag:
         return {"good": [], "bad": []}
@@ -74,12 +74,23 @@ async def _donate_category(clan_id: int) -> dict:
     good = sorted(members, key=lambda m: -(m.get("donations", 0) or 0))
     bad  = sorted(members, key=lambda m: (m.get("donations", 0) or 0))
 
+    # Danh vọng: donate đủ 500/tuần (+2 mỗi người đạt) + Top đóng góp tuần (+10 cho #1)
+    try:
+        from services.reputation import add_reputation
+        for m in members:
+            if (m.get("donations", 0) or 0) >= 500:
+                add_reputation(sb, clan_id, m["tag"], m["name"], "donate_500", ref_key=week_ref)
+        if good and (good[0].get("donations", 0) or 0) > 0:
+            add_reputation(sb, clan_id, good[0]["tag"], good[0]["name"], "top_weekly_donor", ref_key=week_ref)
+    except Exception as e:
+        log.error(f"donate reputation error (clan_id={clan_id}): {e}")
+
     def fmt(m):
         return {"player_tag": m["tag"], "player_name": m["name"], "value": f"{m.get('donations', 0)} donate"}
     return {"good": [fmt(m) for m in good[:5]], "bad": [fmt(m) for m in bad[:5]]}
 
 
-async def _capital_category(clan_id: int) -> dict:
+async def _capital_category(sb, clan_id: int) -> dict:
     tag = await get_tag_by_clan_id(clan_id)
     if not tag:
         return {"good": [], "bad": []}
@@ -92,6 +103,18 @@ async def _capital_category(clan_id: int) -> dict:
     members = seasons[0].get("members", [])
     good = sorted(members, key=lambda m: -(m.get("capitalResourcesLooted", 0) or 0))
     bad  = sorted(members, key=lambda m: (m.get("capitalResourcesLooted", 0) or 0))
+
+    # Danh vọng: tham gia Raid Weekend (+3) — mỗi raid weekend chỉ tính 1 lần
+    # nhờ ref_key = endTime của mùa raid đó.
+    raid_ref = seasons[0].get("endTime") or seasons[0].get("startTime")
+    if raid_ref:
+        try:
+            from services.reputation import add_reputation
+            for m in members:
+                if (m.get("attacks", 0) or 0) > 0:
+                    add_reputation(sb, clan_id, m["tag"], m["name"], "raid_weekend", ref_key=raid_ref)
+        except Exception as e:
+            log.error(f"raid reputation error (clan_id={clan_id}): {e}")
 
     def fmt(m):
         return {"player_tag": m["tag"], "player_name": m["name"], "value": f"{m.get('capitalResourcesLooted', 0)} gold"}
@@ -169,23 +192,42 @@ async def _coins_category(sb, clan_id: int) -> dict:
     return {"good": [fmt(e) for e in good[:5]], "bad": [fmt(e) for e in bad[:5]]}
 
 
-def _build_message(report: dict) -> str:
-    """Tin nhắn gửi Telegram/Discord — CHỈ hạng 1 mỗi bên/mỗi tiêu chí cho gọn
-    (đầy đủ Top 5 xem trong app ở Thống kê → Báo cáo tuần)."""
-    lines = ["📊 **BÁO CÁO TUẦN** — điểm nổi bật (xem đầy đủ Top 5 trong app, mục Thống kê)\n"]
-    for key, (icon, label) in CATEGORY_LABELS.items():
-        cat = report.get(key) or {"good": [], "bad": []}
-        good = cat["good"][0] if cat["good"] else None
-        bad = cat["bad"][0] if cat["bad"] else None
-        if not good and not bad:
+def _reputation_weekly_summary(sb, clan_id: int, period_start_iso: str) -> dict:
+    """Tổng Danh vọng CỘNG và TRỪ riêng trong tuần (chỉ tính các dòng phát
+    sinh trong kỳ báo cáo) — dùng cho tin nhắn Telegram/Discord."""
+    res = (sb.table("member_reputation_log").select("player_tag,player_name,points")
+           .eq("clan_id", clan_id).gte("created_at", period_start_iso).execute())
+    gained: dict = {}
+    lost: dict = {}
+    for r in (res.data or []):
+        tag = r["player_tag"]
+        bucket = gained if r["points"] > 0 else lost if r["points"] < 0 else None
+        if bucket is None:
             continue
-        line = f"{icon} {label}: "
-        parts = []
-        if good:
-            parts.append(f"✅ {good['player_name']} ({good['value']})")
-        if bad:
-            parts.append(f"⚠️ {bad['player_name']} ({bad['value']})")
-        lines.append(line + " · ".join(parts))
+        e = bucket.setdefault(tag, {"player_tag": tag, "player_name": r["player_name"], "total": 0})
+        e["total"] += r["points"]
+        e["player_name"] = r["player_name"]
+    top_gained = sorted(gained.values(), key=lambda e: -e["total"])[:5]
+    top_lost = sorted(lost.values(), key=lambda e: e["total"])[:5]
+    return {"gained": top_gained, "lost": top_lost}
+
+
+def _build_message(rep_summary: dict) -> str:
+    """Tin nhắn gửi Telegram/Discord — theo yêu cầu CHỈ hiện Top 5 Danh vọng
+    được cộng nhiều nhất và Top 5 bị trừ nhiều nhất trong tuần (đầy đủ 6 tiêu
+    chí War/Donate/Capital/... xem trong app ở Thống kê → Báo cáo tuần)."""
+    lines = ["🏵️ **DANH VỌNG TUẦN NÀY** (xem đầy đủ Top 5 các tiêu chí khác trong app, mục Thống kê)\n"]
+    gained, lost = rep_summary.get("gained", []), rep_summary.get("lost", [])
+    lines.append("📈 Được cộng nhiều nhất:")
+    if gained:
+        lines += [f"{i+1}. {e['player_name']} — +{e['total']}" for i, e in enumerate(gained)]
+    else:
+        lines.append("Chưa có dữ liệu")
+    lines.append("\n📉 Bị trừ nhiều nhất:")
+    if lost:
+        lines += [f"{i+1}. {e['player_name']} — {e['total']}" for i, e in enumerate(lost)]
+    else:
+        lines.append("Không có ai bị trừ tuần này 🎉")
     return "\n".join(lines)
 
 
@@ -195,11 +237,12 @@ async def generate_weekly_report(clan_id: int = 1) -> dict:
     now = datetime.datetime.utcnow()
     period_start = now - datetime.timedelta(days=7)
     period_start_iso = period_start.isoformat()
+    week_ref = period_start.date().isoformat()  # mốc chống cộng trùng Danh vọng nếu tạo lại report cùng tuần
 
     report = {
         "war":          await _war_category(sb, clan_id, period_start_iso),
-        "donate":       await _donate_category(clan_id),
-        "capital":      await _capital_category(clan_id),
+        "donate":       await _donate_category(sb, clan_id, week_ref),
+        "capital":      await _capital_category(sb, clan_id),
         "best_attack":  await _heroic_category(sb, clan_id, period_start_iso, "attack"),
         "best_defense": await _heroic_category(sb, clan_id, period_start_iso, "defense"),
         "coins":        await _coins_category(sb, clan_id),
@@ -216,9 +259,11 @@ async def generate_weekly_report(clan_id: int = 1) -> dict:
     except Exception as e:
         log.error(f"weekly_report_log insert error (clan_id={clan_id}): {e}")
 
-    message = _build_message(report)
+    # Tin nhắn Telegram/Discord — CHỈ Top 5 Danh vọng cộng/trừ nhiều nhất tuần này
+    rep_summary = _reputation_weekly_summary(sb, clan_id, period_start_iso)
+    message = _build_message(rep_summary)
     try:
-        await notify_all(message, discord_color=0xF4A130, title="📊 Báo cáo thống kê tuần", clan_id=clan_id)
+        await notify_all(message, discord_color=0xF4A130, title="🏵️ Danh vọng tuần này", clan_id=clan_id)
     except Exception as e:
         log.error(f"notify_all weekly report error (clan_id={clan_id}): {e}")
     try:

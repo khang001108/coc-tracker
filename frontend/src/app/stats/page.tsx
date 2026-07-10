@@ -111,6 +111,73 @@ function WeeklyReportView({ report }: { report: any }) {
   );
 }
 
+/* ─── Tab: Top Cúp ─────────────────────────────────────────────────────── */
+function TrophyLeaderboardTab() {
+  const [members, setMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getMembers().then((r: any) => setMembers(r.items || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
+
+  const ranked = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
+  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+
+  return (
+    <div className="card space-y-1.5">
+      <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏆 Top Cúp thành viên</h3>
+      {ranked.map((m, i) => (
+        <div key={m.tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+          <span className="text-sm w-6 text-center shrink-0">{medal(i) || i + 1}</span>
+          <span className="text-sm text-white flex-1 truncate">{m.name}</span>
+          <span className="text-xs text-yellow-400 shrink-0">🏆 {(m.trophies || 0).toLocaleString()}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Tab: Danh vọng ───────────────────────────────────────────────────── */
+function ReputationLeaderboardTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getReputationLeaderboard(50).then(setRows).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
+
+  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+  const tierColor: Record<string, string> = { "Kim Cương": "text-cyan-300", "Vàng": "text-yellow-400", "Bạc": "text-gray-300", "Đồng": "text-orange-400" };
+
+  return (
+    <div className="space-y-4">
+      <div className="card">
+        <p className="text-xs text-gray-500">
+          Danh vọng là thước đo uy tín lâu dài, tính theo CHẤT LƯỢNG đóng góp (tham gia/thắng
+          War, 3 sao, CWL, Donate, Raid, Clan Games...) — không dùng để tiêu, tăng chậm mỗi tháng.
+          Danh vọng càng cao, hệ số Coins thưởng war-star càng lớn.
+        </p>
+      </div>
+      <div className="card space-y-1.5">
+        <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏵️ Xếp hạng Danh vọng</h3>
+        {rows.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Chưa có dữ liệu Danh vọng.</p>}
+        {rows.map((r, i) => (
+          <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+            <span className="text-sm w-6 text-center shrink-0">{medal(i) || i + 1}</span>
+            <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
+            <span className={`text-[10px] shrink-0 ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
+            <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}đ</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function WeeklyReportTab() {
   const [latest, setLatest] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -196,7 +263,7 @@ function WeeklyReportTab() {
 }
 
 export default function StatsPage() {
-  const [tab, setTab] = useState<"overview" | "weekly" | "medals">("overview");
+  const [tab, setTab] = useState<"overview" | "weekly" | "medals" | "trophies" | "reputation">("overview");
   const [members, setMembers] = useState<any[]>([]);
   const bannerSrc = usePageBanner("stats", "/art/ruins-aftermath.jpg");
   const [war, setWar] = useState<any>(null);
@@ -292,7 +359,13 @@ export default function StatsPage() {
 
       <div className="overflow-x-auto -mx-1 px-1 pb-1">
         <SlidingTabs
-          tabs={[{id:"overview",label:"Tổng quan"},{id:"weekly",label:"Báo cáo tuần"},{id:"medals",label:"Huy chương CWL"}]}
+          tabs={[
+            {id:"overview",label:"Tổng quan"},
+            {id:"weekly",label:"Báo cáo tuần"},
+            {id:"medals",label:"Huy chương CWL"},
+            {id:"trophies",label:"Top Cúp"},
+            {id:"reputation",label:"Danh vọng"},
+          ]}
           active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
       </div>
 
@@ -300,6 +373,10 @@ export default function StatsPage() {
         <WeeklyReportTab/>
       ) : tab === "medals" ? (
         <MedalRewardBox/>
+      ) : tab === "trophies" ? (
+        <TrophyLeaderboardTab/>
+      ) : tab === "reputation" ? (
+        <ReputationLeaderboardTab/>
       ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <CocLoader text="Đang tải thống kê..." minHeight={200} />

@@ -23,6 +23,7 @@ const CONDITION_LABELS: Record<string, { label: string; icon: string; desc: stri
   most_attacks_used:     { label: "Dùng hết lượt",          icon: "⚔️", desc: "Dùng đủ toàn bộ lượt tấn công" },
   fewest_stars_conceded: { label: "Phòng thủ tốt nhất",     icon: "🛡️", desc: "Bị đánh mất ít sao nhất" },
   top_donations:         { label: "Donate cao nhất",        icon: "💎", desc: "Donate nhiều nhất hiện tại" },
+  top_reputation:        { label: "Danh vọng cao nhất",     icon: "🏵️", desc: "Ai có tổng Danh vọng cao nhất" },
   manual:                { label: "Admin tự chọn",          icon: "👑", desc: "Người tổ chức tự quyết định người thắng" },
 };
 

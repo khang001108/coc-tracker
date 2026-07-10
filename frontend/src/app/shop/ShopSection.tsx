@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, getMemberAuth } from "@/lib/api";
 import { CastlePreview, CannonPreview, ProjectilePreview, ExplosionPreview } from "@/lib/gameIcons";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { NameEffect } from "@/components/ui/NameEffect";
@@ -28,13 +28,20 @@ export default function ShopSection() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [myReputation, setMyReputation] = useState(0);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
     try {
-      const [it, my] = await Promise.all([api.getShopItems(), api.getMyInventory()]);
+      const member = getMemberAuth();
+      const [it, my, rep] = await Promise.all([
+        api.getShopItems(),
+        api.getMyInventory(),
+        member ? api.getMemberReputation(member.player_tag).catch(() => null) : Promise.resolve(null),
+      ]);
       setItems(it || []);
       setInv(my);
+      setMyReputation(rep?.total || 0);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -97,6 +104,8 @@ export default function ShopSection() {
             : item.item_type === "explosion" ? inv.equipped_explosion
             : inv.equipped_number_effect;
           const equipped = equippedField === item.svg_key;
+          const repNeeded = item.unlock_reputation || 0;
+          const repLocked = repNeeded > 0 && myReputation < repNeeded;
           return (
             <div key={item.id}
               className={`card !p-3 flex flex-col items-center text-center gap-1.5 shrink-0 snap-start ${equipped ? "border-yellow-500/50" : ""}`}
@@ -111,6 +120,11 @@ export default function ShopSection() {
               {!owned && (
                 <p className="text-[11px] text-yellow-400 flex items-center gap-1"><CoinIcon size={12}/> {item.price_coins.toLocaleString()}</p>
               )}
+              {!owned && repNeeded > 0 && (
+                <p className={`text-[10px] flex items-center gap-1 ${repLocked ? "text-purple-400" : "text-green-400"}`}>
+                  🏵️ Cần {repNeeded} Danh vọng{repLocked ? ` (hiện ${myReputation})` : ""}
+                </p>
+              )}
               {equipped ? (
                 <span className="badge-gold text-[10px] flex items-center gap-1"><CheckCircle2 size={10} /> Đang dùng</span>
               ) : owned ? (
@@ -119,7 +133,7 @@ export default function ShopSection() {
                   {busyId === item.id ? "..." : "Trang bị"}
                 </button>
               ) : (
-                <button onClick={() => handleBuy(item)} disabled={busyId === item.id || inv.coins < item.price_coins}
+                <button onClick={() => handleBuy(item)} disabled={busyId === item.id || inv.coins < item.price_coins || repLocked}
                   className="btn-gold !px-2 !py-1 text-[11px] w-full flex items-center justify-center gap-1 disabled:opacity-40">
                   {busyId === item.id ? "..." : <><Lock size={10} /> Đổi</>}
                 </button>

@@ -49,6 +49,9 @@ async def start_scheduler():
     # Báo cáo thống kê tuần — chạy tự động mỗi thứ 2 lúc 08:00 (giờ server),
     # tổng hợp Top 5 tốt/xấu của tuần vừa qua cho TỪNG clan.
     scheduler.add_job(poll_weekly_report, CronTrigger(day_of_week="mon", hour=8, minute=0), id="poll_weekly_report", replace_existing=True)
+    # Danh vọng — 2 khoản chỉ tính được theo THÁNG (Clan Games + Top đóng góp
+    # tháng) chạy vào 0h ngày 1 hàng tháng.
+    scheduler.add_job(poll_monthly_reputation, CronTrigger(day=1, hour=0, minute=30), id="poll_monthly_reputation", replace_existing=True)
     # Job "canh" cấu hình — cho phép đổi chu kỳ quét Donate/Thành viên trong Cài
     # đặt có hiệu lực NGAY, không cần khởi động lại server.
     scheduler.add_job(poll_check_intervals, IntervalTrigger(minutes=2), id="poll_check_intervals", replace_existing=True)
@@ -291,6 +294,28 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
     except Exception as e:
         log.error(f"_log_war_history error (clan_id={clan_id}): {e}")
 
+    # Danh vọng: tham gia/thắng/3 sao/bỏ lượt — mỗi war chỉ tính 1 lần nhờ
+    # ref_key=war_end_time (UNIQUE cùng player_tag+reason nên poll lại vẫn an toàn).
+    try:
+        from services.reputation import add_reputation, POINTS as REP_POINTS
+        is_cwl = war_type == "cwl"
+        for m in members:
+            tag_, name_ = m.get("tag"), m.get("name", "?")
+            attacks = m.get("attacks", [])
+            three_stars = sum(1 for a in attacks if a.get("stars", 0) >= 3)
+            if len(attacks) == 0:
+                # Bỏ lượt — chỉ tính nếu war đã thật sự kết thúc (có endTime, đã lọc ở trên)
+                add_reputation(sb, clan_id, tag_, name_, "cwl_skip" if is_cwl else "war_skip", ref_key=end_time)
+                continue
+            add_reputation(sb, clan_id, tag_, name_, "cwl_participate" if is_cwl else "war_participate", ref_key=end_time)
+            if result == "win":
+                add_reputation(sb, clan_id, tag_, name_, "war_win", ref_key=end_time)
+            if three_stars > 0:
+                reason = "cwl_three_star" if is_cwl else "three_star"
+                add_reputation(sb, clan_id, tag_, name_, reason, ref_key=end_time, points=REP_POINTS[reason] * three_stars)
+    except Exception as e:
+        log.error(f"reputation scoring error (clan_id={clan_id}, war_end_time={end_time}): {e}")
+
 
 async def _check_cwl_season_completed(sb, clan_id: int, tag: str):
     """Ghi lại 1 mùa CWL THẬT đã kết thúc (leaguegroup.state == 'ended') —
@@ -528,7 +553,13 @@ async def _award_war_star_coins(sb, clan_id: int, war_data: dict, coins_per_star
         if stars_gained <= 0:
             continue
         acc = sb.table("member_accounts").select("coins").eq("player_tag", m["tag"]).execute()
-        coins_awarded = stars_gained * coins_per_star
+        # Danh vọng càng cao, hệ số nhân Coins thưởng càng lớn (xem services/reputation.py TIERS)
+        try:
+            from services.reputation import get_total_reputation, get_tier
+            tier = get_tier(get_total_reputation(sb, clan_id, m["tag"]))
+            coins_awarded = round(stars_gained * coins_per_star * tier["multiplier"])
+        except Exception:
+            coins_awarded = stars_gained * coins_per_star
         if acc.data:
             new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
             sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
@@ -748,3 +779,16 @@ async def poll_weekly_report():
             await generate_weekly_report(c["id"])
         except Exception as e:
             log.error(f"poll_weekly_report error (clan_id={c.get('id')}): {e}")
+
+
+async def poll_monthly_reputation():
+    """Danh vọng: Hoàn thành Clan Games + Top đóng góp tháng (xem
+    services/reputation.py::run_monthly_reputation) — chạy 1 lần/tháng cho
+    từng clan."""
+    from services.reputation import run_monthly_reputation
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            await run_monthly_reputation(c["id"])
+        except Exception as e:
+            log.error(f"poll_monthly_reputation error (clan_id={c.get('id')}): {e}")
