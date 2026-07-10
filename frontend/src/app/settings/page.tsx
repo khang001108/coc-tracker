@@ -812,6 +812,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           <option value="war">War &amp; CWL</option>
           <option value="overview_war">Tổng quan · thẻ War</option>
           <option value="overview_cwl">Tổng quan · thẻ CWL</option>
+          <option value="overview_trophies">Tổng quan · thẻ Top Cúp</option>
+          <option value="overview_reputation">Tổng quan · thẻ Danh vọng</option>
         </select>
 
         {(() => {

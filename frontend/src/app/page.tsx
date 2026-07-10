@@ -365,16 +365,18 @@ export default function DashboardPage() {
 }
 
 function TopTrophiesBox({ members }: { members: any[] }) {
+  const bannerSrc = usePageBanner("overview_trophies", "/art/prince-celebration.jpg");
   const ranked = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0)).slice(0, 5);
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-3">
+    <div className="card relative overflow-hidden">
+      <ArtBanner src={bannerSrc} opacity={0.75} objectPosition="center 30%" />
+      <div className="relative flex items-center justify-between mb-3 banner-content">
         <h2 className="font-bold text-white flex items-center gap-2"><Trophy size={16} className="text-yellow-400"/> Top Cúp</h2>
         <Link href="/stats" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
       </div>
       {ranked.length === 0 ? <EmptyState message="Không có dữ liệu"/> : (
-        <div className="space-y-1.5">
+        <div className="relative space-y-1.5">
           {ranked.map((m, i) => (
             <div key={m.tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
@@ -389,6 +391,7 @@ function TopTrophiesBox({ members }: { members: any[] }) {
 }
 
 function TopReputationBox() {
+  const bannerSrc = usePageBanner("overview_reputation", "/art/skeleton-king.jpg");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -396,15 +399,16 @@ function TopReputationBox() {
   }, []);
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-3">
+    <div className="card relative overflow-hidden">
+      <ArtBanner src={bannerSrc} opacity={0.75} objectPosition="center 30%" />
+      <div className="relative flex items-center justify-between mb-3 banner-content">
         <h2 className="font-bold text-white flex items-center gap-2">🏵️ Danh vọng</h2>
         <Link href="/stats" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
       </div>
       {loading ? (
-        <div className="h-24 bg-gray-800 rounded-xl animate-pulse"/>
+        <div className="relative h-24 bg-gray-800 rounded-xl animate-pulse"/>
       ) : rows.length === 0 ? <EmptyState message="Chưa có dữ liệu Danh vọng"/> : (
-        <div className="space-y-1.5">
+        <div className="relative space-y-1.5">
           {rows.map((r, i) => (
             <div key={r.player_tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>

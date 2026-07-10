@@ -81,16 +81,17 @@ function WeeklyCategoryBlock({ catKey, data }: { catKey: string; data: { good: a
   const meta = WEEKLY_CATEGORY_META[catKey];
   if (!meta) return null;
   return (
-    <div className="card !p-4 space-y-3">
+    <div className="card !p-4 space-y-3 border-l-2 border-yellow-500/30">
       <h3 className="font-bold text-white flex items-center gap-2">
-        <span>{meta.icon}</span> {meta.label}
+        <span className="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center text-sm shrink-0">{meta.icon}</span>
+        {meta.label}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
+        <div className="rounded-xl bg-green-500/[0.03] p-2.5">
           <p className="text-xs font-semibold text-green-400 flex items-center gap-1 mb-1.5"><TrendingUp size={12}/> Tốt nhất</p>
           <WeeklyRankList entries={data.good || []} tone="good"/>
         </div>
-        <div>
+        <div className="rounded-xl bg-red-500/[0.03] p-2.5">
           <p className="text-xs font-semibold text-red-400 flex items-center gap-1 mb-1.5"><TrendingDown size={12}/> Cần cố gắng</p>
           <WeeklyRankList entries={data.bad || []} tone="bad"/>
         </div>
@@ -103,9 +104,10 @@ function WeeklyReportView({ report }: { report: any }) {
   if (!report) return <p className="text-sm text-gray-500">Chưa có báo cáo nào — chờ tự động chạy vào thứ 2 hàng tuần.</p>;
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500 flex items-center gap-1.5">
-        <Clock size={12}/> {fmtDate(report.period_start)} → {fmtDate(report.period_end)}
-      </p>
+      <div className="flex items-center gap-2 rounded-xl bg-yellow-500/5 border border-yellow-500/15 px-3 py-2">
+        <Clock size={14} className="text-yellow-400 shrink-0"/>
+        <p className="text-xs text-gray-300">{fmtDate(report.period_start)} → {fmtDate(report.period_end)}</p>
+      </div>
       {WEEKLY_CATEGORY_ORDER.map(k => <WeeklyCategoryBlock key={k} catKey={k} data={report.report?.[k] || { good: [], bad: [] }} />)}
     </div>
   );
@@ -206,9 +208,11 @@ function WeeklyReportTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">Top 5 tốt/xấu mỗi tuần — tự động tổng hợp mỗi thứ 2.</p>
+    <div className="space-y-4">
+      <div className="card !py-3 !px-4 flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-xs text-gray-500 flex items-center gap-1.5">
+          <span className="text-base">📊</span> Top 5 tốt/xấu mỗi tuần — tự động tổng hợp mỗi thứ 2.
+        </p>
         {isAdmin && (
           <button onClick={generateNow} disabled={busy} className="btn-secondary text-xs flex items-center gap-1.5 shrink-0">
             <RefreshCw size={12} className={busy ? "animate-spin" : ""}/> Tạo lại ngay
@@ -262,7 +266,8 @@ function WeeklyReportTab() {
 }
 
 export default function StatsPage() {
-  const [tab, setTab] = useState<"overview" | "weekly" | "medals" | "trophies" | "reputation">("overview");
+  const [tab, setTab] = useState<"overview" | "weekly">("overview");
+  const [overviewSubTab, setOverviewSubTab] = useState<"general" | "cumulative" | "medals" | "trophies" | "reputation">("general");
   const [members, setMembers] = useState<any[]>([]);
   const bannerSrc = usePageBanner("stats", "/art/ruins-aftermath.jpg");
   const [war, setWar] = useState<any>(null);
@@ -361,22 +366,40 @@ export default function StatsPage() {
           tabs={[
             {id:"overview",label:"Tổng quan"},
             {id:"weekly",label:"Báo cáo tuần"},
-            {id:"medals",label:"Huy chương CWL"},
-            {id:"trophies",label:"Top Cúp"},
-            {id:"reputation",label:"Danh vọng"},
           ]}
           active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
       </div>
 
       {tab === "weekly" ? (
         <WeeklyReportTab/>
-      ) : tab === "medals" ? (
-        <MedalRewardBox/>
-      ) : tab === "trophies" ? (
-        <TrophyLeaderboardTab/>
-      ) : tab === "reputation" ? (
-        <ReputationLeaderboardTab/>
-      ) : loading ? (
+      ) : (
+        <>
+          <div className="overflow-x-auto -mx-1 px-1 pb-1">
+            <SlidingTabs
+              tabs={[
+                {id:"general",label:"Chung"},
+                {id:"cumulative",label:"Tích luỹ"},
+                {id:"medals",label:"Huy chương CWL"},
+                {id:"trophies",label:"Top Cúp"},
+                {id:"reputation",label:"Danh vọng"},
+              ]}
+              active={overviewSubTab} onChange={(id) => setOverviewSubTab(id as any)} className="w-max"/>
+          </div>
+
+          {overviewSubTab === "medals" ? (
+            <MedalRewardBox/>
+          ) : overviewSubTab === "trophies" ? (
+            <TrophyLeaderboardTab/>
+          ) : overviewSubTab === "reputation" ? (
+            <ReputationLeaderboardTab/>
+          ) : overviewSubTab === "cumulative" ? (
+            <CumulativeTab
+              period={period} setPeriod={setPeriod} periodLabel={periodLabel}
+              warActivity={warActivity} insightsLoading={insightsLoading}
+              topCoins={topCoins} coinsScope={coinsScope} setCoinsScope={setCoinsScope}
+              coinsCopied={coinsCopied} setCoinsCopied={setCoinsCopied}
+            />
+          ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <CocLoader text="Đang tải thống kê..." minHeight={200} />
         </div>
@@ -385,12 +408,13 @@ export default function StatsPage() {
           {/* Summary stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Thành viên",   value: members.length,        color: "text-blue-400" },
-              { label: "Tổng donate",  value: formatNumber(totalDonate),  color: "text-green-400" },
-              { label: "Tổng nhận",    value: formatNumber(totalReceived),color: "text-purple-400" },
-              { label: "TB donate/NV", value: formatNumber(avgDonate),    color: "text-yellow-400" },
-            ].map(({ label, value, color }) => (
+              { label: "Thành viên",   value: members.length,             color: "text-blue-400",   icon: "👥" },
+              { label: "Tổng donate",  value: formatNumber(totalDonate),  color: "text-green-400",  icon: "💎" },
+              { label: "Tổng nhận",    value: formatNumber(totalReceived),color: "text-purple-400", icon: "📥" },
+              { label: "TB donate/NV", value: formatNumber(avgDonate),    color: "text-yellow-400", icon: "📊" },
+            ].map(({ label, value, color, icon }) => (
               <div key={label} className="card text-center">
+                <p className="text-lg mb-0.5">{icon}</p>
                 <p className={`text-2xl font-bold ${color}`}>{value}</p>
                 <p className="text-xs text-gray-500 mt-1">{label}</p>
               </div>
@@ -400,9 +424,10 @@ export default function StatsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Donate bar chart */}
             <div className="card">
-              <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+              <h3 className="font-bold text-white flex items-center gap-2">
                 <TrendingUp size={16} className="text-green-400" /> Top Donate (10 NV)
               </h3>
+              <p className="text-[11px] text-gray-500 mb-3">Donate và nhận quân hiện tại của 10 người donate nhiều nhất</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={donateData} barSize={12}>
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#6b7280" }} />
@@ -417,7 +442,8 @@ export default function StatsPage() {
 
             {/* TH distribution */}
             <div className="card">
-              <h3 className="font-bold text-white mb-4">Phân bổ Town Hall</h3>
+              <h3 className="font-bold text-white">Phân bổ Town Hall</h3>
+              <p className="text-[11px] text-gray-500 mb-3">Số lượng thành viên theo từng cấp Town Hall</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={thData} barSize={20} layout="vertical">
                   <XAxis type="number" tick={{ fontSize: 10, fill: "#6b7280" }} />
@@ -434,7 +460,8 @@ export default function StatsPage() {
 
             {/* Role distribution pie */}
             <div className="card">
-              <h3 className="font-bold text-white mb-4">Phân bổ Role</h3>
+              <h3 className="font-bold text-white">Phân bổ Role</h3>
+              <p className="text-[11px] text-gray-500 mb-1">Tỉ lệ Thủ lĩnh / Đồng thủ lĩnh / Trưởng lão / Thành viên</p>
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart margin={{ top: 20, right: 30, bottom: 10, left: 30 }}>
                   <Pie data={roleData} dataKey="value" nameKey="name"
@@ -460,128 +487,146 @@ export default function StatsPage() {
             </div>
 
           </div>
-
-          {/* Nhiều Coins nhất — xếp đầu tiên */}
-          {topCoins.length > 0 && (
-            <div className="card">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-                    <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-                    <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
-                  </div>
-                  <button onClick={() => {
-                    const lines = topCoins.map((p, i) => coinsScope === "all"
-                      ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
-                      : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
-                    const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
-                    navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
-                    setCoinsCopied(true);
-                    setTimeout(() => setCoinsCopied(false), 2000);
-                  }} title="Copy làm báo cáo" className="text-gray-500 hover:text-yellow-400 shrink-0">
-                    {coinsCopied ? <Check size={15}/> : <Copy size={15}/>}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {topCoins.map((p, i) => (
-                  <div key={p.tag} className="flex items-center gap-3 text-sm">
-                    <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                    {coinsScope === "all" && (
-                      p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
-                        : <span className="w-5 h-5 shrink-0" />
-                    )}
-                    <span className="flex-1 min-w-0 truncate">
-                      <span className="text-gray-300">{p.name}</span>
-                      {coinsScope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {p.clan_name}</span>}
-                    </span>
-                    <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
-            </div>
-          )}
-
-          {/* Hiệu suất kém — cần admin lưu ý */}
-          <div>
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                <AlertTriangle size={16} className="text-red-400" /> Cần lưu ý — tích luỹ {periodLabel}
-              </h3>
-              <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
-                {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
-                  <button key={o.v} onClick={() => setPeriod(o.v as any)}
-                    className={`text-xs px-2.5 py-1 rounded-md transition-colors ${period === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
-                    {o.l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><HeartCrack size={14} className="text-red-400" /> War yếu nhất (TB sao/war)</h4>
-                  {warActivity.weakest_war.length > 0 && (
-                    <CopyButton getText={() =>
-                      `⭐ WAR YẾU NHẤT (TB sao/war — ${periodLabel}):\n` +
-                      warActivity.weakest_war.map((p, i) => `${i + 1}. ${p.name}: ${p.avg_stars}⭐ TB (${p.wars} war)`).join("\n")
-                    } />
-                  )}
-                </div>
-                {insightsLoading ? (
-                  <p className="text-xs text-gray-600">Đang tải...</p>
-                ) : warActivity.weakest_war.length === 0 ? (
-                  <p className="text-xs text-gray-600">Chưa đủ dữ liệu war trong khoảng thời gian này</p>
-                ) : (
-                  <div className="space-y-2">
-                    {warActivity.weakest_war.map(p => (
-                      <div key={p.tag} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300 truncate">{p.name}</span>
-                        <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><ShieldOff size={14} className="text-orange-400" /> Hay bỏ war nhất</h4>
-                  {warActivity.most_skips.length > 0 && (
-                    <CopyButton getText={() =>
-                      `🛡️ HAY BỎ WAR NHẤT (${periodLabel}):\n` +
-                      warActivity.most_skips.map((p, i) => `${i + 1}. ${p.name}: bỏ ${p.skipped}/${p.wars} war (${p.skip_rate}%)`).join("\n")
-                    } />
-                  )}
-                </div>
-                {insightsLoading ? (
-                  <p className="text-xs text-gray-600">Đang tải...</p>
-                ) : warActivity.most_skips.length === 0 ? (
-                  <p className="text-xs text-gray-600">Chưa có ai bỏ war trong khoảng thời gian này</p>
-                ) : (
-                  <div className="space-y-2">
-                    {warActivity.most_skips.map(p => (
-                      <div key={p.tag} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300 truncate">{p.name}</span>
-                        <span className="text-orange-400 font-semibold shrink-0">{p.skipped}/{p.wars} war ({p.skip_rate}%)</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              </div>
-
-            <p className="text-[11px] text-gray-600 mt-2">
-              "War yếu nhất"/"Hay bỏ war" tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
-              Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
-            </p>
-          </div>
         </>
       )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
+  period: "week" | "month" | "all"; setPeriod: (p: "week" | "month" | "all") => void; periodLabel: string;
+  warActivity: { weakest_war: any[]; most_skips: any[] }; insightsLoading: boolean;
+  topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
+  coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="card !py-3 !px-4">
+        <p className="text-xs text-gray-500">
+          Dữ liệu tích luỹ liên tục <strong className="text-gray-300">từ khi lập web</strong> — càng dùng lâu càng chính xác. Khác với "Báo cáo tuần" (chỉ tính riêng tuần gần nhất).
+        </p>
+      </div>
+
+      {/* Nhiều Coins nhất — xếp đầu tiên */}
+      {topCoins.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+                <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+                <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+              </div>
+              <button onClick={() => {
+                const lines = topCoins.map((p, i) => coinsScope === "all"
+                  ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
+                  : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
+                const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
+                navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
+                setCoinsCopied(true);
+                setTimeout(() => setCoinsCopied(false), 2000);
+              }} title="Copy làm báo cáo" className="text-gray-500 hover:text-yellow-400 shrink-0">
+                {coinsCopied ? <Check size={15}/> : <Copy size={15}/>}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {topCoins.map((p, i) => (
+              <div key={p.tag} className="flex items-center gap-3 text-sm">
+                <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                {coinsScope === "all" && (
+                  p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
+                    : <span className="w-5 h-5 shrink-0" />
+                )}
+                <span className="flex-1 min-w-0 truncate">
+                  <span className="text-gray-300">{p.name}</span>
+                  {coinsScope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {p.clan_name}</span>}
+                </span>
+                <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
+        </div>
+      )}
+
+      {/* Hiệu suất kém — cần admin lưu ý */}
+      <div>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-400" /> Cần lưu ý ({periodLabel})
+          </h3>
+          <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
+            {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
+              <button key={o.v} onClick={() => setPeriod(o.v as any)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${period === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="card">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><HeartCrack size={14} className="text-red-400" /> War yếu nhất (TB sao/war)</h4>
+              {warActivity.weakest_war.length > 0 && (
+                <CopyButton getText={() =>
+                  `⭐ WAR YẾU NHẤT (TB sao/war — ${periodLabel}):\n` +
+                  warActivity.weakest_war.map((p, i) => `${i + 1}. ${p.name}: ${p.avg_stars}⭐ TB (${p.wars} war)`).join("\n")
+                } />
+              )}
+            </div>
+            {insightsLoading ? (
+              <p className="text-xs text-gray-600">Đang tải...</p>
+            ) : warActivity.weakest_war.length === 0 ? (
+              <p className="text-xs text-gray-600">Chưa đủ dữ liệu war trong khoảng thời gian này</p>
+            ) : (
+              <div className="space-y-2">
+                {warActivity.weakest_war.map(p => (
+                  <div key={p.tag} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate">{p.name}</span>
+                    <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><ShieldOff size={14} className="text-orange-400" /> Hay bỏ war nhất</h4>
+              {warActivity.most_skips.length > 0 && (
+                <CopyButton getText={() =>
+                  `🛡️ HAY BỎ WAR NHẤT (${periodLabel}):\n` +
+                  warActivity.most_skips.map((p, i) => `${i + 1}. ${p.name}: bỏ ${p.skipped}/${p.wars} war (${p.skip_rate}%)`).join("\n")
+                } />
+              )}
+            </div>
+            {insightsLoading ? (
+              <p className="text-xs text-gray-600">Đang tải...</p>
+            ) : warActivity.most_skips.length === 0 ? (
+              <p className="text-xs text-gray-600">Chưa có ai bỏ war trong khoảng thời gian này</p>
+            ) : (
+              <div className="space-y-2">
+                {warActivity.most_skips.map(p => (
+                  <div key={p.tag} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate">{p.name}</span>
+                    <span className="text-orange-400 font-semibold shrink-0">{p.skipped}/{p.wars} war ({p.skip_rate}%)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <p className="text-[11px] text-gray-600 mt-3">
+          "War yếu nhất"/"Hay bỏ war" tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
+          Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
+        </p>
+      </div>
     </div>
   );
 }

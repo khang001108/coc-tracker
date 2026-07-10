@@ -342,6 +342,28 @@ export const api = {
   updateReputationPointsConfig: (values: Record<string, number>) =>
     apiFetch("/api/reputation/points-config", { method: "PUT", body: JSON.stringify(values) }),
 
+  // Nhiệm vụ (thưởng Danh vọng/Coins, tự chấm qua CoC API)
+  getQuestConditions: () => apiFetch("/api/quests/conditions"),
+  getQuests: () => {
+    const member = getMemberAuth();
+    return apiFetch("/api/quests/", { headers: member ? { "X-Member-Token": member.token } : {} });
+  },
+  createQuest: (body: { title: string; description?: string; condition_type: string; target_value: number; reward_type: "reputation" | "coins"; reward_amount: number }) => {
+    const member = getMemberAuth();
+    return apiFetch("/api/quests/", {
+      method: "POST", body: JSON.stringify(body),
+      headers: member ? { "X-Member-Token": member.token } : {},
+    });
+  },
+  deleteQuest: (id: number) => {
+    const member = getMemberAuth();
+    return apiFetch(`/api/quests/${id}`, { method: "DELETE", headers: member ? { "X-Member-Token": member.token } : {} });
+  },
+  claimQuest: (id: number) => {
+    const member = getMemberAuth();
+    return apiFetch(`/api/quests/${id}/claim`, { method: "POST", headers: member ? { "X-Member-Token": member.token } : {} });
+  },
+
   // Music
   getTracks:    () => apiFetch("/api/music/tracks"),
   getMusicConfig: () => apiFetch("/api/music/config"),

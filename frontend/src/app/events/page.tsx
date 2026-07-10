@@ -1057,6 +1057,193 @@ function CreateEventGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/* ─── Nhiệm vụ — thưởng Danh vọng/Coins, tự chấm qua CoC API ──────────── */
+const QUEST_REWARD_LABEL: Record<string, string> = { reputation: "🏵️ Danh vọng", coins: "🪙 Coins" };
+
+function CreateQuestForm({ onCreated }: { onCreated: () => void }) {
+  const [conditions, setConditions] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", condition_type: "", target_value: "", reward_type: "reputation" as "reputation" | "coins", reward_amount: "" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => { api.getQuestConditions().then(setConditions).catch(() => {}); }, []);
+  useEffect(() => { if (conditions.length > 0 && !form.condition_type) setForm(f => ({ ...f, condition_type: conditions[0].value })); }, [conditions]);
+
+  async function submit() {
+    setErr("");
+    if (!form.title.trim()) { setErr("Nhập tiêu đề"); return; }
+    if (!form.target_value || Number(form.target_value) <= 0) { setErr("Nhập mục tiêu > 0"); return; }
+    if (!form.reward_amount || Number(form.reward_amount) <= 0) { setErr("Nhập phần thưởng > 0"); return; }
+    setBusy(true);
+    try {
+      await api.createQuest({
+        title: form.title.trim(), description: form.description.trim() || undefined,
+        condition_type: form.condition_type, target_value: Number(form.target_value),
+        reward_type: form.reward_type, reward_amount: Number(form.reward_amount),
+      });
+      setForm({ title: "", description: "", condition_type: conditions[0]?.value || "", target_value: "", reward_type: "reputation", reward_amount: "" });
+      setOpen(false);
+      onCreated();
+    } catch (e: any) { setErr(e.message || "Lỗi tạo nhiệm vụ"); }
+    finally { setBusy(false); }
+  }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="btn-gold text-sm flex items-center gap-2">
+      <Plus size={16}/> Tạo nhiệm vụ
+    </button>
+  );
+
+  return (
+    <div className="card space-y-3">
+      <h3 className="font-bold text-white">Tạo nhiệm vụ mới</h3>
+      <input placeholder="Tiêu đề (vd: Đạt 4000 Cúp)" className="input" value={form.title}
+        onChange={e => setForm({ ...form, title: e.target.value })}/>
+      <textarea placeholder="Mô tả (tuỳ chọn)" rows={2} className="input" value={form.description}
+        onChange={e => setForm({ ...form, description: e.target.value })}/>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Điều kiện (đối chiếu CoC API)</label>
+          <select className="input" value={form.condition_type} onChange={e => setForm({ ...form, condition_type: e.target.value })}>
+            {conditions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Mục tiêu (số)</label>
+          <input type="number" min={1} className="input" value={form.target_value}
+            onChange={e => setForm({ ...form, target_value: e.target.value })}/>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Loại thưởng</label>
+          <select className="input" value={form.reward_type} onChange={e => setForm({ ...form, reward_type: e.target.value as any })}>
+            <option value="reputation">🏵️ Danh vọng</option>
+            <option value="coins">🪙 Coins</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Số lượng thưởng</label>
+          <input type="number" min={1} className="input" value={form.reward_amount}
+            onChange={e => setForm({ ...form, reward_amount: e.target.value })}/>
+        </div>
+      </div>
+      {err && <p className="text-xs text-red-400">{err}</p>}
+      <div className="flex gap-2">
+        <button onClick={submit} disabled={busy} className="btn-gold text-sm flex-1">{busy ? "Đang tạo..." : "Tạo nhiệm vụ"}</button>
+        <button onClick={() => setOpen(false)} className="btn-secondary text-sm">Huỷ</button>
+      </div>
+    </div>
+  );
+}
+
+function QuestCard({ quest, isCreator, onChanged }: { quest: any; isCreator: boolean; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const member = getMemberAuth();
+
+  const progress = quest.my_progress ?? null;
+  const pct = progress !== null ? Math.min(100, Math.round((progress / quest.target_value) * 100)) : null;
+
+  async function handleClaim() {
+    setBusy(true); setErr("");
+    try {
+      const res = await api.claimQuest(quest.id);
+      alert(`🎉 Nhận thưởng thành công! +${res.reward_amount} ${res.reward_type === "reputation" ? "Danh vọng" : "Coins"}`);
+      onChanged();
+    } catch (e: any) { setErr(e.message || "Lỗi nhận thưởng"); }
+    finally { setBusy(false); }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Đóng nhiệm vụ "${quest.title}"?`)) return;
+    setBusy(true);
+    try { await api.deleteQuest(quest.id); onChanged(); }
+    catch (e: any) { setErr(e.message || "Lỗi đóng nhiệm vụ"); setBusy(false); }
+  }
+
+  return (
+    <div className="card space-y-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-white">{quest.title}</p>
+          {quest.description && <p className="text-xs text-gray-500 mt-0.5">{quest.description}</p>}
+        </div>
+        <span className="badge-gold text-[10px] shrink-0">+{quest.reward_amount} {QUEST_REWARD_LABEL[quest.reward_type]}</span>
+      </div>
+      <p className="text-xs text-gray-500">{quest.condition_label} — mục tiêu <strong className="text-gray-300">{quest.target_value}</strong></p>
+
+      {member && (
+        quest.claimed ? (
+          <p className="text-xs text-green-400 flex items-center gap-1.5"><CheckCircle2 size={13}/> Bạn đã nhận thưởng nhiệm vụ này</p>
+        ) : (
+          <div className="space-y-1.5">
+            {pct !== null && (
+              <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                <div className={`h-full rounded-full ${quest.my_progress_met ? "bg-green-500" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`}
+                  style={{ width: `${pct}%` }}/>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              {progress !== null && <span className="text-[11px] text-gray-500">Tiến độ: {progress}/{quest.target_value}</span>}
+              <button onClick={handleClaim} disabled={busy || !quest.my_progress_met}
+                className="btn-gold text-xs px-3 py-1.5 ml-auto disabled:opacity-40">
+                {busy ? "Đang kiểm tra..." : quest.my_progress_met ? "Nhận thưởng" : "Chưa đủ điều kiện"}
+              </button>
+            </div>
+          </div>
+        )
+      )}
+      {!member && <p className="text-xs text-gray-600">Đăng nhập thành viên để xem tiến độ và nhận thưởng.</p>}
+      {err && <p className="text-xs text-red-400">{err}</p>}
+      {isCreator && (
+        <button onClick={handleDelete} disabled={busy} className="text-xs text-red-400 hover:underline">Đóng nhiệm vụ</button>
+      )}
+    </div>
+  );
+}
+
+function QuestsSection() {
+  const [quests, setQuests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const isAdmin = !!getAdminToken();
+
+  async function load() {
+    setLoading(true);
+    try { setQuests(await api.getQuests()); } catch {} finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="card !py-3 !px-4">
+        <p className="text-xs text-gray-500">
+          Nhiệm vụ do Đồng thủ lĩnh trở lên tạo, thưởng Danh vọng hoặc Coins. Điều kiện hoàn thành
+          được đối chiếu TRỰC TIẾP với dữ liệu thật từ CoC API ngay lúc bấm nhận — đủ điều kiện mới
+          nhận được thưởng, không có bước xác nhận thủ công.
+        </p>
+      </div>
+
+      <CreateEventGate>
+        <CreateQuestForm onCreated={load}/>
+      </CreateEventGate>
+
+      {loading ? (
+        <div className="grid gap-3">{[1,2].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse bg-gray-800"/>)}</div>
+      ) : quests.length === 0 ? (
+        <div className="card text-center py-10">
+          <p className="text-gray-300 font-medium">Chưa có nhiệm vụ nào</p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {quests.map(q => <QuestCard key={q.id} quest={q} isCreator={isAdmin} onChanged={load}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main Page ───────────────────────────────────────────────────────── */
 /* Lịch sử trao thưởng — sự kiện/CWL đã đóng, xem lại ai từng thắng ────── */
 function CopyWinnersButton({ ev }: { ev: any }) {
@@ -1126,7 +1313,7 @@ function RewardHistorySection() {
 }
 
 export default function EventsPage() {
-  const [evTab, setEvTab] = useState<"active" | "history">("active");
+  const [evTab, setEvTab] = useState<"active" | "quests" | "history">("active");
   const [events, setEvents]       = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<any>(null);
@@ -1191,11 +1378,13 @@ export default function EventsPage() {
       </div>
 
       <SlidingTabs
-        tabs={[{id:"active",label:"Sự kiện"},{id:"history",label:"Lịch sử"}]}
+        tabs={[{id:"active",label:"Sự kiện"},{id:"quests",label:"Nhiệm vụ"},{id:"history",label:"Lịch sử"}]}
         active={evTab} onChange={(id) => setEvTab(id as any)} />
 
       {evTab === "history" ? (
         <RewardHistorySection/>
+      ) : evTab === "quests" ? (
+        <QuestsSection/>
       ) : loading ? (
         <div className="grid gap-4">{[1,2].map(i=><div key={i} className="h-24 rounded-2xl animate-pulse bg-gray-800"/>)}</div>
       ) : visible.length === 0 ? (

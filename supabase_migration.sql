@@ -945,3 +945,46 @@ ON CONFLICT (key) DO NOTHING;
 
 -- Ngưỡng Danh vọng để mở khoá vật phẩm Cửa hàng (0 = không yêu cầu).
 ALTER TABLE shop_items ADD COLUMN IF NOT EXISTS unlock_reputation INTEGER NOT NULL DEFAULT 0;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 26 (Nhiệm vụ — admin/Đồng thủ lĩnh tạo, thưởng Danh vọng
+-- hoặc Coins. Điều kiện hoàn thành LUÔN đối chiếu trực tiếp với dữ liệu
+-- THẬT từ CoC API (/players/{tag}) tại thời điểm nhận thưởng — không có
+-- xác nhận thủ công, tự động chấm và trao ngay nếu đủ điều kiện.)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS quests (
+  id             SERIAL PRIMARY KEY,
+  clan_id        INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  title          TEXT NOT NULL,
+  description    TEXT,
+  condition_type TEXT NOT NULL,   -- trophies_reach | best_trophies_reach | th_level_reach |
+                                   -- war_stars_reach | attack_wins_reach | defense_wins_reach |
+                                   -- donations_reach | capital_contributions_reach
+  target_value   INTEGER NOT NULL,
+  reward_type    TEXT NOT NULL,   -- reputation | coins
+  reward_amount  INTEGER NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'active',  -- active | closed
+  created_by     TEXT,
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  end_time       TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS quest_claims (
+  id          SERIAL PRIMARY KEY,
+  quest_id    INTEGER NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  claimed_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(quest_id, player_tag)
+);
+CREATE INDEX IF NOT EXISTS idx_quests_clan ON quests(clan_id, status);
+CREATE INDEX IF NOT EXISTS idx_quest_claims_quest ON quest_claims(quest_id);
+
+ALTER TABLE quests        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quest_claims  ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON quests;
+CREATE POLICY "service_all" ON quests FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "service_all" ON quest_claims;
+CREATE POLICY "service_all" ON quest_claims FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.quests       TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.quest_claims TO service_role;
