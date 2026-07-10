@@ -22,14 +22,8 @@
   --py-pill-border: #E2C572;
   --player-bg: linear-gradient(180deg, #F5D86A, #D4A018);
   --player-border: #A07010;
-  /* Theme sáng: phủ SÁNG (kem) lên ảnh thay vì phủ tối, vì chữ ở theme này
-     màu nâu đậm — phủ tối như bên dark sẽ làm chữ chìm mất, khó đọc.
-     Viền + bóng chữ SÁNG (không phải tối) — nhưng ở mức vừa phải, không quá
-     đậm để tránh loá. */
-  --art-overlay-wash: rgba(255,251,239,0.03);
-  --art-overlay-edge: #FFF3D4;
-  --art-text-shadow: 0 1px 2px rgba(255,255,255,0.55), 0 1px 4px rgba(255,255,255,0.35);
-  --art-text-stroke: rgba(255,251,239,0.4);
+  /* Ảnh nền trang trí (ArtBanner): dùng chung phủ TỐI như dark theme (không
+     đổi sang phủ sáng nữa) — theo yêu cầu, để ảnh nền nhất quán giữa 2 theme. */
 }
 :root {
   --player-bg: linear-gradient(180deg, #2a2f3a, #161920);
@@ -68,7 +62,6 @@
     -webkit-text-stroke: 0.3px var(--art-text-stroke);
     paint-order: stroke fill;
   }
-  .theme-gold .banner-content .page-subtitle { color: #5C4517; }
 
   /* ── Cards ── */
   .card {
