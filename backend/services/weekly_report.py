@@ -31,10 +31,6 @@ CATEGORY_LABELS = {
 }
 
 
-def _fmt_entry(rank: int, e: dict) -> str:
-    return f"{rank}. **{e['player_name']}** — {e['value']}"
-
-
 async def _war_category(sb, clan_id: int, period_start_iso: str) -> dict:
     res = (sb.table("war_participation_log").select("*")
            .eq("clan_id", clan_id).gte("created_at", period_start_iso).execute())
@@ -54,9 +50,16 @@ async def _war_category(sb, clan_id: int, period_start_iso: str) -> dict:
         e["avg_duration"] = (e["duration"] / e["attacks"]) if e["attacks"] else 9999
 
     def fmt(e):
-        mins = round(e["avg_duration"] / 60, 1) if e["attacks"] else 0
-        return {"player_tag": e["player_tag"], "player_name": e["player_name"],
-                "value": f"{e['stars']}⭐ · {e['three_star']} lần 3⭐ · {e['good_th']} đòn đánh nhà ngang/cao hơn · TB {mins} phút/đòn"}
+        parts = [f"{e['stars']}⭐"]
+        if e["three_star"] > 0:
+            parts.append(f"{e['three_star']} lần 3⭐")
+        if e["good_th"] > 0:
+            parts.append(f"{e['good_th']} đòn ngang/cao hơn")
+        if e["attacks"] > 0:
+            mins = round(e["avg_duration"] / 60, 1)
+            if mins > 0:
+                parts.append(f"TB {mins}p")
+        return {"player_tag": e["player_tag"], "player_name": e["player_name"], "value": " · ".join(parts)}
 
     good = sorted(entries, key=lambda e: (-e["stars"], -e["three_star"], -e["good_th"], e["avg_duration"]))
     bad  = sorted(entries, key=lambda e: (e["stars"], e["three_star"], e["good_th"], -e["avg_duration"]))
@@ -112,7 +115,7 @@ async def _heroic_category(sb, clan_id: int, period_start_iso: str, kind: str) -
             cur = best_by_tag.get(tag)
             if not cur or key > cur["key"]:
                 best_by_tag[tag] = {"key": key, "player_tag": tag, "player_name": r["player_name"],
-                                     "value": f"{stars}⭐ ({destr}% phá huỷ) vs {opp}"}
+                                     "value": f"{stars}⭐ {destr}% phá huỷ"}
         else:
             stars, destr, atk = r.get("best_defense_stars"), r.get("best_defense_destruction"), r.get("best_defense_attacker")
             if stars is None:
@@ -122,7 +125,7 @@ async def _heroic_category(sb, clan_id: int, period_start_iso: str, kind: str) -
             cur = best_by_tag.get(tag)
             if not cur or key > cur["key"]:
                 best_by_tag[tag] = {"key": key, "player_tag": tag, "player_name": r["player_name"],
-                                     "value": f"Chỉ mất {stars}⭐ ({destr}%) trước {atk}"}
+                                     "value": f"Chỉ mất {stars}⭐ {destr}%"}
     entries = list(best_by_tag.values())
     ranked = sorted(entries, key=lambda e: e["key"], reverse=True)
     good = ranked[:5]
@@ -167,16 +170,22 @@ async def _coins_category(sb, clan_id: int) -> dict:
 
 
 def _build_message(report: dict) -> str:
-    lines = ["📊 **BÁO CÁO TUẦN**\n"]
+    """Tin nhắn gửi Telegram/Discord — CHỈ hạng 1 mỗi bên/mỗi tiêu chí cho gọn
+    (đầy đủ Top 5 xem trong app ở Thống kê → Báo cáo tuần)."""
+    lines = ["📊 **BÁO CÁO TUẦN** — điểm nổi bật (xem đầy đủ Top 5 trong app, mục Thống kê)\n"]
     for key, (icon, label) in CATEGORY_LABELS.items():
         cat = report.get(key) or {"good": [], "bad": []}
-        lines.append(f"\n{icon} **{label}**")
-        if cat["good"]:
-            lines.append("✅ Tốt:")
-            lines += [_fmt_entry(i + 1, e) for i, e in enumerate(cat["good"])]
-        if cat["bad"]:
-            lines.append("⚠️ Cần cố gắng:")
-            lines += [_fmt_entry(i + 1, e) for i, e in enumerate(cat["bad"])]
+        good = cat["good"][0] if cat["good"] else None
+        bad = cat["bad"][0] if cat["bad"] else None
+        if not good and not bad:
+            continue
+        line = f"{icon} {label}: "
+        parts = []
+        if good:
+            parts.append(f"✅ {good['player_name']} ({good['value']})")
+        if bad:
+            parts.append(f"⚠️ {bad['player_name']} ({bad['value']})")
+        lines.append(line + " · ".join(parts))
     return "\n".join(lines)
 
 

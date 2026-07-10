@@ -46,6 +46,37 @@ const WEEKLY_CATEGORY_META: Record<string, { icon: string; label: string }> = {
 };
 const WEEKLY_CATEGORY_ORDER = ["war", "donate", "capital", "best_attack", "best_defense", "coins"];
 
+function WeeklyRankRow({ e, i, tone }: { e: any; i: number; tone: "good" | "bad" }) {
+  const isGood = tone === "good";
+  return (
+    <div className={isGood
+      ? "flex items-start gap-2 bg-green-500/5 border border-green-500/10 rounded-lg px-2.5 py-1.5"
+      : "flex items-start gap-2 bg-red-500/5 border border-red-500/10 rounded-lg px-2.5 py-1.5"}>
+      <span className="text-xs w-4 text-gray-500 shrink-0 pt-0.5">{i + 1}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white truncate">{e.player_name}</p>
+        {e.value && <p className={isGood ? "text-[10px] text-green-400 truncate" : "text-[10px] text-red-400 truncate"}>{e.value}</p>}
+      </div>
+    </div>
+  );
+}
+
+function WeeklyRankList({ entries, tone }: { entries: any[]; tone: "good" | "bad" }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? entries : entries.slice(0, 3);
+  return (
+    <div className="space-y-1">
+      {entries.length === 0 && <p className="text-xs text-gray-600">Chưa có dữ liệu</p>}
+      {shown.map((e, i) => <WeeklyRankRow key={i} e={e} i={i} tone={tone} />)}
+      {entries.length > 3 && (
+        <button onClick={() => setExpanded(x => !x)} className="text-[10px] text-gray-500 hover:text-yellow-400">
+          {expanded ? "Thu gọn ▲" : `Xem thêm ${entries.length - 3} ▼`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function WeeklyCategoryBlock({ catKey, data }: { catKey: string; data: { good: any[]; bad: any[] } }) {
   const meta = WEEKLY_CATEGORY_META[catKey];
   if (!meta) return null;
@@ -57,29 +88,11 @@ function WeeklyCategoryBlock({ catKey, data }: { catKey: string; data: { good: a
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <p className="text-xs font-semibold text-green-400 flex items-center gap-1 mb-1.5"><TrendingUp size={12}/> Tốt nhất</p>
-          <div className="space-y-1">
-            {(data.good || []).length === 0 && <p className="text-xs text-gray-600">Chưa có dữ liệu</p>}
-            {(data.good || []).map((e, i) => (
-              <div key={i} className="flex items-center gap-2 bg-green-500/5 border border-green-500/10 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs w-4 text-gray-500 shrink-0">{i + 1}</span>
-                <span className="text-sm text-white flex-1 truncate">{e.player_name}</span>
-                <span className="text-[11px] text-green-400 text-right shrink-0">{e.value}</span>
-              </div>
-            ))}
-          </div>
+          <WeeklyRankList entries={data.good || []} tone="good"/>
         </div>
         <div>
           <p className="text-xs font-semibold text-red-400 flex items-center gap-1 mb-1.5"><TrendingDown size={12}/> Cần cố gắng</p>
-          <div className="space-y-1">
-            {(data.bad || []).length === 0 && <p className="text-xs text-gray-600">Chưa có dữ liệu</p>}
-            {(data.bad || []).map((e, i) => (
-              <div key={i} className="flex items-center gap-2 bg-red-500/5 border border-red-500/10 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs w-4 text-gray-500 shrink-0">{i + 1}</span>
-                <span className="text-sm text-white flex-1 truncate">{e.player_name}</span>
-                <span className="text-[11px] text-red-400 text-right shrink-0">{e.value}</span>
-              </div>
-            ))}
-          </div>
+          <WeeklyRankList entries={data.bad || []} tone="bad"/>
         </div>
       </div>
     </div>
