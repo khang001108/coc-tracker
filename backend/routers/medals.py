@@ -232,5 +232,22 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
                 entry["score"] += POINTS[i]
                 entry["highlights"] += 1
 
-    ranked = sorted(score_by_tag.values(), key=lambda e: -e["score"])
+    ranked_candidates = list(score_by_tag.values())
+
+    # Danh vọng càng cao càng được ưu tiên — cộng thêm điểm Danh vọng (quy đổi
+    # 1/10, làm tròn) vào điểm gợi ý. Người có Danh vọng cao nhưng chưa lọt
+    # Top 5 tuần nào cũng được xét (không chỉ dựa vào Báo cáo tuần), để Danh
+    # vọng thực sự có vai trò ưu tiên set thưởng mùa sau.
+    from services.reputation import get_all_totals
+    rep_totals = get_all_totals(sb, clan_id)
+    by_tag = {e["player_tag"]: e for e in ranked_candidates}
+    for tag_, info in rep_totals.items():
+        if tag_ in limited_tags or info["total"] <= 0:
+            continue
+        if tag_ not in by_tag:
+            by_tag[tag_] = {"player_tag": tag_, "player_name": info["player_name"], "score": 0, "highlights": 0}
+        by_tag[tag_]["reputation"] = info["total"]
+        by_tag[tag_]["score"] += round(info["total"] / 10)
+
+    ranked = sorted(by_tag.values(), key=lambda e: -e["score"])
     return {"weeks_considered": len(reports_res.data or []), "candidates": ranked[:10]}

@@ -4,7 +4,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass, formatDate } from "@/lib/utils";
-import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins, ShieldCheck } from "lucide-react";
+import { Users, Search, UserPlus, UserMinus, Trophy, Crown, Coins, ShieldCheck, ChevronRight } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
@@ -244,6 +244,7 @@ export default function MembersPage() {
                     <p className="text-sm font-bold text-yellow-400">🏆 {formatNumber(m.trophies)}</p>
                     <p className="text-xs text-gray-500">Donate {m.donations}</p>
                   </div>
+                  <ChevronRight size={16} className="text-gray-600 shrink-0" />
                 </button>
               ))}
             </div>

@@ -43,6 +43,7 @@ async def start_scheduler():
     scheduler.add_job(poll_members,   IntervalTrigger(minutes=members_minutes), id="poll_members",   replace_existing=True)
     scheduler.add_job(poll_donations, IntervalTrigger(minutes=donate_minutes),  id="poll_donations", replace_existing=True)
     scheduler.add_job(poll_asset_cleanup, IntervalTrigger(hours=6), id="poll_asset_cleanup", replace_existing=True)
+    scheduler.add_job(poll_leave_reputation_penalty, IntervalTrigger(hours=6), id="poll_leave_reputation_penalty", replace_existing=True)
     scheduler.add_job(poll_stats_cleanup, IntervalTrigger(hours=12), id="poll_stats_cleanup", replace_existing=True)
     scheduler.add_job(poll_reward_history_cleanup, IntervalTrigger(hours=12), id="poll_reward_history_cleanup", replace_existing=True)
     scheduler.add_job(poll_global_chat_cleanup, IntervalTrigger(hours=1), id="poll_global_chat_cleanup", replace_existing=True)
@@ -727,6 +728,32 @@ async def poll_asset_cleanup():
             log.info(f"Cleared assets for {tag} (left clan > {days} days)")
     except Exception as e:
         log.error(f"poll_asset_cleanup error: {e}")
+
+
+async def poll_leave_reputation_penalty():
+    """Phạt Danh vọng theo số ngày đã rời clan — mốc 1/2/3/7 ngày, mỗi mốc chỉ
+    trừ đúng 1 lần cho 1 lần rời (ref_key gắn với left_at cụ thể của lần đó,
+    nên nếu rời rồi vào lại rồi rời tiếp thì tính lại từ đầu)."""
+    try:
+        sb = get_supabase()
+        from services.reputation import add_reputation
+        THRESHOLDS = [1, 2, 3, 7]
+        left = sb.table("member_log").select("player_tag,name,left_at,clan_id").eq("status", "left").execute()
+        now = datetime.utcnow()
+        for r in (left.data or []):
+            if not r.get("left_at"):
+                continue
+            try:
+                left_at = datetime.fromisoformat(r["left_at"].replace("Z", "+00:00")).replace(tzinfo=None)
+            except Exception:
+                continue
+            days = (now - left_at).days
+            for th in THRESHOLDS:
+                if days >= th:
+                    add_reputation(sb, r.get("clan_id", 1), r["player_tag"], r["name"], f"leave_clan_{th}d",
+                                    ref_key=f"{r['left_at']}-{th}d")
+    except Exception as e:
+        log.error(f"poll_leave_reputation_penalty error: {e}")
 
 async def poll_stats_cleanup():
     """Xoá dữ liệu thống kê tích luỹ (lượt tham chiến war, lịch sử donate) cũ

@@ -237,8 +237,30 @@ function UploadFromDeviceButton({ onUploaded }: { onUploaded: (url: string) => v
   );
 }
 
-function SettingsPageInner({ embedded }: { embedded?: boolean }) {
-  const [subTab, setSubTab] = useState<"clan"|"discord"|"telegram"|"notify"|"chat_log"|"stats_data"|"reward_log"|"chat_bg"|"overview_cards"|"ember"|"banners"|"cleanup"|"manual_notify">("clan");
+const SECTION_TABS: Record<string, { id: string; label: string }[]> = {
+  general: [
+    { id: "clan", label: "Quản lý Clan" },
+    { id: "discord", label: "Discord" },
+    { id: "telegram", label: "Telegram" },
+    { id: "notify_data", label: "Thông báo & Dữ liệu" },
+    { id: "manual_notify", label: "Thông báo thủ công" },
+  ],
+  events: [
+    { id: "reward_log", label: "Lịch sử trao thưởng" },
+  ],
+  members: [
+    { id: "cleanup", label: "Dọn dẹp tài sản" },
+  ],
+  music: [
+    { id: "chat_bg", label: "Ảnh nền Chat" },
+    { id: "overview_cards", label: "Thẻ Tổng quan" },
+    { id: "ember", label: "Màu tia lửa" },
+    { id: "banners", label: "Ảnh nền từng mục" },
+  ],
+};
+
+function SettingsPageInner({ embedded, section = "general" }: { embedded?: boolean; section?: "general" | "events" | "members" | "music" }) {
+  const [subTab, setSubTab] = useState<string>(SECTION_TABS[section][0].id);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -409,7 +431,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
 
       <div className={embedded ? "contents" : ""}>
         <div className="overflow-x-auto -mx-1 px-1 pb-2 mb-3">
-          <SlidingTabs tabs={[{ id:"clan", label:"Quản lý Clan" },{ id:"discord", label:"Discord" },{ id:"telegram", label:"Telegram" },{ id:"notify", label:"Loại thông báo" },{ id:"chat_log", label:"Chat công khai" },{ id:"stats_data", label:"Thống kê tích luỹ" },{ id:"reward_log", label:"Lịch sử trao thưởng" },{ id:"chat_bg", label:"Ảnh nền Chat" },{ id:"overview_cards", label:"Thẻ Tổng quan" },{ id:"ember", label:"Màu tia lửa" },{ id:"banners", label:"Ảnh nền từng mục" },{ id:"cleanup", label:"Dọn dẹp tài sản" },{ id:"manual_notify", label:"Thông báo thủ công" }]} active={subTab} onChange={(id) => setSubTab(id as any)} className="w-max"/>
+          <SlidingTabs tabs={SECTION_TABS[section]} active={subTab} onChange={(id) => setSubTab(id)} className="w-max"/>
         </div>
 
       {subTab === "clan" && (
@@ -570,7 +592,8 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
       )}
 
-      {subTab === "notify" && (
+      {subTab === "notify_data" && (
+      <>
       <div className="card space-y-4">
         <h2 className="font-bold text-white">🔔 Loại thông báo</h2>
         <p className="text-xs text-gray-500">Bật/tắt từng loại thông báo gửi qua Discord & Telegram</p>
@@ -660,9 +683,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </button>
         {testNotifyMsg && <p className="text-[11px] text-gray-500">{testNotifyMsg}</p>}
       </div>
-      )}
 
-      {subTab === "chat_log" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">💬 Lịch sử Chat công khai</h2>
         <p className="text-xs text-gray-500">Tin nhắn ở Chat công khai cũ hơn số ngày dưới đây sẽ tự động bị xoá. Chat Clan không bị ảnh hưởng, luôn được giữ lại.</p>
@@ -676,9 +697,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
         </div>
         <p className="text-[11px] text-gray-600">Đặt 0 để không tự xoá.</p>
       </div>
-      )}
 
-      {subTab === "stats_data" && (
       <div className="card space-y-3">
         <h2 className="font-bold text-white">📊 Dữ liệu thống kê tích luỹ</h2>
         <p className="text-xs text-gray-500">
@@ -699,6 +718,7 @@ function SettingsPageInner({ embedded }: { embedded?: boolean }) {
           catch (e: any) { showToast(e.message, "error"); }
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
       </div>
+      </>
       )}
 
       {subTab === "reward_log" && (
@@ -1873,10 +1893,10 @@ export default function SettingsPage() {
                 active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
             </div>
 
-            {tab === "general" && <SettingsPageInner embedded />}
-            {tab === "events" && <EventReportsSettings />}
-            {tab === "music" && <MusicSettings />}
-            {tab === "members" && (<><MemberAccountsSettings /><ReputationFormulaSettings /><ReputationAdjustSettings /></>)}
+            {tab === "general" && <SettingsPageInner embedded section="general" />}
+            {tab === "events" && (<><SettingsPageInner embedded section="events" /><EventReportsSettings /><ReputationFormulaSettings /><ReputationAdjustSettings /></>)}
+            {tab === "music" && (<><SettingsPageInner embedded section="music" /><MusicSettings /></>)}
+            {tab === "members" && (<><SettingsPageInner embedded section="members" /><MemberAccountsSettings /></>)}
             {tab === "shop" && <ShopPricingSettings />}
           </div>
         </AdminGate>

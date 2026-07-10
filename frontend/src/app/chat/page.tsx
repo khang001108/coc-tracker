@@ -6,15 +6,15 @@ import { formatDate } from "@/lib/utils";
 import { MessageCircle, Send, Image as ImageIcon, Smile, Lock, Users, Globe } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
-import { CastleIcon, CannonIcon } from "@/lib/gameIcons";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { thColor } from "@/lib/utils";
 
 const EMOJIS = ["😀","😂","😍","😎","🤔","👍","👎","🔥","❤️","🎉","😢","😡","🏆","⚔️","🛡️","💪","🙏","👏","😴","🤝"];
 const POLL_MS = 4000;
 
-function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }: {
+function MessageBubble({ msg, isMine, effectKey, repRank, thLevel }: {
   msg: any; isMine: boolean; effectKey?: string | null;
-  castleKey?: string | null; cannonKey?: string | null; thLevel?: number;
+  repRank?: number | null; thLevel?: number;
 }) {
   if (msg.is_system) {
     return (
@@ -28,8 +28,7 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
   // Ưu tiên dữ liệu gắn sẵn trên tin nhắn (đúng cho cả thành viên clan khác
   // trong Chat Toàn Cầu), fallback về roster của clan đang xem nếu chưa có.
   const th     = msg.sender_th ?? thLevel ?? 0;
-  const castle = msg.sender_castle ?? castleKey;
-  const cannon = msg.sender_cannon ?? cannonKey;
+  const rank   = repRank;
   const nameEffectKey = msg.sender_effect ?? effectKey;
   const numberEffectKey = msg.sender_number_effect as string | undefined;
   const clanName  = msg.sender_clan_name as string | undefined;
@@ -46,13 +45,8 @@ function MessageBubble({ msg, isMine, effectKey, castleKey, cannonKey, thLevel }
                 TH<NumberEffect effectKey={numberEffectKey}>{th}</NumberEffect>
               </span>
             ) : null}
-            {/* Castle + cannon icons */}
-            {(castle || cannon) && (
-              <span className="flex items-center gap-0.5 opacity-80 shrink-0">
-                {castle && <CastleIcon svgKey={castle} th={th||0} size={14} animate={false} showTh={false}/>}
-                {cannon && <CannonIcon svgKey={cannon} size={12}/>}
-              </span>
-            )}
+            {/* Huy hiệu Danh vọng (top 10) — thay cho icon lâu đài/pháo trước đây */}
+            {rank && <ReputationBadge rank={rank}/>}
             <span className="text-[11px] text-gray-500"><NameEffect effectKey={nameEffectKey}>{msg.sender_name}</NameEffect></span>
             {/* Huy hiệu hội — chỉ hiện ở Chat Toàn Cầu (liên clan) */}
             {clanName && (
@@ -86,8 +80,7 @@ export default function ChatPage() {
   const [guestNameInput, setGuestNameInput] = useState("");
   const [member, setMember] = useState<{ token: string; player_tag: string; player_name: string } | null>(null);
   const [effectMap, setEffectMap] = useState<Record<string, string | null>>({});
-  const [castleMap, setCastleMap] = useState<Record<string, string>>({});
-  const [cannonMap, setCannonMap] = useState<Record<string, string>>({});
+  const [repRankMap, setRepRankMap] = useState<Record<string, number>>({});
   const [thMap, setThMap] = useState<Record<string, number>>({});
   const [chatBg, setChatBg] = useState<string>("");
   const lastIdRef = useRef(0);
@@ -101,19 +94,16 @@ export default function ChatPage() {
     api.getPublicSettings().then((s: any) => setChatBg(s.chat_background_image || "")).catch(() => {});
     api.getRoster().then((roster: any[]) => {
       const effMap: Record<string, string | null> = {};
-      const castMap: Record<string, string> = {};
-      const canoMap: Record<string, string> = {};
-      roster.forEach(r => {
-        effMap[r.tag]  = r.equipped_effect;
-        castMap[r.tag] = r.equipped_castle || "castle_classic";
-        canoMap[r.tag] = r.equipped_cannon || "cannon_basic";
-      });
+      roster.forEach(r => { effMap[r.tag] = r.equipped_effect; });
       const thM: Record<string, number> = {};
       roster.forEach((r: any) => { thM[r.tag] = r.townHallLevel || 0; });
       setEffectMap(effMap);
-      setCastleMap(castMap);
-      setCannonMap(canoMap);
       setThMap(thM);
+    }).catch(() => {});
+    api.getReputationLeaderboard(10).then((rows: any[]) => {
+      const rankMap: Record<string, number> = {};
+      rows.forEach((r, i) => { rankMap[r.player_tag] = i + 1; });
+      setRepRankMap(rankMap);
     }).catch(() => {});
   }, []);
 
@@ -236,8 +226,7 @@ export default function ChatPage() {
               <MessageBubble key={m.id} msg={m}
                 isMine={!!member && m.sender_tag === member.player_tag}
                 effectKey={m.sender_tag ? effectMap[m.sender_tag] : null}
-                castleKey={m.sender_tag ? castleMap[m.sender_tag] : null}
-                cannonKey={m.sender_tag ? cannonMap[m.sender_tag] : null}
+                repRank={m.sender_tag ? repRankMap[m.sender_tag] : null}
                 thLevel={m.sender_tag ? thMap[m.sender_tag] : 0} />
             ))
           )}

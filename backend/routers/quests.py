@@ -6,14 +6,12 @@ bước admin xác nhận thủ công như huy chương CWL, hệ thống tự c
 ngay nếu đủ điều kiện, tránh gian lận."""
 from fastapi import APIRouter, HTTPException, Request, Header
 from supabase_client import get_supabase
-from clan_context import get_clan_id, get_tag_by_clan_id
+from clan_context import get_clan_id
 from auth import verify_admin_token
 from member_auth import verify_member_token
-from services.coc_api import get_clan_members, get_player
+from services.coc_api import get_player
 
 router = APIRouter()
-
-LEADER_ROLES = {"leader", "coLeader"}
 
 # condition_type -> (nhãn hiển thị, field lấy từ /players/{tag}, mô tả)
 CONDITIONS = {
@@ -28,26 +26,13 @@ CONDITIONS = {
 }
 
 
-async def _get_member_role(clan_id: int, member_tag: str) -> str | None:
-    tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
-    me = next((m for m in members if m["tag"] == member_tag), None)
-    return me.get("role") if me else None
-
-
-async def _require_creator(clan_id: int, x_admin_token: str | None, x_member_token: str | None) -> str:
-    """Admin hoặc Đồng thủ lĩnh trở lên mới được tạo/xoá nhiệm vụ (giống quyền tạo sự kiện)."""
-    if verify_admin_token(x_admin_token):
-        return "Admin"
-    member_tag = verify_member_token(x_member_token)
-    if not member_tag:
-        raise HTTPException(401, "Cần đăng nhập Admin hoặc Đồng thủ lĩnh trở lên")
-    role = await _get_member_role(clan_id, member_tag)
-    if role not in LEADER_ROLES:
-        raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên hoặc Admin mới được tạo nhiệm vụ")
-    sb = get_supabase()
-    acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
-    return acc.data[0]["player_name"] if acc.data else "Đồng thủ lĩnh"
+async def _require_admin_creator(x_admin_token: str | None) -> str:
+    """CHỈ Admin (mật khẩu web) mới được tạo/đóng nhiệm vụ — khác với sự
+    kiện (cho phép cả Đồng thủ lĩnh), vì nhiệm vụ gắn liền thưởng Coins/Danh
+    vọng tự động nên cần kiểm soát chặt hơn."""
+    if not verify_admin_token(x_admin_token):
+        raise HTTPException(401, "Chỉ Admin mới được tạo/đóng nhiệm vụ")
+    return "Admin"
 
 
 @router.get("/conditions")
@@ -87,14 +72,16 @@ async def list_quests(request: Request, x_member_token: str | None = Header(defa
                 item["my_progress"] = current
                 item["my_progress_met"] = current >= q["target_value"]
         out.append(item)
+
+    # Chưa hoàn thành/chưa nhận lên trên, đã nhận xong xuống dưới
+    out.sort(key=lambda q: q.get("claimed", False))
     return out
 
 
 @router.post("/")
-async def create_quest(request: Request, x_admin_token: str | None = Header(default=None),
-                        x_member_token: str | None = Header(default=None)):
+async def create_quest(request: Request, x_admin_token: str | None = Header(default=None)):
     clan_id = get_clan_id(request)
-    actor = await _require_creator(clan_id, x_admin_token, x_member_token)
+    actor = await _require_admin_creator(x_admin_token)
     body = await request.json()
     title = (body.get("title") or "").strip()
     condition_type = body.get("condition_type")
@@ -128,10 +115,9 @@ async def create_quest(request: Request, x_admin_token: str | None = Header(defa
 
 
 @router.delete("/{quest_id}")
-async def delete_quest(quest_id: int, request: Request, x_admin_token: str | None = Header(default=None),
-                        x_member_token: str | None = Header(default=None)):
+async def delete_quest(quest_id: int, request: Request, x_admin_token: str | None = Header(default=None)):
     clan_id = get_clan_id(request)
-    await _require_creator(clan_id, x_admin_token, x_member_token)
+    await _require_admin_creator(x_admin_token)
     sb = get_supabase()
     sb.table("quests").update({"status": "closed"}).eq("id", quest_id).eq("clan_id", clan_id).execute()
     return {"ok": True}

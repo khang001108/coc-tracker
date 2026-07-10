@@ -249,7 +249,8 @@ export function MedalRewardBox() {
         </p>
         <p className="text-[10px] text-gray-600 mb-2">
           Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
-          thủ anh dũng, Coins) trong 8 tuần gần nhất — đã loại người đang bị giới hạn.
+          thủ anh dũng, Coins) trong 8 tuần gần nhất, CỘNG THÊM Danh vọng hiện có (Danh vọng càng
+          cao càng được ưu tiên) — đã loại người đang bị giới hạn.
         </p>
         {suggestions.length === 0 ? (
           <p className="text-sm text-gray-600 text-center py-3">
@@ -266,7 +267,7 @@ export function MedalRewardBox() {
                   <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
                     style={{ width: `${(s.score / maxScore) * 100}%` }}/>
                 </div>
-                <span className="text-[10px] text-yellow-400 w-16 text-right shrink-0">{s.highlights} lần nổi bật</span>
+                <span className="text-[10px] text-yellow-400 w-24 text-right shrink-0">{s.highlights} nổi bật{s.reputation ? ` · 🏵️${s.reputation}` : ""}</span>
               </div>
             ))}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
 import { formatNumber, thColor, roleLabel } from "@/lib/utils";
 import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ShieldOff, HeartCrack, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp } from "lucide-react";
@@ -9,6 +10,7 @@ import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { MedalRewardBox } from "@/components/ui/MedalRewardBox";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -88,7 +90,7 @@ function WeeklyCategoryBlock({ catKey, data }: { catKey: string; data: { good: a
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-xl bg-green-500/[0.03] p-2.5">
-          <p className="text-xs font-semibold text-green-400 flex items-center gap-1 mb-1.5"><TrendingUp size={12}/> Tốt nhất</p>
+          <p className="text-xs font-semibold text-green-400 flex items-center gap-1 mb-1.5"><TrendingUp size={12}/> Nổi bật</p>
           <WeeklyRankList entries={data.good || []} tone="good"/>
         </div>
         <div className="rounded-xl bg-red-500/[0.03] p-2.5">
@@ -152,7 +154,6 @@ function ReputationLeaderboardTab() {
 
   if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
 
-  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
   const tierColor: Record<string, string> = { "Kim Cương": "text-cyan-300", "Vàng": "text-yellow-400", "Bạc": "text-gray-300", "Đồng": "text-orange-400" };
 
   return (
@@ -161,14 +162,15 @@ function ReputationLeaderboardTab() {
         <p className="text-xs text-gray-500">
           Danh vọng là thước đo uy tín lâu dài, tính theo CHẤT LƯỢNG đóng góp (tham gia/thắng
           War, 3 sao, CWL, Donate, Raid, Clan Games...). Danh vọng càng cao, hệ số Coins thưởng war-star càng lớn.
+          Top 10 Danh vọng có huy hiệu riêng: 💎 hạng 1-2, 🥇 hạng 3-5, 🥈 hạng 6-10.
         </p>
       </div>
       <div className="card space-y-1.5">
         <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏵️ Xếp hạng Danh vọng</h3>
         {rows.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Chưa có dữ liệu Danh vọng.</p>}
         {rows.map((r, i) => (
-          <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
-            <span className="text-sm w-6 text-center shrink-0">{medal(i) || i + 1}</span>
+          <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+            {i < 10 ? <ReputationBadge rank={i + 1}/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
             <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
             <span className={`text-[10px] shrink-0 ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
             <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}đ</span>
@@ -266,8 +268,13 @@ function WeeklyReportTab() {
 }
 
 export default function StatsPage() {
-  const [tab, setTab] = useState<"overview" | "weekly">("overview");
-  const [overviewSubTab, setOverviewSubTab] = useState<"general" | "cumulative" | "medals" | "trophies" | "reputation">("general");
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as any) || "overview";
+  const initialSub = (searchParams.get("sub") as any) || "general";
+  const [tab, setTab] = useState<"overview" | "weekly">(initialTab === "weekly" ? "weekly" : "overview");
+  const [overviewSubTab, setOverviewSubTab] = useState<"general" | "cumulative" | "medals" | "trophies" | "reputation">(
+    ["general","cumulative","medals","trophies","reputation"].includes(initialSub) ? initialSub : "general"
+  );
   const [members, setMembers] = useState<any[]>([]);
   const bannerSrc = usePageBanner("stats", "/art/ruins-aftermath.jpg");
   const [war, setWar] = useState<any>(null);

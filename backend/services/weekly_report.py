@@ -105,7 +105,8 @@ async def _capital_category(sb, clan_id: int) -> dict:
     bad  = sorted(members, key=lambda m: (m.get("capitalResourcesLooted", 0) or 0))
 
     # Danh vọng: tham gia Raid Weekend (+3) — mỗi raid weekend chỉ tính 1 lần
-    # nhờ ref_key = endTime của mùa raid đó.
+    # nhờ ref_key = endTime của mùa raid đó. Có tên trong danh sách raid (tức
+    # đang là thành viên clan lúc đó) nhưng KHÔNG tấn công lần nào → bị phạt.
     raid_ref = seasons[0].get("endTime") or seasons[0].get("startTime")
     if raid_ref:
         try:
@@ -113,6 +114,8 @@ async def _capital_category(sb, clan_id: int) -> dict:
             for m in members:
                 if (m.get("attacks", 0) or 0) > 0:
                     add_reputation(sb, clan_id, m["tag"], m["name"], "raid_weekend", ref_key=raid_ref)
+                else:
+                    add_reputation(sb, clan_id, m["tag"], m["name"], "raid_registered_no_attack", ref_key=raid_ref)
         except Exception as e:
             log.error(f"raid reputation error (clan_id={clan_id}): {e}")
 

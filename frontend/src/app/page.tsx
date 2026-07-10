@@ -1,7 +1,7 @@
 "use client";
 import { CocLoader } from "@/components/ui/CocLoader";
 import { ClanSwitcher } from "@/components/ui/ClanSwitcher";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { OrnateFrame } from "@/components/ui/OrnateFrame";
@@ -317,49 +317,92 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* Top members */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-white flex items-center gap-2">
-            <Crown size={18} className="text-yellow-400" />
-            Thành viên
-          </h2>
-          <Link href="/members" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
-        </div>
-
-        {members.length === 0 ? (
-          <EmptyState message="Không có dữ liệu thành viên" />
-        ) : (
-          <div className="divide-y divide-gray-800">
-            {members.slice(0, 10).map((m: any, i: number) => (
-              <div key={m.tag} className="flex items-center gap-3 py-3">
-                <span className="text-gray-600 text-sm w-6 text-right shrink-0">{i + 1}</span>
-                <div className="th-badge" style={{ background: `linear-gradient(135deg, ${thColor(m.townHallLevel)}33, #1a1a1a)`, borderColor: thColor(m.townHallLevel) + "44" }}>
-                  <span style={{ color: thColor(m.townHallLevel) }}>
-                    <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.townHallLevel}</NumberEffect>
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
-                  </p>
-                  <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-yellow-400">🏆 {formatNumber(m.trophies)}</p>
-                  <p className="text-xs text-gray-500">Donate: {m.donations}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Trạng thái Báo cáo tuần — vuốt để xem từng tiêu chí nổi bật */}
+      <WeeklyReportCarousel />
 
       {/* Top Cúp + Danh vọng (rút gọn — xem đầy đủ ở Thống kê) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TopTrophiesBox members={members} />
         <TopReputationBox />
       </div>
+    </div>
+  );
+}
+
+const WEEKLY_CAT_META: Record<string, { icon: string; label: string }> = {
+  war:          { icon: "⚔️", label: "War/CWL giỏi nhất" },
+  donate:       { icon: "💎", label: "Donate nhiều nhất" },
+  capital:      { icon: "🏰", label: "Kiếm Capital nhiều nhất" },
+  best_attack:  { icon: "💥", label: "Tấn công anh dũng nhất" },
+  best_defense: { icon: "🛡️", label: "Phòng thủ anh dũng nhất" },
+  coins:        { icon: "🪙", label: "Kiếm Coins nhiều nhất" },
+};
+const WEEKLY_CAT_ORDER = ["war", "donate", "capital", "best_attack", "best_defense", "coins"];
+
+function WeeklyReportCarousel() {
+  const [report, setReport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    api.getWeeklyLatest().then(setReport).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setActive(idx);
+  }
+
+  function goTo(i: number) {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  }
+
+  if (loading) return <div className="card h-32 animate-pulse bg-gray-800" />;
+  if (!report) return null;
+
+  const pages = WEEKLY_CAT_ORDER.map(k => ({ key: k, ...WEEKLY_CAT_META[k], data: report.report?.[k] }))
+    .filter(p => p.data?.good?.length > 0);
+  if (pages.length === 0) return null;
+
+  return (
+    <div className="card !p-0 overflow-hidden">
+      <div className="flex items-center justify-between px-4 pt-4">
+        <h2 className="font-bold text-white flex items-center gap-2">📊 Báo cáo tuần — Nổi bật</h2>
+        <Link href="/stats?tab=weekly" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
+      </div>
+      <div ref={scrollRef} onScroll={handleScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide mt-3"
+        style={{ scrollbarWidth: "none" }}>
+        {pages.map(p => (
+          <div key={p.key} className="w-full shrink-0 snap-center px-4 pb-4">
+            <p className="text-xs font-semibold text-gray-400 flex items-center gap-1.5 mb-2">
+              <span>{p.icon}</span> {p.label}
+            </p>
+            <div className="space-y-1.5">
+              {p.data.good.slice(0, 3).map((e: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 bg-green-500/5 border border-green-500/10 rounded-lg px-2.5 py-1.5">
+                  <span className="text-xs w-4 text-gray-500 shrink-0">{i + 1}</span>
+                  <span className="text-sm text-white flex-1 truncate">{e.player_name}</span>
+                  {e.value && <span className="text-[10px] text-green-400 shrink-0 truncate max-w-[45%]">{e.value}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {pages.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5 pb-4">
+          {pages.map((p, i) => (
+            <button key={p.key} onClick={() => goTo(i)}
+              className={`rounded-full transition-all ${active === i ? "w-4 h-1.5 bg-yellow-400" : "w-1.5 h-1.5 bg-gray-700"}`} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -373,7 +416,7 @@ function TopTrophiesBox({ members }: { members: any[] }) {
       <ArtBanner src={bannerSrc} opacity={0.75} objectPosition="center 30%" />
       <div className="relative flex items-center justify-between mb-3 banner-content">
         <h2 className="font-bold text-white flex items-center gap-2"><Trophy size={16} className="text-yellow-400"/> Top Cúp</h2>
-        <Link href="/stats" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
+        <Link href="/stats?tab=overview&sub=trophies" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
       </div>
       {ranked.length === 0 ? <EmptyState message="Không có dữ liệu"/> : (
         <div className="relative space-y-1.5">
@@ -403,7 +446,7 @@ function TopReputationBox() {
       <ArtBanner src={bannerSrc} opacity={0.75} objectPosition="center 30%" />
       <div className="relative flex items-center justify-between mb-3 banner-content">
         <h2 className="font-bold text-white flex items-center gap-2">🏵️ Danh vọng</h2>
-        <Link href="/stats" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
+        <Link href="/stats?tab=overview&sub=reputation" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
       </div>
       {loading ? (
         <div className="relative h-24 bg-gray-800 rounded-xl animate-pulse"/>

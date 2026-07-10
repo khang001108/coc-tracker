@@ -37,6 +37,18 @@ POINTS = {
     "top_monthly_donor": 30,
     "war_skip":         -15,
     "cwl_skip":         -25,
+    # Thưởng thêm hàng tháng cho Top 10 Danh vọng — chia theo bậc huy hiệu
+    # (💎 hạng 1-2 / 🥇 hạng 3-5 / 🥈 hạng 6-10), admin tự điều chỉnh được.
+    "top10_diamond":     15,
+    "top10_gold":        10,
+    "top10_silver":       5,
+    # Phạt: đăng ký Raid Weekend (có trong danh sách) nhưng không tấn công lần nào
+    "raid_registered_no_attack": -5,
+    # Phạt rời clan theo số ngày đã rời (áp dụng 1 lần khi mốc đó đạt tới)
+    "leave_clan_1d":    -5,
+    "leave_clan_2d":   -10,
+    "leave_clan_3d":   -15,
+    "leave_clan_7d":   -30,
 }
 DEFAULT_POINTS = dict(POINTS)  # giữ nguyên bản gốc để hiện "khôi phục mặc định" ở Cài đặt
 
@@ -73,6 +85,14 @@ REASON_LABELS = {
     "top_monthly_donor": "Top đóng góp tháng",
     "war_skip":         "Bỏ lượt War",
     "cwl_skip":         "Không đánh CWL",
+    "top10_diamond":    "Thưởng Top 1-2 Danh vọng (💎)",
+    "top10_gold":       "Thưởng Top 3-5 Danh vọng (🥇)",
+    "top10_silver":     "Thưởng Top 6-10 Danh vọng (🥈)",
+    "raid_registered_no_attack": "Đăng ký Raid nhưng không đánh",
+    "leave_clan_1d":    "Rời clan 1 ngày",
+    "leave_clan_2d":    "Rời clan 2 ngày",
+    "leave_clan_3d":    "Rời clan 3 ngày",
+    "leave_clan_7d":    "Rời clan 7 ngày",
     "manual":           "Điều chỉnh thủ công",
 }
 
@@ -176,3 +196,15 @@ async def run_monthly_reputation(clan_id: int):
                 continue  # lỗi 1 người (vd server CoC lag) không chặn cả clan
     except Exception as e:
         log.error(f"clan_games reputation error (clan_id={clan_id}): {e}")
+
+    # ── Thưởng Top 10 Danh vọng (chia theo bậc huy hiệu 💎/🥇/🥈) ──
+    try:
+        totals = get_all_totals(sb, clan_id)
+        ranked = sorted(totals.items(), key=lambda kv: -kv[1]["total"])[:10]
+        pts = get_points(sb)
+        for i, (tag_, info) in enumerate(ranked):
+            rank = i + 1
+            reason = "top10_diamond" if rank <= 2 else "top10_gold" if rank <= 5 else "top10_silver"
+            add_reputation(sb, clan_id, tag_, info["player_name"], reason, ref_key=month_ref, points=pts[reason])
+    except Exception as e:
+        log.error(f"top10 reputation bonus error (clan_id={clan_id}): {e}")

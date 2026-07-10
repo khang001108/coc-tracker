@@ -1225,9 +1225,7 @@ function QuestsSection() {
         </p>
       </div>
 
-      <CreateEventGate>
-        <CreateQuestForm onCreated={load}/>
-      </CreateEventGate>
+      {isAdmin && <CreateQuestForm onCreated={load}/>}
 
       {loading ? (
         <div className="grid gap-3">{[1,2].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse bg-gray-800"/>)}</div>

@@ -480,3 +480,14 @@ html.custom-cursor-active * {
   html.custom-cursor-active, html.custom-cursor-active * { cursor: auto !important; }
   .cursor-dot, .cursor-ring, .cursor-particles { display: none !important; }
 }
+
+/* Ẩn thanh cuộn cho carousel vuốt ngang (Báo cáo tuần ở Tổng quan) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Hiệu ứng lấp lánh cho huy hiệu Danh vọng Kim Cương (hạng 1-2) */
+@keyframes reputation-sparkle {
+  0%, 100% { box-shadow: 0 0 4px rgba(103,232,249,0.4); }
+  50% { box-shadow: 0 0 10px rgba(103,232,249,0.9), 0 0 16px rgba(59,130,246,0.5); }
+}
+.reputation-badge-sparkle { animation: reputation-sparkle 1.8s ease-in-out infinite; }
