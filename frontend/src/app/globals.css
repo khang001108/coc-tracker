@@ -353,6 +353,23 @@
 .theme-gold .text-green-400   { color: #15803D !important; }
 .theme-gold .text-orange-400  { color: #C2410C !important; }
 
+/* Nhưng bên TRONG ảnh nền trang trí (banner-content), chữ vẫn phải sáng như
+   theme tối — vì lớp phủ ảnh giờ dùng chung màu tối cho cả 2 theme (xem
+   .banner-content ở trên). Độ đặc hiệu (3 class) cao hơn các rule .theme-gold
+   .text-xxx ở trên nên luôn thắng, không cần đổi thứ tự khai báo. */
+.theme-gold .banner-content .text-white { color: #ffffff !important; }
+.theme-gold .banner-content .text-gray-100,
+.theme-gold .banner-content .text-gray-200,
+.theme-gold .banner-content .text-gray-300,
+.theme-gold .banner-content .text-gray-400,
+.theme-gold .banner-content .text-gray-500,
+.theme-gold .banner-content .text-gray-600,
+.theme-gold .banner-content .page-subtitle { color: #e5e7eb !important; }
+.theme-gold .banner-content .text-yellow-300,
+.theme-gold .banner-content .text-yellow-400,
+.theme-gold .banner-content .text-yellow-500,
+.theme-gold .banner-content .text-yellow-600 { color: #F4A130 !important; }
+
 /* ── Nút Chơi animations ─────────────────────────────────── */
 @keyframes play-ring-pulse {
   0%   { transform: scale(1);    opacity: 0.7; }
