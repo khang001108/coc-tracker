@@ -533,35 +533,45 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                 </div>
 
                 {/* Nút nhận thưởng khi sự kiện kết thúc (đã trúng top) — hiện
-                    mã nhận thưởng riêng của người thắng, KHÔNG lộ Zalo công khai */}
+                    mã nhận thưởng riêng của người thắng, KHÔNG lộ Zalo công khai.
+                    Khi người tổ chức đã tích xanh (claimed) thì ẩn nút/mã đi,
+                    chỉ còn dòng xác nhận đã nhận. */}
                 {!eventReallyActive && myClaim && (
                   <div className="mt-3 pt-3 border-t border-yellow-500/20 space-y-2">
-                    <p className="text-sm font-bold text-yellow-400">
-                      🎉 Chúc mừng bạn đã xếp Top {myClaim.rank}! Ấn để nhận phần thưởng.
-                    </p>
-                    {showMyCode ? (
-                      <div className="rounded-xl bg-black/30 border border-yellow-500/30 px-4 py-3 text-center space-y-2">
-                        <p className="text-[11px] text-gray-400">Mã nhận thưởng của bạn — chỉ bạn và người tổ chức biết mã này</p>
-                        <div className="flex items-center justify-center gap-2">
-                          <p className="text-2xl font-mono font-bold tracking-[0.3em] text-yellow-400">{myClaim.redeem_code}</p>
-                          <button onClick={copyMyCode} title="Copy mã"
-                            className="p-1.5 rounded-lg hover:bg-white/10 shrink-0 text-gray-400 hover:text-yellow-400 transition-colors">
-                            {codeCopied ? <CheckCircle2 size={16} className="text-green-400"/> : <Copy size={16}/>}
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-gray-500">Gửi mã này cho người tổ chức để đổi thưởng</p>
-                        {event.creator_zalo && (
-                          <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
-                            className="btn-gold w-full text-xs flex items-center justify-center gap-1.5 mt-1">
-                            <Send size={13}/> Gửi mã qua Zalo
-                          </a>
-                        )}
-                      </div>
+                    {myClaim.claimed ? (
+                      <p className="text-sm font-bold text-green-400 flex items-center gap-1.5">
+                        <CheckCircle2 size={16}/> Bạn đã nhận thưởng Top {myClaim.rank} — cảm ơn bạn!
+                      </p>
                     ) : (
-                      <button onClick={() => setShowMyCode(true)}
-                        className="btn-gold w-full flex items-center justify-center gap-2 text-sm animate-gold-pulse">
-                        <Gift size={16}/> Nhận thưởng ngay
-                      </button>
+                      <>
+                        <p className="text-sm font-bold text-yellow-400">
+                          🎉 Chúc mừng bạn đã xếp Top {myClaim.rank}! Ấn để nhận phần thưởng.
+                        </p>
+                        {showMyCode ? (
+                          <div className="rounded-xl bg-black/30 border border-yellow-500/30 px-4 py-3 text-center space-y-2">
+                            <p className="text-[11px] text-gray-400">Mã nhận thưởng của bạn — chỉ bạn và người tổ chức biết mã này</p>
+                            <div className="flex items-center justify-center gap-2">
+                              <p className="text-2xl font-mono font-bold tracking-[0.3em] text-yellow-400">{myClaim.redeem_code}</p>
+                              <button onClick={copyMyCode} title="Copy mã"
+                                className="p-1.5 rounded-lg hover:bg-white/10 shrink-0 text-gray-400 hover:text-yellow-400 transition-colors">
+                                {codeCopied ? <CheckCircle2 size={16} className="text-green-400"/> : <Copy size={16}/>}
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-gray-500">Gửi mã này cho người tổ chức để đổi thưởng</p>
+                            {event.creator_zalo && (
+                              <a href={`https://zalo.me/${event.creator_zalo.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
+                                className="btn-gold w-full text-xs flex items-center justify-center gap-1.5 mt-1">
+                                <Send size={13}/> Gửi mã qua Zalo
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <button onClick={() => setShowMyCode(true)}
+                            className="btn-gold w-full flex items-center justify-center gap-2 text-sm animate-gold-pulse">
+                            <Gift size={16}/> Nhận thưởng ngay
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
