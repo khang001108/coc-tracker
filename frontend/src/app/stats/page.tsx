@@ -146,10 +146,14 @@ function TrophyLeaderboardTab() {
 /* ─── Tab: Danh vọng ───────────────────────────────────────────────────── */
 function ReputationLeaderboardTab() {
   const [rows, setRows] = useState<any[]>([]);
+  const [tierInfo, setTierInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getReputationLeaderboard(50).then(setRows).catch(() => {}).finally(() => setLoading(false));
+    Promise.all([
+      api.getReputationLeaderboard(50).catch(() => []),
+      api.getReputationTierConfig().catch(() => []),
+    ]).then(([r, t]) => { setRows(r); setTierInfo(t); }).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
@@ -164,13 +168,19 @@ function ReputationLeaderboardTab() {
           War, 3 sao, CWL, Donate, Raid, Clan Games...). Danh vọng càng cao, hệ số Coins thưởng war-star càng lớn.
           Top 10 Danh vọng có huy hiệu riêng: 💎 hạng 1-2, 🥇 hạng 3-5, 🥈 hạng 6-10.
         </p>
+        {tierInfo.length > 0 && (
+          <p className="text-[11px] text-gray-600 mt-2 pt-2 border-t border-gray-800/60">
+            Tier theo TỔNG điểm (khác huy hiệu Top 10 ở trên): {tierInfo.slice().reverse().map(t => `${t.name} từ ${t.threshold}đ (x${t.multiplier})`).join(" · ")}.
+            Đổi ngưỡng ở Cài đặt → Sự kiện → "Ngưỡng Tier Danh vọng".
+          </p>
+        )}
       </div>
       <div className="card space-y-1.5">
         <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏵️ Xếp hạng Danh vọng</h3>
         {rows.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Chưa có dữ liệu Danh vọng.</p>}
         {rows.map((r, i) => (
           <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
-            {i < 10 ? <ReputationBadge rank={i + 1}/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
+            {i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
             <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
             <span className={`text-[10px] shrink-0 ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
             <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}đ</span>

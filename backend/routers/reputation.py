@@ -5,9 +5,34 @@ from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin
 from services.coc_api import get_clan_members
-from services.reputation import get_all_totals, get_tier, add_reputation, REASON_LABELS, get_points, DEFAULT_POINTS, SETTINGS_KEY_PREFIX
+from services.reputation import get_all_totals, get_tier, get_tiers, add_reputation, REASON_LABELS, get_points, DEFAULT_POINTS, SETTINGS_KEY_PREFIX
 
 router = APIRouter()
+
+
+@router.get("/tier-config")
+async def get_tier_config(request: Request):
+    """Ngưỡng điểm hiện hành để lên Bạc/Vàng/Kim Cương (Đồng luôn = 0) —
+    admin xem/sửa trong Cài đặt."""
+    sb = get_supabase()
+    tiers = get_tiers(sb)
+    return [{"name": name, "threshold": threshold, "multiplier": mult} for threshold, name, mult in tiers]
+
+
+@router.put("/tier-config")
+async def update_tier_config(request: Request, _: bool = Depends(require_admin)):
+    """body: {bac: int, vang: int, kimcuong: int} — Đồng cố định = 0."""
+    body = await request.json()
+    sb = get_supabase()
+    mapping = {"bac": "reputation_tier_bac", "vang": "reputation_tier_vang", "kimcuong": "reputation_tier_kimcuong"}
+    for key, setting_key in mapping.items():
+        if key in body:
+            try:
+                val = int(body[key])
+            except (ValueError, TypeError):
+                continue
+            sb.table("settings").upsert({"key": setting_key, "value": str(val)}, on_conflict="key").execute()
+    return {"ok": True}
 
 
 @router.get("/points-config")
@@ -58,7 +83,7 @@ async def get_leaderboard(request: Request, limit: int = Query(50, le=200)):
         total = entry["total"] if entry else 0
         rows.append({
             "player_tag": m["tag"], "player_name": m["name"],
-            "total": total, "tier": get_tier(total),
+            "total": total, "tier": get_tier(total, sb),
         })
     rows.sort(key=lambda r: -r["total"])
     return rows[:limit]
@@ -82,7 +107,7 @@ async def get_member_reputation(player_tag: str, request: Request):
     return {
         "player_tag": player_tag,
         "total": total,
-        "tier": get_tier(total),
+        "tier": get_tier(total, sb),
         "breakdown": sorted(by_reason.values(), key=lambda e: -abs(e["total"])),
         "history": rows[:30],
     }

@@ -419,7 +419,7 @@ function TopTrophiesBox({ members }: { members: any[] }) {
         <Link href="/stats?tab=overview&sub=trophies" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
       </div>
       {ranked.length === 0 ? <EmptyState message="Không có dữ liệu"/> : (
-        <div className="relative space-y-1.5">
+        <div className="relative space-y-1.5 banner-content">
           {ranked.map((m, i) => (
             <div key={m.tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
@@ -451,7 +451,7 @@ function TopReputationBox() {
       {loading ? (
         <div className="relative h-24 bg-gray-800 rounded-xl animate-pulse"/>
       ) : rows.length === 0 ? <EmptyState message="Chưa có dữ liệu Danh vọng"/> : (
-        <div className="relative space-y-1.5">
+        <div className="relative space-y-1.5 banner-content">
           {rows.map((r, i) => (
             <div key={r.player_tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>

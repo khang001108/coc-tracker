@@ -1120,6 +1120,93 @@ function ReputationFormulaSettings() {
   );
 }
 
+function ReputationTierSettings() {
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [edits, setEdits] = useState<{ bac?: string; vang?: string; kimcuong?: string }>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function load() {
+    setLoading(true);
+    try { setTiers(await api.getReputationTierConfig()); } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function handleSave() {
+    if (Object.keys(edits).length === 0) { flashMsg("Chưa đổi gì"); return; }
+    setSaving(true);
+    try {
+      const values: Record<string, number> = {};
+      for (const [k, v] of Object.entries(edits)) if (v !== undefined) values[k] = Number(v);
+      await api.updateReputationTierConfig(values);
+      flashMsg("Đã lưu ngưỡng Tier", "success");
+      setEdits({});
+      await load();
+    } catch (e: any) {
+      flashMsg(e.message || "Lỗi lưu");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const find = (name: string) => tiers.find(t => t.name === name);
+
+  return (
+    <div className="card space-y-4">
+      <h3 className="font-bold text-white flex items-center gap-2">🎖️ Ngưỡng Tier Danh vọng</h3>
+      <p className="text-sm text-gray-400">
+        Tier tính theo TỔNG điểm Danh vọng (khác huy hiệu Top 10 theo thứ hạng) — dùng để nhân hệ số
+        Coins thưởng war-star. <strong className="text-gray-300">Đồng</strong> là mặc định khi chưa đạt
+        ngưỡng Bạc (luôn bắt đầu từ 0đ, không chỉnh được). Đổi ngưỡng bên dưới để lên Bạc/Vàng/Kim Cương.
+      </p>
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
+      {loading ? (
+        <div className="h-24 bg-gray-800 rounded-xl animate-pulse" />
+      ) : (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+            <span className="text-sm text-orange-400 flex-1">🟤 Đồng</span>
+            <span className="text-xs text-gray-500">từ 0đ (cố định)</span>
+          </div>
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+            <span className="text-sm text-gray-300 flex-1">⚪ Bạc — hệ số x1.1</span>
+            <span className="text-xs text-gray-500">từ</span>
+            <input type="number" min={1} className="input !w-24 !py-1 text-xs"
+              defaultValue={find("Bạc")?.threshold ?? 200}
+              onChange={e => setEdits(d => ({ ...d, bac: e.target.value }))}/>
+            <span className="text-xs text-gray-500">đ</span>
+          </div>
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+            <span className="text-sm text-yellow-400 flex-1">🟡 Vàng — hệ số x1.25</span>
+            <span className="text-xs text-gray-500">từ</span>
+            <input type="number" min={1} className="input !w-24 !py-1 text-xs"
+              defaultValue={find("Vàng")?.threshold ?? 500}
+              onChange={e => setEdits(d => ({ ...d, vang: e.target.value }))}/>
+            <span className="text-xs text-gray-500">đ</span>
+          </div>
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+            <span className="text-sm text-cyan-300 flex-1">🔷 Kim Cương — hệ số x1.5</span>
+            <span className="text-xs text-gray-500">từ</span>
+            <input type="number" min={1} className="input !w-24 !py-1 text-xs"
+              defaultValue={find("Kim Cương")?.threshold ?? 1000}
+              onChange={e => setEdits(d => ({ ...d, kimcuong: e.target.value }))}/>
+            <span className="text-xs text-gray-500">đ</span>
+          </div>
+        </div>
+      )}
+      <button onClick={handleSave} disabled={saving} className="btn-gold text-sm">
+        {saving ? "Đang lưu..." : "Lưu ngưỡng Tier"}
+      </button>
+    </div>
+  );
+}
+
 function ReputationAdjustSettings() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1899,7 +1986,7 @@ export default function SettingsPage() {
             </div>
 
             {tab === "general" && <SettingsPageInner embedded section="general" />}
-            {tab === "events" && (<><SettingsPageInner embedded section="events" /><EventReportsSettings /><ReputationFormulaSettings /><ReputationAdjustSettings /></>)}
+            {tab === "events" && (<><SettingsPageInner embedded section="events" /><EventReportsSettings /><ReputationFormulaSettings /><ReputationTierSettings /><ReputationAdjustSettings /></>)}
             {tab === "music" && <SettingsPageInner embedded section="music" />}
             {tab === "members" && (<><SettingsPageInner embedded section="members" /><MemberAccountsSettings /></>)}
             {tab === "shop" && <ShopPricingSettings />}

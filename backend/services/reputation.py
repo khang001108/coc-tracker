@@ -96,17 +96,49 @@ REASON_LABELS = {
     "manual":           "Điều chỉnh thủ công",
 }
 
-# Tier Danh vọng — càng cao hệ số nhân Coins thưởng war-star càng lớn.
-TIERS = [
+# Tier Danh vọng (theo TỔNG ĐIỂM, khác huy hiệu theo THỨ HẠNG top 10 ở
+# ReputationBadge.tsx) — càng cao hệ số nhân Coins thưởng war-star càng lớn.
+# Ngưỡng điểm CHỈNH ĐƯỢC trong Cài đặt (key reputation_tier_bac/vang/kimcuong
+# trong bảng settings) — hệ số nhân giữ cố định để đơn giản.
+DEFAULT_TIERS = [
     (1000, "Kim Cương", 1.5),
     (500,  "Vàng",      1.25),
     (200,  "Bạc",       1.1),
     (0,    "Đồng",      1.0),
 ]
+TIERS = DEFAULT_TIERS  # giữ tên cũ để tương thích ngược nếu nơi khác còn import
 
 
-def get_tier(total: int) -> dict:
-    for threshold, name, mult in TIERS:
+def get_tiers(sb) -> list:
+    """Ngưỡng Tier hiện hành — admin có thể ghi đè điểm bắt đầu của Bạc/Vàng/
+    Kim Cương trong Cài đặt. Đồng luôn là 0 (mặc định thấp nhất)."""
+    try:
+        res = sb.table("settings").select("key,value").in_(
+            "key", ["reputation_tier_bac", "reputation_tier_vang", "reputation_tier_kimcuong"]
+        ).execute()
+        overrides = {r["key"]: r["value"] for r in (res.data or [])}
+
+        def _int(key, default):
+            try:
+                return int(overrides[key]) if key in overrides else default
+            except (ValueError, TypeError):
+                return default
+
+        return [
+            (_int("reputation_tier_kimcuong", 1000), "Kim Cương", 1.5),
+            (_int("reputation_tier_vang", 500),       "Vàng",      1.25),
+            (_int("reputation_tier_bac", 200),         "Bạc",       1.1),
+            (0,                                        "Đồng",      1.0),
+        ]
+    except Exception:
+        return DEFAULT_TIERS
+
+
+def get_tier(total: int, sb=None) -> dict:
+    """Tra tier theo tổng điểm — truyền `sb` để dùng ngưỡng admin đã chỉnh,
+    bỏ trống thì dùng ngưỡng mặc định (dùng khi không có sẵn kết nối DB)."""
+    tiers = get_tiers(sb) if sb is not None else DEFAULT_TIERS
+    for threshold, name, mult in tiers:
         if total >= threshold:
             return {"name": name, "multiplier": mult, "threshold": threshold}
     return {"name": "Đồng", "multiplier": 1.0, "threshold": 0}

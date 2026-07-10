@@ -558,7 +558,7 @@ async def _award_war_star_coins(sb, clan_id: int, war_data: dict, coins_per_star
         # Danh vọng càng cao, hệ số nhân Coins thưởng càng lớn (xem services/reputation.py TIERS)
         try:
             from services.reputation import get_total_reputation, get_tier
-            tier = get_tier(get_total_reputation(sb, clan_id, m["tag"]))
+            tier = get_tier(get_total_reputation(sb, clan_id, m["tag"]), sb)
             coins_awarded = round(stars_gained * coins_per_star * tier["multiplier"])
         except Exception:
             coins_awarded = stars_gained * coins_per_star

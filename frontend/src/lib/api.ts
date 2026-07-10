@@ -341,6 +341,9 @@ export const api = {
   getReputationPointsConfig: () => apiFetch("/api/reputation/points-config"),
   updateReputationPointsConfig: (values: Record<string, number>) =>
     apiFetch("/api/reputation/points-config", { method: "PUT", body: JSON.stringify(values) }),
+  getReputationTierConfig: () => apiFetch("/api/reputation/tier-config"),
+  updateReputationTierConfig: (values: { bac?: number; vang?: number; kimcuong?: number }) =>
+    apiFetch("/api/reputation/tier-config", { method: "PUT", body: JSON.stringify(values) }),
 
   // Nhiệm vụ (thưởng Danh vọng/Coins, tự chấm qua CoC API)
   getQuestConditions: () => apiFetch("/api/quests/conditions"),

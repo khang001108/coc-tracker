@@ -12,19 +12,6 @@ const STAR_FILL = (s: number) =>
   s === 3 ? "#FFD700" : s === 2 ? "#C0C0C0" : s === 1 ? "#CD853F" : "#888";
 const STAR_FILL_EMPTY = "rgba(200,200,200,0.25)";
 
-function Stars({ stars }: { stars: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[0, 1, 2].map(i => (
-        <svg key={i} width={11} height={11} viewBox="0 0 10 10">
-          <polygon points="5,1 6.2,3.8 9.5,3.8 7,5.8 7.9,9 5,7.2 2.1,9 3,5.8 0.5,3.8 3.8,3.8"
-            fill={i < stars ? STAR_FILL(stars) : STAR_FILL_EMPTY} />
-        </svg>
-      ))}
-    </div>
-  );
-}
-
 /* Badge kết quả 1 đòn đánh — gọn, đọc được trên cả 2 theme */
 function AttackBadge({ attack }: { attack: any }) {
   const s = attack.stars;
@@ -49,7 +36,6 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
   iconMap: Record<string, any>; selected: boolean; onSelect: () => void; maxAttacks: number;
 }) {
   const isRight = side === "right";
-  const totalStars = attacks.reduce((s, a) => s + a.stars, 0);
   // Pháo + lâu đài giờ trang trí cho PHÒNG THỦ: mất bao nhiêu sao khi bị đánh
   // (best/cao nhất trong các lượt bị tấn công) — 2 pháo = 2 sao, lâu đài vỡ = sao thứ 3.
   const starsConceded = defenses.length ? Math.max(...defenses.map((d: any) => d.stars || 0)) : 0;
@@ -67,10 +53,10 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
             trên điện thoại trước đó) — cả khối gọn trong đúng khung lâu đài. */}
         <div className="shrink-0 relative" style={{ width: 34, height: 34 }}>
           <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={34} animate={false} />
-          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, left: -2, bottom: -2, background: "rgba(20,15,10,0.55)" }}>
+          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, left: -2, bottom: -2, background: 0 < darkCannons ? "rgba(20,15,10,0.55)" : "transparent" }}>
             <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
           </div>
-          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, right: -2, bottom: -2, background: "rgba(20,15,10,0.55)" }}>
+          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, right: -2, bottom: -2, background: 1 < darkCannons ? "rgba(20,15,10,0.55)" : "transparent" }}>
             <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
           </div>
         </div>
@@ -80,9 +66,8 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
           <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: "var(--py-card-text, #e5e7eb)" }}>
             <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
           </p>
-          <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
-            <Stars stars={totalStars} />
-          </div>
+          {/* Đã bỏ dòng tổng sao (trùng lặp với badge từng đòn đánh bên dưới,
+              lại còn dễ hiểu sai khi tổng > 3 sao vì chỉ vẽ tối đa 3 ô sao) */}
           {/* Lượt đánh — hiện icon tia đạn đang sở hữu, sáng = còn lượt, mờ = đã dùng */}
           <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {Array.from({ length: maxAttacks }).map((_, i) => (
