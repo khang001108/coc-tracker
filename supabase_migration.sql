@@ -988,3 +988,8 @@ DROP POLICY IF EXISTS "service_all" ON quest_claims;
 CREATE POLICY "service_all" ON quest_claims FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.quests       TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.quest_claims TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 27 (Phạm vi Nhiệm vụ — riêng clan hay liên clan)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE quests ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'private'; -- private | public

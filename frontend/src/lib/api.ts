@@ -348,7 +348,7 @@ export const api = {
     const member = getMemberAuth();
     return apiFetch("/api/quests/", { headers: member ? { "X-Member-Token": member.token } : {} });
   },
-  createQuest: (body: { title: string; description?: string; condition_type: string; target_value: number; reward_type: "reputation" | "coins"; reward_amount: number }) => {
+  createQuest: (body: { title: string; description?: string; condition_type: string; target_value: number; reward_type: "reputation" | "coins"; reward_amount: number; scope?: "private" | "public" }) => {
     const member = getMemberAuth();
     return apiFetch("/api/quests/", {
       method: "POST", body: JSON.stringify(body),

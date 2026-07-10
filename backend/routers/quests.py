@@ -42,13 +42,14 @@ async def list_conditions():
 
 @router.get("/")
 async def list_quests(request: Request, x_member_token: str | None = Header(default=None)):
-    """Danh sách nhiệm vụ đang mở — nếu người xem đã đăng nhập thành viên,
-    kèm luôn tiến độ hiện tại (lấy trực tiếp từ CoC API) + đã nhận chưa."""
+    """Danh sách nhiệm vụ đang mở — gồm nhiệm vụ RIÊNG của clan này (private)
+    và TẤT CẢ nhiệm vụ LIÊN CLAN (public) của mọi clan khác. Nếu người xem
+    đã đăng nhập thành viên, kèm luôn tiến độ hiện tại (lấy trực tiếp từ CoC
+    API) + đã nhận chưa."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
-    res = (sb.table("quests").select("*").eq("clan_id", clan_id).eq("status", "active")
-           .order("created_at", desc=True).execute())
-    quests = res.data or []
+    res = sb.table("quests").select("*").eq("status", "active").order("created_at", desc=True).execute()
+    quests = [q for q in (res.data or []) if q["clan_id"] == clan_id or q.get("scope") == "public"]
 
     member_tag = verify_member_token(x_member_token)
     my_claims: set = set()
@@ -88,6 +89,7 @@ async def create_quest(request: Request, x_admin_token: str | None = Header(defa
     target_value = body.get("target_value")
     reward_type = body.get("reward_type")
     reward_amount = body.get("reward_amount")
+    scope = body.get("scope", "private")
 
     if not title:
         raise HTTPException(400, "Thiếu tiêu đề")
@@ -95,6 +97,8 @@ async def create_quest(request: Request, x_admin_token: str | None = Header(defa
         raise HTTPException(400, "Điều kiện không hợp lệ")
     if reward_type not in ("reputation", "coins"):
         raise HTTPException(400, "Loại thưởng không hợp lệ")
+    if scope not in ("private", "public"):
+        raise HTTPException(400, "Phạm vi không hợp lệ")
     try:
         target_value = int(target_value)
         reward_amount = int(reward_amount)
@@ -108,7 +112,7 @@ async def create_quest(request: Request, x_admin_token: str | None = Header(defa
         "clan_id": clan_id, "title": title, "description": (body.get("description") or "").strip() or None,
         "condition_type": condition_type, "target_value": target_value,
         "reward_type": reward_type, "reward_amount": reward_amount,
-        "created_by": actor,
+        "scope": scope, "created_by": actor,
     }
     res = sb.table("quests").insert(row).execute()
     return res.data[0]
@@ -133,10 +137,12 @@ async def claim_quest(quest_id: int, request: Request, x_member_token: str | Non
         raise HTTPException(401, "Cần đăng nhập thành viên để nhận nhiệm vụ")
 
     sb = get_supabase()
-    q = sb.table("quests").select("*").eq("id", quest_id).eq("clan_id", clan_id).execute()
+    q = sb.table("quests").select("*").eq("id", quest_id).execute()
     if not q.data:
         raise HTTPException(404, "Không tìm thấy nhiệm vụ")
     quest = q.data[0]
+    if quest["clan_id"] != clan_id and quest.get("scope") != "public":
+        raise HTTPException(404, "Không tìm thấy nhiệm vụ")
     if quest["status"] != "active":
         raise HTTPException(400, "Nhiệm vụ đã đóng")
 

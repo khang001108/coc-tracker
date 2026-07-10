@@ -1063,7 +1063,7 @@ const QUEST_REWARD_LABEL: Record<string, string> = { reputation: "🏵️ Danh v
 function CreateQuestForm({ onCreated }: { onCreated: () => void }) {
   const [conditions, setConditions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", condition_type: "", target_value: "", reward_type: "reputation" as "reputation" | "coins", reward_amount: "" });
+  const [form, setForm] = useState({ title: "", description: "", condition_type: "", target_value: "", reward_type: "reputation" as "reputation" | "coins", reward_amount: "", scope: "private" as "private" | "public" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -1081,8 +1081,9 @@ function CreateQuestForm({ onCreated }: { onCreated: () => void }) {
         title: form.title.trim(), description: form.description.trim() || undefined,
         condition_type: form.condition_type, target_value: Number(form.target_value),
         reward_type: form.reward_type, reward_amount: Number(form.reward_amount),
+        scope: form.scope,
       });
-      setForm({ title: "", description: "", condition_type: conditions[0]?.value || "", target_value: "", reward_type: "reputation", reward_amount: "" });
+      setForm({ title: "", description: "", condition_type: conditions[0]?.value || "", target_value: "", reward_type: "reputation", reward_amount: "", scope: "private" });
       setOpen(false);
       onCreated();
     } catch (e: any) { setErr(e.message || "Lỗi tạo nhiệm vụ"); }
@@ -1129,6 +1130,13 @@ function CreateQuestForm({ onCreated }: { onCreated: () => void }) {
             onChange={e => setForm({ ...form, reward_amount: e.target.value })}/>
         </div>
       </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Phạm vi tham gia</label>
+        <select className="input" value={form.scope} onChange={e => setForm({ ...form, scope: e.target.value as any })}>
+          <option value="private">🔒 Riêng clan này</option>
+          <option value="public">🌐 Liên clan (mọi clan đều thấy)</option>
+        </select>
+      </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
       <div className="flex gap-2">
         <button onClick={submit} disabled={busy} className="btn-gold text-sm flex-1">{busy ? "Đang tạo..." : "Tạo nhiệm vụ"}</button>
@@ -1167,7 +1175,12 @@ function QuestCard({ quest, isCreator, onChanged }: { quest: any; isCreator: boo
     <div className="card space-y-2.5">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-semibold text-white">{quest.title}</p>
+          <p className="font-semibold text-white flex items-center gap-1.5">
+            {quest.title}
+            <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-400 shrink-0">
+              {quest.scope === "public" ? "🌐 Liên clan" : "🔒 Riêng clan"}
+            </span>
+          </p>
           {quest.description && <p className="text-xs text-gray-500 mt-0.5">{quest.description}</p>}
         </div>
         <span className="badge-gold text-[10px] shrink-0">+{quest.reward_amount} {QUEST_REWARD_LABEL[quest.reward_type]}</span>
@@ -1219,9 +1232,7 @@ function QuestsSection() {
     <div className="space-y-4">
       <div className="card !py-3 !px-4">
         <p className="text-xs text-gray-500">
-          Nhiệm vụ do Đồng thủ lĩnh trở lên tạo, thưởng Danh vọng hoặc Coins. Điều kiện hoàn thành
-          được đối chiếu TRỰC TIẾP với dữ liệu thật từ CoC API ngay lúc bấm nhận — đủ điều kiện mới
-          nhận được thưởng, không có bước xác nhận thủ công.
+          Điều kiện hoàn thành được đối chiếu TRỰC TIẾP với dữ liệu thật từ CoC API.
         </p>
       </div>
 

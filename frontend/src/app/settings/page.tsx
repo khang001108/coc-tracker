@@ -256,6 +256,7 @@ const SECTION_TABS: Record<string, { id: string; label: string }[]> = {
     { id: "overview_cards", label: "Thẻ Tổng quan" },
     { id: "ember", label: "Màu tia lửa" },
     { id: "banners", label: "Ảnh nền từng mục" },
+    { id: "music_player", label: "Nhạc nền" },
   ],
 };
 
@@ -430,9 +431,11 @@ function SettingsPageInner({ embedded, section = "general" }: { embedded?: boole
       )}
 
       <div className={embedded ? "contents" : ""}>
-        <div className="overflow-x-auto -mx-1 px-1 pb-2 mb-3">
-          <SlidingTabs tabs={SECTION_TABS[section]} active={subTab} onChange={(id) => setSubTab(id)} className="w-max"/>
-        </div>
+        {SECTION_TABS[section].length > 1 && (
+          <div className="overflow-x-auto -mx-1 px-1 pb-2 mb-3">
+            <SlidingTabs tabs={SECTION_TABS[section]} active={subTab} onChange={(id) => setSubTab(id)} className="w-max"/>
+          </div>
+        )}
 
       {subTab === "clan" && (
         <div className="card space-y-4">
@@ -882,6 +885,8 @@ function SettingsPageInner({ embedded, section = "general" }: { embedded?: boole
         })()}
       </div>
       )}
+
+      {subTab === "music_player" && <MusicSettings/>}
 
       {subTab === "cleanup" && (
       <div className="card space-y-3">
@@ -1886,7 +1891,7 @@ export default function SettingsPage() {
                 tabs={[
                   { id: "general", label: "Chung" },
                   { id: "events",  label: "Sự kiện" },
-                  { id: "music",   label: "Âm nhạc" },
+                  { id: "music",   label: "Bố cục" },
                   { id: "members", label: "Thành viên" },
                   { id: "shop",    label: "Cửa hàng" },
                 ]}
@@ -1895,7 +1900,7 @@ export default function SettingsPage() {
 
             {tab === "general" && <SettingsPageInner embedded section="general" />}
             {tab === "events" && (<><SettingsPageInner embedded section="events" /><EventReportsSettings /><ReputationFormulaSettings /><ReputationAdjustSettings /></>)}
-            {tab === "music" && (<><SettingsPageInner embedded section="music" /><MusicSettings /></>)}
+            {tab === "music" && <SettingsPageInner embedded section="music" />}
             {tab === "members" && (<><SettingsPageInner embedded section="members" /><MemberAccountsSettings /></>)}
             {tab === "shop" && <ShopPricingSettings />}
           </div>
