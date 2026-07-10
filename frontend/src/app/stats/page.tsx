@@ -158,8 +158,7 @@ function ReputationLeaderboardTab() {
       <div className="card">
         <p className="text-xs text-gray-500">
           Danh vọng là thước đo uy tín lâu dài, tính theo CHẤT LƯỢNG đóng góp (tham gia/thắng
-          War, 3 sao, CWL, Donate, Raid, Clan Games...) — không dùng để tiêu, tăng chậm mỗi tháng.
-          Danh vọng càng cao, hệ số Coins thưởng war-star càng lớn.
+          War, 3 sao, CWL, Donate, Raid, Clan Games...). Danh vọng càng cao, hệ số Coins thưởng war-star càng lớn.
         </p>
       </div>
       <div className="card space-y-1.5">
@@ -460,28 +459,6 @@ export default function StatsPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Donate ratio scatter */}
-            <div className="card">
-              <h3 className="font-bold text-white mb-4">Donate Ratio (Top 10)</h3>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {[...members]
-                  .map(m => ({ ...m, ratio: m.donationsReceived > 0 ? m.donations / m.donationsReceived : 99 }))
-                  .sort((a, b) => b.ratio - a.ratio)
-                  .slice(0, 10)
-                  .map(m => (
-                    <div key={m.tag} className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500 w-20 truncate shrink-0">{m.name}</span>
-                      <div className="flex-1 progress-bar">
-                        <div className="progress-fill" style={{ width: `${Math.min((m.donations / (members[0]?.donations || 1)) * 100, 100)}%` }} />
-                      </div>
-                      <span className={`text-xs font-bold shrink-0 w-10 text-right ${m.ratio >= 1 ? "text-green-400" : "text-red-400"}`}>
-                        {m.ratio === 99 ? "∞" : m.ratio.toFixed(1)}x
-                      </span>
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
           </div>
 
           {/* Nhiều Coins nhất — xếp đầu tiên */}
@@ -596,99 +573,11 @@ export default function StatsPage() {
                 )}
               </div>
 
-              <div className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><TrendingUp size={14} className="text-gray-400 rotate-180" /> Donate ít nhất</h4>
-                  {donationTrend.least_donate.length > 0 && (
-                    <CopyButton getText={() =>
-                      `🎁 DONATE ÍT NHẤT (${periodLabel}):\n` +
-                      donationTrend.least_donate.map((p, i) => `${i + 1}. ${p.name}: ${p.donations}`).join("\n")
-                    } />
-                  )}
-                </div>
-                {insightsLoading ? (
-                  <p className="text-xs text-gray-600">Đang tải...</p>
-                ) : donationTrend.least_donate.length === 0 ? (
-                  <p className="text-xs text-gray-600">Chưa có dữ liệu donate trong khoảng thời gian này</p>
-                ) : (
-                  <div className="space-y-2">
-                    {donationTrend.least_donate.map(p => (
-                      <div key={p.tag} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300 truncate">{p.name}</span>
-                        <span className="text-gray-400 font-semibold shrink-0">{p.donations}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* MVP: Tấn công / Phòng thủ anh dũng nhất — tự tính vì CoC API không có sẵn */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-              <div className="card border-yellow-500/20 bg-yellow-500/5">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5">⚔️ Tấn công anh dũng nhất</h4>
-                  {warActivity.mvp_attack && (
-                    <CopyButton getText={() =>
-                      `⚔️ TẤN CÔNG ANH DŨNG NHẤT (${periodLabel}):\n${warActivity.mvp_attack.player_name} — ` +
-                      `${warActivity.mvp_attack.stars}⭐ · ${warActivity.mvp_attack.destruction}% phá huỷ · ` +
-                      `${Math.floor((warActivity.mvp_attack.duration || 0) / 60)}p${(warActivity.mvp_attack.duration || 0) % 60}s ` +
-                      `(đánh ${warActivity.mvp_attack.opponent}, ${warActivity.mvp_attack.war_type === "cwl" ? "CWL" : "War thường"})`
-                    } />
-                  )}
-                </div>
-                {insightsLoading ? (
-                  <p className="text-xs text-gray-600">Đang tải...</p>
-                ) : !warActivity.mvp_attack ? (
-                  <p className="text-xs text-gray-600">Chưa có dữ liệu trong khoảng thời gian này</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    <p className="text-lg font-bold text-yellow-400">{warActivity.mvp_attack.player_name}</p>
-                    <div className="flex items-center gap-3 text-sm text-gray-300">
-                      <span>⭐ {warActivity.mvp_attack.stars} sao</span>
-                      <span>💥 {warActivity.mvp_attack.destruction}%</span>
-                      <span>⏱ {Math.floor((warActivity.mvp_attack.duration || 0) / 60)}p{(warActivity.mvp_attack.duration || 0) % 60}s</span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Đánh {warActivity.mvp_attack.opponent} · {warActivity.mvp_attack.war_type === "cwl" ? "CWL" : "War thường"}
-                    </p>
-                  </div>
-                )}
               </div>
 
-              <div className="card border-blue-500/20 bg-blue-500/5">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-1.5">🛡️ Phòng thủ anh dũng nhất</h4>
-                  {warActivity.mvp_defense && (
-                    <CopyButton getText={() =>
-                      `🛡️ PHÒNG THỦ ANH DŨNG NHẤT (${periodLabel}):\n${warActivity.mvp_defense.player_name} — ` +
-                      `chỉ để mất ${warActivity.mvp_defense.stars}⭐ · ${warActivity.mvp_defense.destruction}% ` +
-                      `(trước ${warActivity.mvp_defense.attacker}, ${warActivity.mvp_defense.war_type === "cwl" ? "CWL" : "War thường"})`
-                    } />
-                  )}
-                </div>
-                {insightsLoading ? (
-                  <p className="text-xs text-gray-600">Đang tải...</p>
-                ) : !warActivity.mvp_defense ? (
-                  <p className="text-xs text-gray-600">Chưa có dữ liệu trong khoảng thời gian này</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    <p className="text-lg font-bold text-blue-400">{warActivity.mvp_defense.player_name}</p>
-                    <div className="flex items-center gap-3 text-sm text-gray-300">
-                      <span>⭐ {warActivity.mvp_defense.stars} sao (mất)</span>
-                      <span>💥 {warActivity.mvp_defense.destruction}%</span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Trước {warActivity.mvp_defense.attacker} · {warActivity.mvp_defense.war_type === "cwl" ? "CWL" : "War thường"}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
             <p className="text-[11px] text-gray-600 mt-2">
               "War yếu nhất"/"Hay bỏ war" tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
-              "Donate ít nhất" cộng dồn theo mỗi lần CoC reset donate hàng tuần + tuần hiện tại. Web chưa lưu dữ liệu trước ngày cập nhật tính năng này.
-              "Anh dũng nhất" là công thức tự tính (sao cao nhất → % phá huỷ cao nhất → nhanh nhất) vì CoC API không cung cấp sẵn 2 chỉ số này.
+              Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
             </p>
           </div>
         </>

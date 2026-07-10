@@ -38,6 +38,27 @@ POINTS = {
     "war_skip":         -15,
     "cwl_skip":         -25,
 }
+DEFAULT_POINTS = dict(POINTS)  # giữ nguyên bản gốc để hiện "khôi phục mặc định" ở Cài đặt
+
+SETTINGS_KEY_PREFIX = "reputation_points_"
+
+
+def get_points(sb) -> dict:
+    """Bảng điểm Danh vọng HIỆN HÀNH — admin có thể ghi đè từng khoản trong
+    Cài đặt (key dạng reputation_points_<reason> trong bảng settings), khoản
+    nào chưa chỉnh thì dùng mặc định ở DEFAULT_POINTS."""
+    try:
+        res = sb.table("settings").select("key,value").like("key", f"{SETTINGS_KEY_PREFIX}%").execute()
+        overrides = {}
+        for r in (res.data or []):
+            reason = r["key"][len(SETTINGS_KEY_PREFIX):]
+            try:
+                overrides[reason] = int(r["value"])
+            except (ValueError, TypeError):
+                continue
+        return {**DEFAULT_POINTS, **overrides}
+    except Exception:
+        return dict(DEFAULT_POINTS)
 
 REASON_LABELS = {
     "war_participate":   "Tham gia War",
@@ -75,7 +96,7 @@ def add_reputation(sb, clan_id: int, player_tag: str, player_name: str, reason: 
                     ref_key: str | None = None, note: str | None = None, points: int | None = None):
     """Ghi 1 dòng Danh vọng — an toàn khi gọi lặp lại nhờ UNIQUE(clan_id,
     player_tag, reason, ref_key): dòng trùng sẽ bị DB từ chối, bỏ qua êm."""
-    pts = points if points is not None else POINTS.get(reason, 0)
+    pts = points if points is not None else get_points(sb).get(reason, 0)
     if pts == 0:
         return
     row = {

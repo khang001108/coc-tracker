@@ -5,9 +5,41 @@ from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin
 from services.coc_api import get_clan_members
-from services.reputation import get_all_totals, get_tier, add_reputation, REASON_LABELS
+from services.reputation import get_all_totals, get_tier, add_reputation, REASON_LABELS, get_points, DEFAULT_POINTS, SETTINGS_KEY_PREFIX
 
 router = APIRouter()
+
+
+@router.get("/points-config")
+async def get_points_config(request: Request):
+    """Bảng công thức Danh vọng HIỆN HÀNH (đã áp dụng override nếu admin có
+    chỉnh) — dùng để hiện trong Cài đặt cho admin xem/sửa."""
+    sb = get_supabase()
+    current = get_points(sb)
+    return [
+        {"reason": k, "label": REASON_LABELS.get(k, k), "points": current.get(k, v), "default": v}
+        for k, v in DEFAULT_POINTS.items()
+    ]
+
+
+@router.put("/points-config")
+async def update_points_config(request: Request, _: bool = Depends(require_admin)):
+    """Admin chỉnh công thức Danh vọng — body: {reason: points, ...}. Chỉ
+    ghi đè các reason hợp lệ (có trong DEFAULT_POINTS), bỏ qua phần lạ."""
+    body = await request.json()
+    sb = get_supabase()
+    saved = {}
+    for reason, pts in body.items():
+        if reason not in DEFAULT_POINTS:
+            continue
+        try:
+            pts = int(pts)
+        except (ValueError, TypeError):
+            continue
+        key = f"{SETTINGS_KEY_PREFIX}{reason}"
+        sb.table("settings").upsert({"key": key, "value": str(pts)}, on_conflict="key").execute()
+        saved[reason] = pts
+    return {"ok": True, "saved": saved}
 
 
 @router.get("/leaderboard")

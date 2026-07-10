@@ -1026,6 +1026,73 @@ function MemberAccountsSettings() {
   );
 }
 
+function ReputationFormulaSettings() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function load() {
+    setLoading(true);
+    try { setRows(await api.getReputationPointsConfig()); } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function handleSave() {
+    if (Object.keys(edits).length === 0) { flashMsg("Chưa đổi gì"); return; }
+    setSaving(true);
+    try {
+      const values: Record<string, number> = {};
+      for (const [reason, val] of Object.entries(edits)) values[reason] = Number(val);
+      await api.updateReputationPointsConfig(values);
+      flashMsg("Đã lưu công thức Danh vọng", "success");
+      setEdits({});
+      await load();
+    } catch (e: any) {
+      flashMsg(e.message || "Lỗi lưu");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card space-y-4">
+      <h3 className="font-bold text-white flex items-center gap-2">🏵️ Công thức Danh vọng</h3>
+      <p className="text-sm text-gray-400">
+        Chỉnh số điểm cộng/trừ cho từng hoạt động. Số âm = trừ điểm. Đổi ở đây áp dụng cho các lần
+        tính điểm SAU KHI lưu (không tính lại lịch sử cũ).
+      </p>
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
+      {loading ? (
+        <div className="h-32 bg-gray-800 rounded-xl animate-pulse" />
+      ) : (
+        <div className="space-y-1.5">
+          {rows.map(r => (
+            <div key={r.reason} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+              <span className="text-sm text-white flex-1 truncate">{r.label}</span>
+              <input type="number" className="input !w-20 !py-1 text-xs"
+                defaultValue={r.points}
+                onChange={e => setEdits(d => ({ ...d, [r.reason]: e.target.value }))}/>
+              {r.points !== r.default && (
+                <span className="text-[10px] text-gray-600 shrink-0">gốc {r.default}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={handleSave} disabled={saving} className="btn-gold text-sm">
+        {saving ? "Đang lưu..." : "Lưu công thức"}
+      </button>
+    </div>
+  );
+}
+
 function ReputationAdjustSettings() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1791,7 +1858,7 @@ export default function SettingsPage() {
 
       {outerTab === "admin" && (
         <AdminGate>
-          <div className="max-w-2xl mx-auto lg:mx-0 space-y-3">
+          <div className="space-y-3">
             <div className="overflow-x-auto -mx-1 px-1 pb-1">
               <SlidingTabs
                 tabs={[
@@ -1807,7 +1874,7 @@ export default function SettingsPage() {
             {tab === "general" && <SettingsPageInner embedded />}
             {tab === "events" && <EventReportsSettings />}
             {tab === "music" && <MusicSettings />}
-            {tab === "members" && (<><MemberAccountsSettings /><ReputationAdjustSettings /></>)}
+            {tab === "members" && (<><MemberAccountsSettings /><ReputationFormulaSettings /><ReputationAdjustSettings /></>)}
             {tab === "shop" && <ShopPricingSettings />}
           </div>
         </AdminGate>

@@ -338,6 +338,9 @@ export const api = {
   getMemberReputation: (playerTag: string) => apiFetch(`/api/reputation/member/${encodeURIComponent(playerTag)}`),
   adjustReputation: (player_tag: string, player_name: string, points: number, note?: string) =>
     apiFetch("/api/reputation/adjust", { method: "POST", body: JSON.stringify({ player_tag, player_name, points, note }) }),
+  getReputationPointsConfig: () => apiFetch("/api/reputation/points-config"),
+  updateReputationPointsConfig: (values: Record<string, number>) =>
+    apiFetch("/api/reputation/points-config", { method: "PUT", body: JSON.stringify(values) }),
 
   // Music
   getTracks:    () => apiFetch("/api/music/tracks"),

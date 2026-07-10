@@ -297,7 +297,8 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
     # Danh vọng: tham gia/thắng/3 sao/bỏ lượt — mỗi war chỉ tính 1 lần nhờ
     # ref_key=war_end_time (UNIQUE cùng player_tag+reason nên poll lại vẫn an toàn).
     try:
-        from services.reputation import add_reputation, POINTS as REP_POINTS
+        from services.reputation import add_reputation, get_points as get_rep_points
+        rep_points = get_rep_points(sb)
         is_cwl = war_type == "cwl"
         for m in members:
             tag_, name_ = m.get("tag"), m.get("name", "?")
@@ -312,7 +313,7 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
                 add_reputation(sb, clan_id, tag_, name_, "war_win", ref_key=end_time)
             if three_stars > 0:
                 reason = "cwl_three_star" if is_cwl else "three_star"
-                add_reputation(sb, clan_id, tag_, name_, reason, ref_key=end_time, points=REP_POINTS[reason] * three_stars)
+                add_reputation(sb, clan_id, tag_, name_, reason, ref_key=end_time, points=rep_points[reason] * three_stars)
     except Exception as e:
         log.error(f"reputation scoring error (clan_id={clan_id}, war_end_time={end_time}): {e}")
 

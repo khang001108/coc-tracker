@@ -354,6 +354,66 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Top Cúp + Danh vọng (rút gọn — xem đầy đủ ở Thống kê) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TopTrophiesBox members={members} />
+        <TopReputationBox />
+      </div>
+    </div>
+  );
+}
+
+function TopTrophiesBox({ members }: { members: any[] }) {
+  const ranked = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0)).slice(0, 5);
+  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-bold text-white flex items-center gap-2"><Trophy size={16} className="text-yellow-400"/> Top Cúp</h2>
+        <Link href="/stats" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
+      </div>
+      {ranked.length === 0 ? <EmptyState message="Không có dữ liệu"/> : (
+        <div className="space-y-1.5">
+          {ranked.map((m, i) => (
+            <div key={m.tag} className="flex items-center gap-2">
+              <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
+              <span className="text-sm text-white flex-1 truncate">{m.name}</span>
+              <span className="text-xs text-yellow-400 shrink-0">🏆 {formatNumber(m.trophies || 0)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopReputationBox() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.getReputationLeaderboard(5).then(setRows).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-bold text-white flex items-center gap-2">🏵️ Danh vọng</h2>
+        <Link href="/stats" className="text-xs text-yellow-500 hover:underline">Xem tất cả →</Link>
+      </div>
+      {loading ? (
+        <div className="h-24 bg-gray-800 rounded-xl animate-pulse"/>
+      ) : rows.length === 0 ? <EmptyState message="Chưa có dữ liệu Danh vọng"/> : (
+        <div className="space-y-1.5">
+          {rows.map((r, i) => (
+            <div key={r.player_tag} className="flex items-center gap-2">
+              <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
+              <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
+              <span className="text-xs text-yellow-400 shrink-0">{r.total}đ</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
