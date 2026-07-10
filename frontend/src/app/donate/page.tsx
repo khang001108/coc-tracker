@@ -7,6 +7,8 @@ import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { Heart, Gamepad2, ArrowUpDown } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 
@@ -15,6 +17,7 @@ type SortKey = "donations" | "donationsReceived" | "ratio" | "name" | "th";
 export default function DonatePage() {
   const [members, setMembers] = useState<any[]>([]);
   const bannerSrc = usePageBanner("donate", "/art/balloon-swarm-skulls.jpg");
+  const repRankMap = useReputationRankMap();
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"donate" | "games">("donate");
   const [sortKey, setSortKey] = useState<SortKey>("donations");
@@ -130,8 +133,9 @@ export default function DonatePage() {
                       </div>
                     </div>
                     <div className="col-span-4 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
+                      <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
                         <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                        {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                       </p>
                       <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                     </div>
@@ -174,8 +178,9 @@ export default function DonatePage() {
                   <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
                     <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                    {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                   </p>
                   <div className="progress-bar mt-1">
                     <div className="progress-fill" style={{ width: `${Math.min((m.donations / (sorted[0]?.donations || 1)) * 100, 100)}%` }} />

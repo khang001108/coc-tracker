@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { Castle, TrendingUp, Users, Coins, AlertCircle, Copy, Check, UserX } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { EmberField } from "@/components/ui/EmberField";
 import { useEmberColor } from "@/lib/useEmberColor";
 import { usePageBanner } from "@/lib/usePageBanner";
@@ -23,6 +25,7 @@ function CopyLogButton({ getText, label = "Copy log" }: { getText: () => string;
 
 export default function CapitalPage() {
   const [raid, setRaid] = useState<any>(null);
+  const repRankMap = useReputationRankMap();
   const emberColor = useEmberColor();
   const bannerSrc = usePageBanner("capital", "/art/capital-sky-islands.jpg");
   const [clan, setClan] = useState<any>(null);
@@ -182,8 +185,9 @@ export default function CapitalPage() {
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
+                      <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
                         <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                        {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                       </p>
                       <div className="progress-bar mt-1.5 w-full">
                         <div className="progress-fill" style={{ width: `${pct}%` }} />

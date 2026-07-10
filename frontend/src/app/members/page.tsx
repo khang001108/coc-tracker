@@ -10,6 +10,8 @@ import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 
 const ROLE_ORDER = ["leader", "coLeader", "admin", "member"];
 const ROLE_TITLE: Record<string, string> = {
@@ -127,6 +129,7 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
   const bannerSrc = usePageBanner("members", "/art/royal-vista.jpg");
+  const repRankMap = useReputationRankMap();
   const [memberLog, setMemberLog] = useState<any[]>([]);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [search, setSearch] = useState("");
@@ -221,6 +224,7 @@ export default function MembersPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
                       <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                      {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                       {rosterMap[m.tag]?.claimed && (
                         <span title="Đã xác minh danh tính trên web">
                           <ShieldCheck size={12} className="text-green-400 shrink-0" />
@@ -293,8 +297,9 @@ export default function MembersPage() {
                   {selected.townHallLevel}
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-lg">
+                  <h3 className="font-bold text-white text-lg flex items-center gap-1.5">
                     <NameEffect effectKey={rosterMap[selected.tag]?.equipped_effect}>{selected.name}</NameEffect>
+                    {repRankMap[selected.tag] && <ReputationBadge rank={repRankMap[selected.tag]} size="md"/>}
                   </h3>
                   <p className={`text-sm ${roleClass(selected.role)}`}>{roleLabel(selected.role)}</p>
                   {rosterMap[selected.tag]?.claimed && (

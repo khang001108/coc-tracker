@@ -8,6 +8,8 @@ import { AdminGate } from "@/components/ui/AdminGate";
 import { Portal } from "@/components/ui/Portal";
 import { FireworkField } from "@/components/ui/FireworkField";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
@@ -269,6 +271,7 @@ const PARTICIPANT_COLLAPSED_COUNT = 3;
 function ParticipantList({ participants }: { participants: any[] }) {
   // Mặc định LUÔN thu gọn — chỉ hiện đủ khi người dùng bấm "Xem tất cả".
   const [expanded, setExpanded] = useState(false);
+  const repRankMap = useReputationRankMap();
   if (!participants.length) return null;
   const show = expanded ? participants : participants.slice(0, PARTICIPANT_COLLAPSED_COUNT);
   const hiddenCount = participants.length - PARTICIPANT_COLLAPSED_COUNT;
@@ -286,7 +289,10 @@ function ParticipantList({ participants }: { participants: any[] }) {
         {show.map((p: any, i: number) => (
           <div key={p.player_tag} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5">
             <span className="text-xs text-gray-600 w-4 text-right">{i+1}</span>
-            <span className="text-sm text-gray-200 flex-1 truncate">{p.player_name}</span>
+            <span className="text-sm text-gray-200 flex-1 truncate flex items-center gap-1.5">
+              {p.player_name}
+              {repRankMap[p.player_tag] && <ReputationBadge rank={repRankMap[p.player_tag]}/>}
+            </span>
             <span className="text-[10px] text-gray-600">{fmtDateTime(p.joined_at)}</span>
           </div>
         ))}
@@ -301,6 +307,7 @@ function ParticipantList({ participants }: { participants: any[] }) {
 /* ─── Event Detail Modal ──────────────────────────────────────────────── */
 function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any) {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const repRankMap = useReputationRankMap();
   const [claims, setClaims]           = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
   const [lbNote, setLbNote]           = useState("");
@@ -628,7 +635,10 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                       <span className={`text-xs w-5 text-right font-bold ${m.rank===1?"text-yellow-400":m.rank===2?"text-gray-300":m.rank===3?"text-amber-600":"text-gray-500"}`}>
                         {m.rank<=3?["🥇","🥈","🥉"][m.rank-1]:m.rank}
                       </span>
-                      <span className="text-sm text-white flex-1 truncate">{m.player_name}</span>
+                      <span className="text-sm text-white flex-1 truncate flex items-center gap-1.5">
+                        {m.player_name}
+                        {repRankMap[m.player_tag] && <ReputationBadge rank={repRankMap[m.player_tag]}/>}
+                      </span>
                       <span className="text-xs text-yellow-400 font-semibold">{m.metric_value}</span>
                     </div>
                   ))}

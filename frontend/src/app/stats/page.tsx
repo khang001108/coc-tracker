@@ -169,20 +169,33 @@ function ReputationLeaderboardTab() {
           Top 10 Danh vọng có huy hiệu riêng: 💎 hạng 1-2, 🥇 hạng 3-5, 🥈 hạng 6-10.
         </p>
         {tierInfo.length > 0 && (
-          <p className="text-[11px] text-gray-600 mt-2 pt-2 border-t border-gray-800/60">
-            Tier theo TỔNG điểm (khác huy hiệu Top 10 ở trên): {tierInfo.slice().reverse().map(t => `${t.name} từ ${t.threshold}đ (x${t.multiplier})`).join(" · ")}.
-            Đổi ngưỡng ở Cài đặt → Sự kiện → "Ngưỡng Tier Danh vọng".
+          <p className="text-[11px] text-gray-600 mt-2 pt-2 border-t border-gray-800/60 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span>Tier theo tổng điểm:</span>
+            {tierInfo.slice().reverse().map((t, i) => (
+              <span key={t.name}>
+                <span className={tierColor[t.name] || "text-gray-400"}>{t.name} từ <strong>{t.threshold}đ</strong> (x{t.multiplier})</span>
+                {i < tierInfo.length - 1 ? " ·" : ""}
+              </span>
+            ))}
           </p>
         )}
       </div>
       <div className="card space-y-1.5">
         <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏵️ Xếp hạng Danh vọng</h3>
         {rows.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Chưa có dữ liệu Danh vọng.</p>}
+        {rows.length > 0 && (
+          <div className="flex items-center gap-2 px-3 text-[10px] text-gray-600 uppercase tracking-wide">
+            <span className="w-6 text-center shrink-0"> </span>
+            <span className="flex-1">Thành viên</span>
+            <span className="shrink-0 w-14 text-right">Hạng</span>
+            <span className="shrink-0 w-14 text-right">Điểm</span>
+          </div>
+        )}
         {rows.map((r, i) => (
           <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
             {i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
             <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
-            <span className={`text-[10px] shrink-0 ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
+            <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
             <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}đ</span>
           </div>
         ))}

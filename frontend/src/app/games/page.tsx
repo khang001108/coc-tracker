@@ -5,6 +5,8 @@ import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { Gamepad2, Trophy, RefreshCw } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { EmberField } from "@/components/ui/EmberField";
 import { useEmberColor } from "@/lib/useEmberColor";
@@ -12,6 +14,7 @@ import { usePageBanner } from "@/lib/usePageBanner";
 
 export default function GamesPage() {
   const [members, setMembers] = useState<any[]>([]);
+  const repRankMap = useReputationRankMap();
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,8 +122,9 @@ export default function GamesPage() {
                       <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
                         <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
+                        {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

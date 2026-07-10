@@ -5,6 +5,8 @@ import { thColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion, ProjectileMiniIcon } from "@/lib/gameIcons";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
@@ -31,9 +33,9 @@ function AttackBadge({ attack }: { attack: any }) {
   );
 }
 
-function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSelect, maxAttacks }: {
+function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSelect, maxAttacks, repRankMap }: {
   member: any; attacks: any[]; defenses: any[]; side: "left" | "right";
-  iconMap: Record<string, any>; selected: boolean; onSelect: () => void; maxAttacks: number;
+  iconMap: Record<string, any>; selected: boolean; onSelect: () => void; maxAttacks: number; repRankMap: Record<string, number>;
 }) {
   const isRight = side === "right";
   // Pháo + lâu đài giờ trang trí cho PHÒNG THỦ: mất bao nhiêu sao khi bị đánh
@@ -63,8 +65,9 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
 
         {/* Name + stars + lượt đánh */}
         <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
-          <p className="text-[10px] font-semibold truncate leading-tight" style={{ color: "var(--py-card-text, #e5e7eb)" }}>
+          <p className={`text-[10px] font-semibold truncate leading-tight flex items-center gap-1 ${isRight ? "flex-row-reverse justify-start" : ""}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
             <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
+            {repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
           </p>
           {/* Đã bỏ dòng tổng sao (trùng lặp với badge từng đòn đánh bên dưới,
               lại còn dễ hiểu sai khi tổng > 3 sao vì chỉ vẽ tối đa 3 ô sao) */}
@@ -89,6 +92,7 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
 
 export default function WarBattlefieldMap({ war }: { war: any }) {
   const [iconMap, setIconMap] = useState<Record<string, any>>({});
+  const repRankMap = useReputationRankMap();
   const [selected, setSelected] = useState<{ tag: string; side: "left" | "right" } | null>(null);
   const [viewMode, setViewMode] = useState<"single" | "all">("single");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -271,7 +275,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
                 style={{ opacity: left && fade(left.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
                 {left && (
                   <MemberCard member={left} side="left"
-                    attacks={ourAtks[left.tag] || []} defenses={ourDefs[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
+                    attacks={ourAtks[left.tag] || []} defenses={ourDefs[left.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks} repRankMap={repRankMap}
                     selected={selected?.tag === left.tag}
                     onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === left.tag ? null : { tag: left.tag, side: "left" }); }} />
                 )}
@@ -285,7 +289,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
                 style={{ opacity: right && fade(right.tag) ? 1 : 0.2, transition: "opacity 0.15s" }}>
                 {right && (
                   <MemberCard member={right} side="right"
-                    attacks={theirAtks[right.tag] || []} defenses={theirDefs[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks}
+                    attacks={theirAtks[right.tag] || []} defenses={theirDefs[right.tag] || []} iconMap={iconMap} maxAttacks={maxAttacks} repRankMap={repRankMap}
                     selected={selected?.tag === right.tag}
                     onSelect={() => { setViewMode("single"); setSelected(s => s?.tag === right.tag ? null : { tag: right.tag, side: "right" }); }} />
                 )}
