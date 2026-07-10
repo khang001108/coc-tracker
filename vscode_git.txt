@@ -1,0 +1,4 @@
+Unzip -o "coc-tracker.zip" -d /tmp/update
+cp -rf /tmp/update/coc-tracker/. .
+rm -rf /tmp/update "coc-tracker.zip"
+git add -A && git commit -m "update" && git push
