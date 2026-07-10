@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
-import { Award, Lock, CheckCircle2, Sparkles, Medal } from "lucide-react";
+import { Award, Lock, CheckCircle2, Sparkles, Medal, Copy, Check } from "lucide-react";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -34,11 +34,13 @@ export function MedalRewardBox() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [perm, setPerm] = useState({ is_admin: false, can_award: false });
-  const [busyTag, setBusyTag] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [showAwardPanel, setShowAwardPanel] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [awardedCopied, setAwardedCopied] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [savingSelected, setSavingSelected] = useState(false);
 
   const isLoggedIn = !!getAdminToken() || !!getMemberAuth();
 
@@ -79,16 +81,47 @@ export function MedalRewardBox() {
     } catch (e: any) { flashMsg(e.message || "Lỗi lưu (cần đăng nhập Admin)"); }
   }
 
-  async function handleAward(m: any) {
-    if (!confirm(`Xác nhận ĐÃ trao huy chương trong game cho "${m.player_name}"? Người này sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.`)) return;
-    setBusyTag(m.player_tag);
-    try {
-      await api.awardMedal(m.player_tag, m.player_name, noteDraft[m.player_tag] || undefined);
-      flashMsg(`Đã ghi nhận trao huy chương cho ${m.player_name}`, "success");
-      setNoteDraft(d => ({ ...d, [m.player_tag]: "" }));
-      await load();
-    } catch (e: any) { flashMsg(e.message || "Lỗi ghi nhận (cần đăng nhập Đồng thủ lĩnh trở lên, hoặc server đang gián đoạn)"); }
-    finally { setBusyTag(null); }
+  function toggleSelect(tag: string) {
+    setSelectedTags(prev => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag); else next.add(tag);
+      return next;
+    });
+  }
+
+  async function handleSaveSelected() {
+    if (selectedTags.size === 0) return;
+    const chosen = notAwardedYet.filter(m => m.eligible && selectedTags.has(m.player_tag));
+    if (!confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.`)) return;
+    setSavingSelected(true);
+    let okCount = 0;
+    for (const m of chosen) {
+      try {
+        await api.awardMedal(m.player_tag, m.player_name, noteDraft[m.player_tag] || undefined);
+        okCount++;
+      } catch (e: any) {
+        flashMsg(e.message || `Lỗi ghi nhận cho ${m.player_name}`);
+        break; // dừng lại nếu có lỗi (vd hết quyền giữa chừng) để tránh spam lỗi
+      }
+    }
+    if (okCount > 0) {
+      flashMsg(`Đã lưu trao thưởng cho ${okCount} người`, "success");
+      setSelectedTags(new Set());
+      setNoteDraft({});
+    }
+    setSavingSelected(false);
+    await load();
+  }
+
+  function copyAwardedList() {
+    const lines = [
+      `🎖️ Đã trao thưởng huy chương CWL${currentSeasonNumber != null ? ` — Mùa ${currentSeasonNumber}` : ""}`,
+      `${awardedThisSeason.length}/${members.length} thành viên`,
+      ...awardedThisSeason.map(m => `- ${m.player_name} (bởi ${m.last_award?.awarded_by || "?"})`),
+    ];
+    navigator.clipboard.writeText(lines.join("\n"));
+    setAwardedCopied(true);
+    setTimeout(() => setAwardedCopied(false), 1500);
   }
 
   async function handleDeleteHistory(id: number, name: string) {
@@ -124,7 +157,15 @@ export function MedalRewardBox() {
             <Award size={18} className="text-yellow-400"/> Đã trao thưởng mùa này
             {currentSeasonNumber != null && <span className="badge-gold text-[10px]">Mùa {currentSeasonNumber}</span>}
           </h3>
-          <span className="text-xs text-gray-500">{awardedThisSeason.length}/{members.length} thành viên</span>
+          <span className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-gray-500">{awardedThisSeason.length}/{members.length} thành viên</span>
+            {awardedThisSeason.length > 0 && (
+              <button onClick={copyAwardedList} title="Copy danh sách đã trao thưởng mùa này"
+                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-yellow-400 transition-colors">
+                {awardedCopied ? <Check size={14} className="text-green-400"/> : <Copy size={14}/>}
+              </button>
+            )}
+          </span>
         </div>
         {awardedThisSeason.length === 0 ? (
           <p className="text-sm text-gray-600 text-center py-4">Chưa có ai được trao huy chương ở mùa này.</p>
@@ -164,23 +205,33 @@ export function MedalRewardBox() {
             <div className="space-y-1.5">
               {notAwardedYet.map(m => (
                 <div key={m.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${m.eligible ? "bg-gray-800/50" : "bg-purple-500/5 border border-purple-500/15 opacity-70"}`}>
-                  {m.eligible ? <CheckCircle2 size={12} className="text-green-400 shrink-0"/> : <Lock size={12} className="text-purple-300 shrink-0"/>}
+                  {m.eligible ? (
+                    perm.can_award ? (
+                      <input type="checkbox" checked={selectedTags.has(m.player_tag)}
+                        onChange={() => toggleSelect(m.player_tag)}
+                        className="w-4 h-4 rounded accent-yellow-500 shrink-0"/>
+                    ) : (
+                      <CheckCircle2 size={12} className="text-green-400 shrink-0"/>
+                    )
+                  ) : (
+                    <Lock size={12} className="text-purple-300 shrink-0"/>
+                  )}
                   <span className="text-sm text-white flex-1 truncate">{m.player_name}</span>
                   {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} mùa</span>}
                   {m.eligible && perm.can_award && (
-                    <>
-                      <input placeholder="Ghi chú" value={noteDraft[m.player_tag] || ""}
-                        onChange={e => setNoteDraft(d => ({ ...d, [m.player_tag]: e.target.value }))}
-                        className="input !py-1 !px-2 text-xs w-24 shrink-0"/>
-                      <button onClick={() => handleAward(m)} disabled={busyTag === m.player_tag}
-                        className="btn-gold text-[11px] px-2 py-1 shrink-0">
-                        {busyTag === m.player_tag ? "..." : "Đã trao"}
-                      </button>
-                    </>
+                    <input placeholder="Ghi chú" value={noteDraft[m.player_tag] || ""}
+                      onChange={e => setNoteDraft(d => ({ ...d, [m.player_tag]: e.target.value }))}
+                      className="input !py-1 !px-2 text-xs w-24 shrink-0"/>
                   )}
                 </div>
               ))}
             </div>
+            {perm.can_award && notAwardedYet.some(m => m.eligible) && (
+              <button onClick={handleSaveSelected} disabled={selectedTags.size === 0 || savingSelected}
+                className="btn-gold w-full text-sm disabled:opacity-40">
+                {savingSelected ? "Đang lưu..." : `Lưu (${selectedTags.size} đã tích)`}
+              </button>
+            )}
             {!perm.can_award && isLoggedIn && (
               <p className="text-[11px] text-gray-600">Chỉ Đồng thủ lĩnh trở lên mới xác nhận trao thưởng được.</p>
             )}
