@@ -449,58 +449,78 @@ export default function WarPage() {
               <p className="text-[11px] text-gray-600 mt-1">CoC API không cho xem lại các mùa CWL cũ — web chỉ tự lưu lại từ lúc bạn cập nhật tính năng này trở đi.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {cwlHistory.map((w: any, i: number) => {
-                const won = w.result === "win";
-                const draw = w.result === "tie";
-                const expanded = expandedCwlWar === i;
-                const top3 = cwlTop3ByIdx[i] || [];
-                return (
-                  <div key={w.id} className="rounded-xl bg-gray-800 overflow-hidden">
-                    <button onClick={() => {
-                      const next = expanded ? null : i;
-                      setExpandedCwlWar(next);
-                      if (next !== null && !cwlTop3ByIdx[i] && w.war_end_time) {
-                        setCwlTop3Loading(i);
-                        api.getWarLogTopAttackers(w.war_end_time)
-                          .then((res: any) => setCwlTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
-                          .catch(() => setCwlTop3ByIdx(prev => ({ ...prev, [i]: [] })))
-                          .finally(() => setCwlTop3Loading(null));
-                      }
-                    }} className="w-full flex items-center gap-4 p-3 text-left">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                        won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
-                      }`}>
-                        {won ? "W" : draw ? "D" : "L"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
-                        <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
-                        <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
-                      </div>
-                    </button>
-                    {expanded && (
-                      <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
-                        <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
-                        {cwlTop3Loading === i ? (
-                          <p className="text-xs text-gray-600">Đang tải...</p>
-                        ) : top3.length === 0 ? (
-                          <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
-                        ) : top3.map((m, idx) => (
-                          <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
-                            <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
-                            <span className="flex-1 text-gray-200 truncate">{m.name}</span>
-                            <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
+            <div className="space-y-5">
+              {(() => {
+                // Nhóm theo season_number (Mùa 1, Mùa 2...) — giữ nguyên thứ tự
+                // mới nhất trước, chỉ gộp các war LIÊN TIẾP cùng mùa lại 1 khối.
+                const groups: { season: number | null; wars: { w: any; idx: number }[] }[] = [];
+                cwlHistory.forEach((w: any, idx: number) => {
+                  const season = w.season_number ?? null;
+                  const last = groups[groups.length - 1];
+                  if (last && last.season === season) last.wars.push({ w, idx });
+                  else groups.push({ season, wars: [{ w, idx }] });
+                });
+                return groups.map((g, gi) => (
+                  <div key={gi}>
+                    <p className="text-xs font-bold text-yellow-500 mb-2 flex items-center gap-1.5">
+                      🏆 {g.season ? `Mùa ${g.season}` : "Chưa rõ mùa"}
+                    </p>
+                    <div className="space-y-3">
+                      {g.wars.map(({ w, idx: i }) => {
+                        const won = w.result === "win";
+                        const draw = w.result === "tie";
+                        const expanded = expandedCwlWar === i;
+                        const top3 = cwlTop3ByIdx[i] || [];
+                        return (
+                          <div key={w.id} className="rounded-xl bg-gray-800 overflow-hidden">
+                            <button onClick={() => {
+                              const next = expanded ? null : i;
+                              setExpandedCwlWar(next);
+                              if (next !== null && !cwlTop3ByIdx[i] && w.war_end_time) {
+                                setCwlTop3Loading(i);
+                                api.getWarLogTopAttackers(w.war_end_time)
+                                  .then((res: any) => setCwlTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
+                                  .catch(() => setCwlTop3ByIdx(prev => ({ ...prev, [i]: [] })))
+                                  .finally(() => setCwlTop3Loading(null));
+                              }
+                            }} className="w-full flex items-center gap-4 p-3 text-left">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                                won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
+                              }`}>
+                                {won ? "W" : draw ? "D" : "L"}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
+                                <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
+                                <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
+                              </div>
+                            </button>
+                            {expanded && (
+                              <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
+                                <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
+                                {cwlTop3Loading === i ? (
+                                  <p className="text-xs text-gray-600">Đang tải...</p>
+                                ) : top3.length === 0 ? (
+                                  <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
+                                ) : top3.map((m, idx) => (
+                                  <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
+                                    <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
+                                    <span className="flex-1 text-gray-200 truncate">{m.name}</span>
+                                    <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        );
+                      })}
+                    </div>
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           )}
         </div>

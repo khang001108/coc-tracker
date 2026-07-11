@@ -190,9 +190,24 @@ async def war_history(request: Request, war_type: str = Query("random", pattern=
     try:
         res = sb.table("war_history_log").select("*").eq("clan_id", clan_id).eq("war_type", war_type) \
             .order("created_at", desc=True).limit(limit).execute()
-        return {"items": res.data or []}
+        items = res.data or []
     except Exception:
         return {"items": [], "error": "chưa chạy migration PART 7"}
+
+    if war_type == "cwl":
+        # Đánh số mùa tuần tự 1,2,3... theo THỨ TỰ THỜI GIAN thật (giống cách
+        # đánh số ở tính năng Huy chương CWL) — để nhóm lịch sử theo "Mùa X"
+        # thay vì hiện chuỗi "2026-07" thô của CoC.
+        try:
+            seasons_res = sb.table("cwl_season_log").select("season").eq("clan_id", clan_id).order("season").execute()
+            ordered_seasons = sorted({r["season"] for r in (seasons_res.data or [])})
+            season_number_map = {s: i + 1 for i, s in enumerate(ordered_seasons)}
+            for it in items:
+                it["season_number"] = season_number_map.get(it.get("season"))
+        except Exception:
+            pass
+
+    return {"items": items}
 async def donation_trend(request: Request, period: str = Query("all", pattern="^(week|month|all)$")):
     clan_id = get_clan_id(request)
     sb = get_supabase()

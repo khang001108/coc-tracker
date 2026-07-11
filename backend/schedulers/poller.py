@@ -206,7 +206,7 @@ def _best_defense(all_opponent_attacks: list, member_tag: str, name_by_tag: dict
     }
 
 
-def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "random"):
+def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "random", season: str | None = None):
     """Ghi lại lượt tham chiến của từng thành viên khi 1 war đã kết thúc (hoặc
     đang ở battle day cuối) — dùng upsert nên gọi lặp lại nhiều lần (mỗi lần
     poll) vẫn an toàn, không bị nhân đôi dữ liệu. Đồng thời tính sẵn đòn đánh/
@@ -282,18 +282,25 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
 
     clan_stars, opp_stars = clan.get("stars", 0), opponent.get("stars", 0)
     result = "win" if clan_stars > opp_stars else ("lose" if clan_stars < opp_stars else "tie")
+    history_row = {
+        "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
+        "opponent_name": opponent.get("name"), "opponent_tag": opponent.get("tag"),
+        "team_size": war_data.get("teamSize"),
+        "clan_stars": clan_stars, "opponent_stars": opp_stars,
+        "clan_destruction": clan.get("destructionPercentage"),
+        "opponent_destruction": opponent.get("destructionPercentage"),
+        "result": result, "season": season,
+    }
     try:
-        sb.table("war_history_log").upsert({
-            "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
-            "opponent_name": opponent.get("name"), "opponent_tag": opponent.get("tag"),
-            "team_size": war_data.get("teamSize"),
-            "clan_stars": clan_stars, "opponent_stars": opp_stars,
-            "clan_destruction": clan.get("destructionPercentage"),
-            "opponent_destruction": opponent.get("destructionPercentage"),
-            "result": result,
-        }, on_conflict="clan_id,war_end_time").execute()
-    except Exception as e:
-        log.error(f"_log_war_history error (clan_id={clan_id}): {e}")
+        sb.table("war_history_log").upsert(history_row, on_conflict="clan_id,war_end_time").execute()
+    except Exception:
+        try:
+            # Chưa chạy migration PART 28 (chưa có cột season) — thử lại không có nó
+            sb.table("war_history_log").upsert(
+                {k: v for k, v in history_row.items() if k != "season"}, on_conflict="clan_id,war_end_time"
+            ).execute()
+        except Exception as e:
+            log.error(f"_log_war_history error (clan_id={clan_id}): {e}")
 
     # Danh vọng: tham gia/thắng/3 sao/bỏ lượt — mỗi war chỉ tính 1 lần nhờ
     # ref_key=war_end_time (UNIQUE cùng player_tag+reason nên poll lại vẫn an toàn).
@@ -365,7 +372,7 @@ async def _log_cwl_participation(sb, clan_id: int, tag: str):
                 continue
             if our_side == "opponent":
                 w["clan"], w["opponent"] = w["opponent"], w["clan"]
-            _log_war_participation(sb, clan_id, w, war_type="cwl")
+            _log_war_participation(sb, clan_id, w, war_type="cwl", season=group.get("season"))
 
 
 async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):

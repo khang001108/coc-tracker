@@ -63,20 +63,14 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
           </div>
         </div>
 
-        {/* Cạnh lâu đài: 2 hàng nhỏ — lượt đánh (tia đạn) + số sao từng đòn */}
-        <div className="flex-1 min-w-0 space-y-0.5">
-          {/* Lượt đánh — hiện icon tia đạn đang sở hữu, sáng = còn lượt, mờ = đã dùng */}
-          <div className={`flex gap-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
-            {Array.from({ length: maxAttacks }).map((_, i) => (
-              <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={!!attacks[i]} />
-            ))}
-          </div>
-          {/* Số sao từng đòn đánh */}
-          {attacks.length > 0 && (
-            <div className={`flex flex-wrap gap-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
-              {attacks.map((a, i) => <AttackBadge key={i} attack={a} />)}
-            </div>
-          )}
+        {/* Cạnh lâu đài: 1 cột dọc — mỗi lượt đánh 1 dòng, CHƯA đánh thì hiện
+            icon tia đạn, ĐÃ đánh thì đổi thành badge kết quả (vị trí + sao) */}
+        <div className={`flex-1 min-w-0 space-y-0.5 flex flex-col ${isRight ? "items-end" : "items-start"}`}>
+          {Array.from({ length: maxAttacks }).map((_, i) => (
+            attacks[i]
+              ? <AttackBadge key={i} attack={attacks[i]} />
+              : <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={false} />
+          ))}
         </div>
       </div>
 

@@ -993,3 +993,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.quest_claims TO service_role;
 -- MIGRATION — PART 27 (Phạm vi Nhiệm vụ — riêng clan hay liên clan)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE quests ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'private'; -- private | public
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 28 (Gắn MÙA CWL vào war_history_log để nhóm "Lịch sử
+-- War > CWL" theo từng mùa, giống cách game hiển thị "Mùa giải Tháng X")
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE war_history_log ADD COLUMN IF NOT EXISTS season TEXT;
