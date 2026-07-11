@@ -162,8 +162,17 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
             "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
         }
 
+    now_iso = datetime.utcnow().isoformat()
+    if cutoff:
+        period_start = cutoff
+    else:
+        # "all" — lấy created_at sớm nhất trong dữ liệu đang có (từ khi bắt đầu ghi nhận)
+        period_start = min((r["created_at"] for r in rows if r.get("created_at")), default=None)
+
     return {
         "period": period,
+        "period_start": period_start,
+        "period_end": now_iso,
         "total_wars_tracked": len(set(r["war_end_time"] for r in rows)),
         "weakest_war": weakest,
         "most_skips": most_skips,

@@ -304,7 +304,7 @@ function StatsPageInner() {
   const [warLog, setWarLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"week" | "month" | "all">("all");
-  const [warActivity, setWarActivity] = useState<{ weakest_war: any[]; most_skips: any[]; mvp_attack?: any; mvp_defense?: any }>({ weakest_war: [], most_skips: [] });
+  const [warActivity, setWarActivity] = useState<{ weakest_war: any[]; most_skips: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ weakest_war: [], most_skips: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
   const [topCoins, setTopCoins] = useState<any[]>([]);
   const [coinsScope, setCoinsScope] = useState<"clan" | "all">("clan");
@@ -527,10 +527,17 @@ function StatsPageInner() {
 
 function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
   period: "week" | "month" | "all"; setPeriod: (p: "week" | "month" | "all") => void; periodLabel: string;
-  warActivity: { weakest_war: any[]; most_skips: any[] }; insightsLoading: boolean;
+  warActivity: { weakest_war: any[]; most_skips: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
   topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
+  const fmtD = (s?: string) => {
+    if (!s) return null;
+    try { return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(s)); }
+    catch { return null; }
+  };
+  const rangeLabel = warActivity.period_start && warActivity.period_end
+    ? `${fmtD(warActivity.period_start)} → ${fmtD(warActivity.period_end)}` : null;
   return (
     <div className="space-y-5">
       <div className="card !py-3 !px-4">
@@ -584,7 +591,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
 
       {/* Hiệu suất kém — cần admin lưu ý */}
       <div>
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <h3 className="font-bold text-white flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-400" /> Cần lưu ý ({periodLabel})
           </h3>
@@ -597,7 +604,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             ))}
           </div>
         </div>
-
+        {rangeLabel && <p className="text-[11px] text-gray-600 mb-3">Dữ liệu từ {rangeLabel}</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="card">
             <div className="flex items-center justify-between mb-3">

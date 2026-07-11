@@ -238,11 +238,6 @@ export default function ChatPage() {
               <Lock size={14} /> Cần <a href="/login" className="underline font-semibold">đăng nhập thành viên</a> để chat trong clan.
             </div>
           )}
-          {room === "global" && member && (
-            <p className="text-[11px] text-green-400 flex items-center gap-1.5 px-1">
-              <Users size={12}/> Đang chat với danh tính <b>{member.player_name}</b> — kèm huy hiệu hội, TH, lâu đài, pháo.
-            </p>
-          )}
           {room === "global" && !member && (
             <input className="input text-xs !py-1.5" placeholder="Tên hiển thị của bạn (tuỳ chọn)"
               value={guestNameInput} onChange={e => setGuestNameInput(e.target.value)} maxLength={30} />

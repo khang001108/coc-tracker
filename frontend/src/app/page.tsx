@@ -13,6 +13,8 @@ import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Co
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
+import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useReputationRankMap } from "@/lib/useReputationRankMap";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -344,6 +346,7 @@ function WeeklyReportCarousel() {
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const repRankMap = useReputationRankMap();
 
   useEffect(() => {
     api.getWeeklyLatest().then(setReport).catch(() => {}).finally(() => setLoading(false));
@@ -387,7 +390,10 @@ function WeeklyReportCarousel() {
               {p.data.good.slice(0, 3).map((e: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 bg-green-500/5 border border-green-500/10 rounded-lg px-2.5 py-1.5">
                   <span className="text-xs w-4 text-gray-500 shrink-0">{i + 1}</span>
-                  <span className="text-sm text-white flex-1 truncate">{e.player_name}</span>
+                  <span className="text-sm text-white flex-1 truncate flex items-center gap-1.5">
+                    {e.player_name}
+                    {repRankMap[e.player_tag] && <ReputationBadge rank={repRankMap[e.player_tag]}/>}
+                  </span>
                   {e.value && <span className="text-[10px] text-green-400 shrink-0 truncate max-w-[45%]">{e.value}</span>}
                 </div>
               ))}
