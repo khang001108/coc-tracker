@@ -1230,6 +1230,7 @@ function QuestCard({ quest, isCreator, onChanged }: { quest: any; isCreator: boo
 function QuestsSection() {
   const [quests, setQuests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"not_met" | "unclaimed" | "claimed">("not_met");
   const isAdmin = !!getAdminToken();
 
   async function load() {
@@ -1237,6 +1238,17 @@ function QuestsSection() {
     try { setQuests(await api.getQuests()); } catch {} finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+
+  const filtered = quests.filter(q => {
+    if (filter === "claimed") return !!q.claimed;
+    if (filter === "unclaimed") return !q.claimed && q.my_progress_met;
+    return !q.claimed && !q.my_progress_met; // "not_met" — mặc định, kể cả khi chưa đăng nhập
+  });
+  const counts = {
+    not_met: quests.filter(q => !q.claimed && !q.my_progress_met).length,
+    unclaimed: quests.filter(q => !q.claimed && q.my_progress_met).length,
+    claimed: quests.filter(q => q.claimed).length,
+  };
 
   return (
     <div className="space-y-4">
@@ -1248,15 +1260,25 @@ function QuestsSection() {
 
       {isAdmin && <CreateQuestForm onCreated={load}/>}
 
+      <div className="overflow-x-auto -mx-1 px-1 pb-1">
+        <SlidingTabs
+          tabs={[
+            { id: "not_met", label: `Chưa đạt (${counts.not_met})` },
+            { id: "unclaimed", label: `Chưa nhận thưởng (${counts.unclaimed})` },
+            { id: "claimed", label: `Đã nhận thưởng (${counts.claimed})` },
+          ]}
+          active={filter} onChange={(id) => setFilter(id as any)} className="w-max"/>
+      </div>
+
       {loading ? (
         <div className="grid gap-3">{[1,2].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse bg-gray-800"/>)}</div>
-      ) : quests.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="card text-center py-10">
-          <p className="text-gray-300 font-medium">Chưa có nhiệm vụ nào</p>
+          <p className="text-gray-300 font-medium">Không có nhiệm vụ nào ở mục này</p>
         </div>
       ) : (
         <div className="grid gap-3">
-          {quests.map(q => <QuestCard key={q.id} quest={q} isCreator={isAdmin} onChanged={load}/>)}
+          {filtered.map(q => <QuestCard key={q.id} quest={q} isCreator={isAdmin} onChanged={load}/>)}
         </div>
       )}
     </div>

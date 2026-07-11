@@ -74,8 +74,9 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
         </div>
       </div>
 
-      {/* Tên thành viên — hàng riêng bên dưới lâu đài */}
-      <p className={`text-[10px] font-semibold truncate leading-tight mt-1 flex items-center gap-1 ${isRight ? "flex-row-reverse justify-end" : "justify-start"}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
+      {/* Tên thành viên — hàng riêng bên dưới lâu đài, luôn full-width để
+          justify-end/text-right có chỗ đẩy tên ra sát mép ngoài (phe địch). */}
+      <p className={`w-full text-[10px] font-semibold truncate leading-tight mt-1 flex items-center gap-1 ${isRight ? "flex-row-reverse justify-end text-right" : "justify-start text-left"}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
         <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
         {repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
       </p>

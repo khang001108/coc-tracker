@@ -11,6 +11,7 @@ import { formatDate, thColor } from "@/lib/utils";
 import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check, AlertTriangle, RefreshCw } from "lucide-react";
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { getCurrentClanInfo } from "@/lib/clanContext";
 
 /** Top 3 đòn đánh hay nhất của 1 war cụ thể — sao cao nhất → % phá huỷ cao
  * nhất → nhanh nhất (giống công thức 'anh dũng nhất' dùng ở CWL/Thống kê). */
@@ -79,16 +80,25 @@ function WarMemberRow({ member, mapPosition, maxAttacks = 2, rosterMap = {} }: {
   );
 }
 
+/** war_end_time từ CoC API dạng "20260711T142757.000Z" — đổi sang dd/MM/yyyy
+ * cho dễ đọc thay vì cắt chuỗi thô (dễ bị lỗi như "20260711T1"). */
+function fmtWarDate(raw?: string): string {
+  if (!raw || raw.length < 8) return raw || "";
+  const y = raw.slice(0, 4), m = raw.slice(4, 6), d = raw.slice(6, 8);
+  return `${d}/${m}/${y}`;
+}
+
 function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
   w: any; expanded: boolean; onToggle: () => void; top3: any[]; skippers: string[]; loading: boolean;
 }) {
   const won = w.result === "win";
   const draw = w.result === "tie";
   const [copied, setCopied] = useState(false);
+  const myClan = getCurrentClanInfo();
 
   function copyDetail() {
     const lines = [
-      `⚔️ vs ${w.opponent_name} (${w.team_size}v${w.team_size}) — ${w.war_end_time?.slice(0, 10)}`,
+      `⚔️ ${myClan?.clan_name || "Clan"} vs ${w.opponent_name} (${w.team_size}v${w.team_size}) — ${fmtWarDate(w.war_end_time)}`,
       `⭐ ${w.clan_stars} — ${w.opponent_stars}⭐ · ${w.clan_destruction?.toFixed?.(1)}% vs ${w.opponent_destruction?.toFixed?.(1)}%`,
       "",
       "🔥 Top 3 đánh hay nhất:",
@@ -117,8 +127,14 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
-          <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
+          <p className="text-sm font-medium text-white truncate flex items-center gap-1">
+            {myClan?.badge_url && <img src={myClan.badge_url} alt="" className="w-4 h-4 object-contain shrink-0"/>}
+            <span className="truncate">{myClan?.clan_name || "Clan"}</span>
+            <span className="text-gray-500 shrink-0 text-xs">vs</span>
+            {w.opponent_badge && <img src={w.opponent_badge} alt="" className="w-4 h-4 object-contain shrink-0"/>}
+            <span className="truncate">{w.opponent_name}</span>
+          </p>
+          <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {fmtWarDate(w.war_end_time)}</p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>

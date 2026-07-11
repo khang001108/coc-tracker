@@ -638,7 +638,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               {warActivity.most_skips.length > 0 && (
                 <CopyButton getText={() =>
                   `🛡️ HAY BỎ WAR NHẤT (${periodLabel}):\n` +
-                  warActivity.most_skips.map((p, i) => `${i + 1}. ${p.name}: bỏ ${p.skipped}/${p.wars} war (${p.skip_rate}%)`).join("\n")
+                  warActivity.most_skips.map((p, i) => `${i + 1}. ${p.name}: bỏ ~${p.skipped} war (tích luỹ theo lượt, TB ${p.skip_rate}%/war)`).join("\n")
                 } />
               )}
             </div>
@@ -651,7 +651,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                 {warActivity.most_skips.map(p => (
                   <div key={p.tag} className="flex items-center justify-between text-sm">
                     <span className="text-gray-300 truncate">{p.name}</span>
-                    <span className="text-orange-400 font-semibold shrink-0">{p.skipped}/{p.wars} war ({p.skip_rate}%)</span>
+                    <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
                   </div>
                 ))}
               </div>
