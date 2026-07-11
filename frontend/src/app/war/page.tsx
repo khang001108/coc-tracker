@@ -131,19 +131,17 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
           <span className="text-[11px] text-gray-500 shrink-0">{w.team_size}v{w.team_size} · {fmtWarDate(w.war_end_time)}</span>
         </div>
 
-        {/* Hàng 2: số sao 2 bên — nền trung tính đơn giản, chữ kết quả ở giữa */}
-        <div className="relative h-10 rounded-lg overflow-hidden flex items-center bg-gray-900/60 text-white font-bold text-base">
-          <div className="flex-1 flex items-center justify-center gap-1">
-            ⭐ {w.clan_stars}
-          </div>
-          <div className="px-2.5 py-1 rounded-full bg-gray-950 border border-gray-700 text-[10px] font-extrabold tracking-wide whitespace-nowrap shrink-0">
-            <span className={draw ? "text-yellow-400" : won ? "text-green-400" : "text-red-400"}>
-              {draw ? "HÒA" : won ? "THẮNG" : "THUA"}
-            </span>
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1">
-            {w.opponent_stars} ⭐
-          </div>
+        {/* Hàng 2: số sao 2 bên + nhãn kết quả — gọn, không nền xám */}
+        <div className="flex items-center justify-center gap-3 py-1">
+          <span className="flex items-center gap-1 text-lg font-bold text-yellow-400">⭐ {w.clan_stars}</span>
+          <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wider border shrink-0 ${
+            draw ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
+              : won ? "bg-green-500/10 text-green-400 border-green-500/30"
+              : "bg-red-500/10 text-red-400 border-red-500/30"
+          }`}>
+            {draw ? "DRAW" : won ? "WIN" : "LOST"}
+          </span>
+          <span className="flex items-center gap-1 text-lg font-bold text-gray-400">{w.opponent_stars} ⭐</span>
         </div>
         <p className="text-[11px] text-gray-500 text-center">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
       </button>
