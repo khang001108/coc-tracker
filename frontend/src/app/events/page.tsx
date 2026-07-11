@@ -1260,14 +1260,19 @@ function QuestsSection() {
 
       {isAdmin && <CreateQuestForm onCreated={load}/>}
 
-      <div className="overflow-x-auto -mx-1 px-1 pb-1">
-        <SlidingTabs
-          tabs={[
-            { id: "not_met", label: `Chưa đạt (${counts.not_met})` },
-            { id: "unclaimed", label: `Chưa nhận thưởng (${counts.unclaimed})` },
-            { id: "claimed", label: `Đã nhận thưởng (${counts.claimed})` },
-          ]}
-          active={filter} onChange={(id) => setFilter(id as any)} className="w-max"/>
+      <div className="overflow-x-auto -mx-1 px-1">
+        <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800 w-fit">
+          {[
+            { v: "not_met", l: `Chưa đạt (${counts.not_met})` },
+            { v: "unclaimed", l: `Chưa nhận thưởng (${counts.unclaimed})` },
+            { v: "claimed", l: `Đã nhận thưởng (${counts.claimed})` },
+          ].map(o => (
+            <button key={o.v} onClick={() => setFilter(o.v as any)}
+              className={`text-xs px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${filter === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
+              {o.l}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (

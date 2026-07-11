@@ -48,7 +48,7 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
     <button onClick={onSelect}
       className={`w-full rounded-xl px-1.5 py-1.5 transition-all ${selected ? "ring-1 ring-yellow-500" : "hover:bg-black/5"}`}
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
-      <div className={`flex ${isRight ? "flex-row-reverse" : "flex-row"} items-center gap-1.5`}>
+      <div className={`w-full flex ${isRight ? "flex-row-reverse justify-end" : "flex-row justify-start"} items-center gap-1.5`}>
 
         {/* Lâu đài + 2 pháo phòng thủ dạng "huy hiệu" nhỏ đè lên 2 góc dưới —
             không còn tốn thêm bề ngang như đặt cạnh nữa (đây là lý do bị chèn

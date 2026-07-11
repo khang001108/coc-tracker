@@ -114,32 +114,36 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
 
   return (
     <div className="rounded-xl bg-gray-800 overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center gap-4 p-3 text-left">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-2 overflow-hidden bg-gray-900 ${
-          won ? "ring-green-400" : draw ? "ring-yellow-400" : "ring-red-400"
-        }`}>
-          {w.opponent_badge ? (
-            <img src={w.opponent_badge} alt="" className="w-full h-full object-contain" />
-          ) : (
-            <span className={`font-bold text-sm ${won ? "text-green-400" : draw ? "text-yellow-400" : "text-red-400"}`}>
-              {won ? "W" : draw ? "D" : "L"}
-            </span>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate flex items-center gap-1">
-            {myClan?.badge_url && <img src={myClan.badge_url} alt="" className="w-4 h-4 object-contain shrink-0"/>}
-            <span className="truncate">{myClan?.clan_name || "Clan"}</span>
-            <span className="text-gray-500 shrink-0 text-xs">vs</span>
-            {w.opponent_badge && <img src={w.opponent_badge} alt="" className="w-4 h-4 object-contain shrink-0"/>}
-            <span className="truncate">{w.opponent_name}</span>
+      <button onClick={onToggle} className="w-full p-3 text-left space-y-2">
+        {/* Hàng 1: 2 icon clan nhỏ + tên clan + ngày */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center -space-x-1.5 shrink-0">
+            {myClan?.badge_url ? (
+              <img src={myClan.badge_url} alt="" className="w-6 h-6 rounded-full object-contain bg-gray-900 ring-2 ring-gray-800"/>
+            ) : <div className="w-6 h-6 rounded-full bg-gray-700 ring-2 ring-gray-800"/>}
+            {w.opponent_badge ? (
+              <img src={w.opponent_badge} alt="" className="w-6 h-6 rounded-full object-contain bg-gray-900 ring-2 ring-gray-800"/>
+            ) : <div className="w-6 h-6 rounded-full bg-gray-700 ring-2 ring-gray-800"/>}
+          </div>
+          <p className="text-xs text-gray-400 truncate flex-1 min-w-0">
+            <span className="text-white font-medium">{myClan?.clan_name || "Clan"}</span> vs <span className="text-white font-medium">{w.opponent_name}</span>
           </p>
-          <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {fmtWarDate(w.war_end_time)}</p>
+          <span className="text-[11px] text-gray-500 shrink-0">{w.team_size}v{w.team_size} · {fmtWarDate(w.war_end_time)}</span>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
-          <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
+
+        {/* Hàng 2: số sao 2 bên, nền chéo vàng (thắng)/xám (thua) ngăn cách bằng đường chéo */}
+        <div className="relative h-10 rounded-lg overflow-hidden flex text-white font-bold text-base"
+          style={{
+            background: draw
+              ? "linear-gradient(105deg, #F4A130 0%, #F4A130 49%, #F4A130 51%, #F4A130 100%)"
+              : won
+                ? "linear-gradient(105deg, #D9971F 0%, #F4A130 45%, #3a3f4b 55%, #4B5563 100%)"
+                : "linear-gradient(105deg, #4B5563 0%, #3a3f4b 45%, #F4A130 55%, #D9971F 100%)",
+          }}>
+          <div className="flex-1 flex items-center justify-center gap-1 relative z-10">⭐ {w.clan_stars}</div>
+          <div className="flex-1 flex items-center justify-center gap-1 relative z-10">{w.opponent_stars} ⭐</div>
         </div>
+        <p className="text-[11px] text-gray-500 text-center">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
       </button>
       {expanded && (
         <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
