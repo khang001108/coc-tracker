@@ -47,22 +47,28 @@ async def war_log(request: Request):
 
 @router.get("/log/top-attackers")
 async def war_log_top_attackers(request: Request, war_end_time: str = Query(...)):
-    """Top người đánh hay nhất cho 1 war CỤ THỂ đã qua — CoC API warlog chính
-    thức KHÔNG trả về chi tiết từng đòn đánh của từng người cho war cũ (chỉ
-    có tổng sao/% phá huỷ cấp clan), nên phải lấy lại từ dữ liệu web đã tự
-    ghi lúc war đó vừa kết thúc (war_participation_log)."""
+    """Top người đánh hay nhất + danh sách bỏ lượt cho 1 war CỤ THỂ đã qua —
+    CoC API warlog chính thức KHÔNG trả về chi tiết từng đòn đánh của từng
+    người cho war cũ (chỉ có tổng sao/% phá huỷ cấp clan), nên phải lấy lại
+    từ dữ liệu web đã tự ghi lúc war đó vừa kết thúc (war_participation_log)."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
     res = sb.table("war_participation_log").select(
-        "player_name,best_attack_stars,best_attack_destruction,best_attack_duration,best_attack_opponent"
+        "player_name,attacks_used,attacks_allowed,best_attack_stars,best_attack_destruction,best_attack_duration,best_attack_opponent"
     ).eq("clan_id", clan_id).eq("war_end_time", war_end_time).execute()
-    rows = [r for r in (res.data or []) if r.get("best_attack_stars") is not None]
+    all_rows = res.data or []
+
+    rows = [r for r in all_rows if r.get("best_attack_stars") is not None]
     rows.sort(key=lambda r: (-(r["best_attack_stars"] or 0), -(r["best_attack_destruction"] or 0), r["best_attack_duration"] or 99999))
     top3 = [{
         "name": r["player_name"], "stars": r["best_attack_stars"],
         "destruction": r["best_attack_destruction"], "duration": r["best_attack_duration"],
     } for r in rows[:3]]
-    return {"top3": top3}
+
+    skippers = [r["player_name"] for r in all_rows
+                if (r.get("attacks_used") or 0) < (r.get("attacks_allowed") or 0)]
+
+    return {"top3": top3, "skippers": skippers}
 
 @router.get("/cwl")
 async def cwl(request: Request):

@@ -999,3 +999,9 @@ ALTER TABLE quests ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'private
 -- War > CWL" theo từng mùa, giống cách game hiển thị "Mùa giải Tháng X")
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE war_history_log ADD COLUMN IF NOT EXISTS season TEXT;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 29 (Lưu badge đối thủ để hiện cờ 2 clan trong Lịch sử
+-- War, thay vì chỉ chữ W/L/D)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE war_history_log ADD COLUMN IF NOT EXISTS opponent_badge TEXT;

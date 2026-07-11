@@ -285,6 +285,7 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
     history_row = {
         "clan_id": clan_id, "war_end_time": end_time, "war_type": war_type,
         "opponent_name": opponent.get("name"), "opponent_tag": opponent.get("tag"),
+        "opponent_badge": (opponent.get("badgeUrls") or {}).get("small"),
         "team_size": war_data.get("teamSize"),
         "clan_stars": clan_stars, "opponent_stars": opp_stars,
         "clan_destruction": clan.get("destructionPercentage"),
@@ -295,9 +296,10 @@ def _log_war_participation(sb, clan_id: int, war_data: dict, war_type: str = "ra
         sb.table("war_history_log").upsert(history_row, on_conflict="clan_id,war_end_time").execute()
     except Exception:
         try:
-            # Chưa chạy migration PART 28 (chưa có cột season) — thử lại không có nó
+            # Chưa chạy migration PART 28/29 (chưa có cột season/opponent_badge) — thử lại không có nó
             sb.table("war_history_log").upsert(
-                {k: v for k, v in history_row.items() if k != "season"}, on_conflict="clan_id,war_end_time"
+                {k: v for k, v in history_row.items() if k not in ("season", "opponent_badge")},
+                on_conflict="clan_id,war_end_time"
             ).execute()
         except Exception as e:
             log.error(f"_log_war_history error (clan_id={clan_id}): {e}")

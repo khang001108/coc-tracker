@@ -79,6 +79,87 @@ function WarMemberRow({ member, mapPosition, maxAttacks = 2, rosterMap = {} }: {
   );
 }
 
+function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
+  w: any; expanded: boolean; onToggle: () => void; top3: any[]; skippers: string[]; loading: boolean;
+}) {
+  const won = w.result === "win";
+  const draw = w.result === "tie";
+  const [copied, setCopied] = useState(false);
+
+  function copyDetail() {
+    const lines = [
+      `⚔️ vs ${w.opponent_name} (${w.team_size}v${w.team_size}) — ${w.war_end_time?.slice(0, 10)}`,
+      `⭐ ${w.clan_stars} — ${w.opponent_stars}⭐ · ${w.clan_destruction?.toFixed?.(1)}% vs ${w.opponent_destruction?.toFixed?.(1)}%`,
+      "",
+      "🔥 Top 3 đánh hay nhất:",
+      ...(top3.length > 0
+        ? top3.map((m, i) => `${i + 1}. ${m.name} — ${m.stars}⭐ · ${m.destruction}% · ${Math.floor(m.duration / 60)}p${m.duration % 60}s`)
+        : ["Không có dữ liệu"]),
+    ];
+    if (skippers.length > 0) lines.push("", "❌ Bỏ lượt (chưa đánh hết):", ...skippers.map(n => `- ${n}`));
+    navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className="rounded-xl bg-gray-800 overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center gap-4 p-3 text-left">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-2 overflow-hidden bg-gray-900 ${
+          won ? "ring-green-400" : draw ? "ring-yellow-400" : "ring-red-400"
+        }`}>
+          {w.opponent_badge ? (
+            <img src={w.opponent_badge} alt="" className="w-full h-full object-contain" />
+          ) : (
+            <span className={`font-bold text-sm ${won ? "text-green-400" : draw ? "text-yellow-400" : "text-red-400"}`}>
+              {won ? "W" : draw ? "D" : "L"}
+            </span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
+          <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
+          <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
+            <button onClick={copyDetail} title="Copy chi tiết" className="text-gray-500 hover:text-yellow-400 shrink-0">
+              {copied ? <Check size={13} className="text-green-400"/> : <Copy size={13}/>}
+            </button>
+          </div>
+          {loading ? (
+            <p className="text-xs text-gray-600">Đang tải...</p>
+          ) : top3.length === 0 ? (
+            <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
+          ) : top3.map((m, idx) => (
+            <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
+              <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
+              <span className="flex-1 text-gray-200 truncate">{m.name}</span>
+              <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
+            </div>
+          ))}
+          {skippers.length > 0 && (
+            <>
+              <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700/60">❌ Bỏ lượt (chưa đánh hết lượt)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {skippers.map(n => (
+                  <span key={n} className="text-[11px] text-red-300 bg-red-500/10 border border-red-500/20 rounded-full px-2 py-0.5">{n}</span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WarPage() {
   const [war, setWar] = useState<any>(null);
   const [cwlNext, setCwlNext] = useState<any>(null);
@@ -86,10 +167,12 @@ export default function WarPage() {
   const [logSubTab, setLogSubTab] = useState<"random" | "cwl">("random");
   const [cwlHistory, setCwlHistory] = useState<any[]>([]);
   const [cwlHistoryLoading, setCwlHistoryLoading] = useState(false);
+  const [medalsBySeasonNumber, setMedalsBySeasonNumber] = useState<Record<number, string[]>>({});
   const [randomHistory, setRandomHistory] = useState<any[]>([]);
   const [randomHistoryLoading, setRandomHistoryLoading] = useState(false);
   const [expandedRandomWar, setExpandedRandomWar] = useState<number | null>(null);
   const [randomTop3ByIdx, setRandomTop3ByIdx] = useState<Record<number, any[]>>({});
+  const [randomSkippersByIdx, setRandomSkippersByIdx] = useState<Record<number, string[]>>({});
   const [randomTop3Loading, setRandomTop3Loading] = useState<number | null>(null);
   const [cwlStandings, setCwlStandings] = useState<any>(null);
   const [cwlTop, setCwlTop] = useState<any>(null);
@@ -98,6 +181,7 @@ export default function WarPage() {
   const bannerSrc = usePageBanner("war", "/art/pekka-lava.jpg");
   const [expandedCwlWar, setExpandedCwlWar] = useState<number | null>(null);
   const [cwlTop3ByIdx, setCwlTop3ByIdx] = useState<Record<number, any[]>>({});
+  const [cwlSkippersByIdx, setCwlSkippersByIdx] = useState<Record<number, string[]>>({});
   const [cwlTop3Loading, setCwlTop3Loading] = useState<number | null>(null);
   const [cwl, setCwl] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
@@ -149,6 +233,18 @@ export default function WarPage() {
     if (tab !== "log" || logSubTab !== "cwl" || cwlHistory.length > 0) return;
     setCwlHistoryLoading(true);
     api.getWarHistoryLog("cwl", 30).then((res: any) => setCwlHistory(res.items || [])).finally(() => setCwlHistoryLoading(false));
+  }, [tab, logSubTab]);
+
+  useEffect(() => {
+    if (tab !== "log" || logSubTab !== "cwl") return;
+    api.getMedalHistory(200).then((rows: any[]) => {
+      const map: Record<number, string[]> = {};
+      rows.forEach(r => {
+        if (r.season_number == null) return;
+        (map[r.season_number] ||= []).push(r.player_name);
+      });
+      setMedalsBySeasonNumber(map);
+    }).catch(() => {});
   }, [tab, logSubTab]);
 
   useEffect(() => {
@@ -388,57 +484,26 @@ export default function WarPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {randomHistory.map((w: any, i: number) => {
-                  const won = w.result === "win";
-                  const draw = w.result === "tie";
-                  const expanded = expandedRandomWar === i;
-                  const top3 = randomTop3ByIdx[i] || [];
-                  return (
-                    <div key={w.id} className="rounded-xl bg-gray-800 overflow-hidden">
-                      <button onClick={() => {
-                        const next = expanded ? null : i;
-                        setExpandedRandomWar(next);
-                        if (next !== null && !randomTop3ByIdx[i] && w.war_end_time) {
-                          setRandomTop3Loading(i);
-                          api.getWarLogTopAttackers(w.war_end_time)
-                            .then((res: any) => setRandomTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
-                            .catch(() => setRandomTop3ByIdx(prev => ({ ...prev, [i]: [] })))
-                            .finally(() => setRandomTop3Loading(null));
-                        }
-                      }} className="w-full flex items-center gap-4 p-3 text-left">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                          won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
-                        }`}>
-                          {won ? "W" : draw ? "D" : "L"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
-                          <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
-                          <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
-                        </div>
-                      </button>
-                      {expanded && (
-                        <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
-                          <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
-                          {randomTop3Loading === i ? (
-                            <p className="text-xs text-gray-600">Đang tải...</p>
-                          ) : top3.length === 0 ? (
-                            <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
-                          ) : top3.map((m, idx) => (
-                            <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
-                              <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
-                              <span className="flex-1 text-gray-200 truncate">{m.name}</span>
-                              <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {randomHistory.map((w: any, i: number) => (
+                  <WarHistoryCard key={w.id}
+                    w={w} expanded={expandedRandomWar === i}
+                    top3={randomTop3ByIdx[i] || []} skippers={randomSkippersByIdx[i] || []}
+                    loading={randomTop3Loading === i}
+                    onToggle={() => {
+                      const next = expandedRandomWar === i ? null : i;
+                      setExpandedRandomWar(next);
+                      if (next !== null && !randomTop3ByIdx[i] && w.war_end_time) {
+                        setRandomTop3Loading(i);
+                        api.getWarLogTopAttackers(w.war_end_time)
+                          .then((res: any) => {
+                            setRandomTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] }));
+                            setRandomSkippersByIdx(prev => ({ ...prev, [i]: res.skippers || [] }));
+                          })
+                          .catch(() => setRandomTop3ByIdx(prev => ({ ...prev, [i]: [] })))
+                          .finally(() => setRandomTop3Loading(null));
+                      }
+                    }} />
+                ))}
               </div>
             )
           ) : cwlHistoryLoading ? (
@@ -462,61 +527,37 @@ export default function WarPage() {
                 });
                 return groups.map((g, gi) => (
                   <div key={gi}>
-                    <p className="text-xs font-bold text-yellow-500 mb-2 flex items-center gap-1.5">
-                      🏆 {g.season ? `Mùa ${g.season}` : "Chưa rõ mùa"}
-                    </p>
+                    <div className="flex items-center justify-between flex-wrap gap-1.5 mb-2">
+                      <p className="text-xs font-bold text-yellow-500 flex items-center gap-1.5">
+                        🏆 {g.season ? `Mùa ${g.season}` : "Chưa rõ mùa"}
+                      </p>
+                      {g.season && medalsBySeasonNumber[g.season]?.length > 0 && (
+                        <p className="text-[11px] text-green-400 flex items-center gap-1">
+                          🎖️ Đã trao: {medalsBySeasonNumber[g.season].join(", ")}
+                        </p>
+                      )}
+                    </div>
                     <div className="space-y-3">
-                      {g.wars.map(({ w, idx: i }) => {
-                        const won = w.result === "win";
-                        const draw = w.result === "tie";
-                        const expanded = expandedCwlWar === i;
-                        const top3 = cwlTop3ByIdx[i] || [];
-                        return (
-                          <div key={w.id} className="rounded-xl bg-gray-800 overflow-hidden">
-                            <button onClick={() => {
-                              const next = expanded ? null : i;
-                              setExpandedCwlWar(next);
-                              if (next !== null && !cwlTop3ByIdx[i] && w.war_end_time) {
-                                setCwlTop3Loading(i);
-                                api.getWarLogTopAttackers(w.war_end_time)
-                                  .then((res: any) => setCwlTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
-                                  .catch(() => setCwlTop3ByIdx(prev => ({ ...prev, [i]: [] })))
-                                  .finally(() => setCwlTop3Loading(null));
-                              }
-                            }} className="w-full flex items-center gap-4 p-3 text-left">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                                won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
-                              }`}>
-                                {won ? "W" : draw ? "D" : "L"}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
-                                <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
-                                <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
-                              </div>
-                            </button>
-                            {expanded && (
-                              <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
-                                <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
-                                {cwlTop3Loading === i ? (
-                                  <p className="text-xs text-gray-600">Đang tải...</p>
-                                ) : top3.length === 0 ? (
-                                  <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
-                                ) : top3.map((m, idx) => (
-                                  <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
-                                    <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
-                                    <span className="flex-1 text-gray-200 truncate">{m.name}</span>
-                                    <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {g.wars.map(({ w, idx: i }) => (
+                        <WarHistoryCard key={w.id}
+                          w={w} expanded={expandedCwlWar === i}
+                          top3={cwlTop3ByIdx[i] || []} skippers={cwlSkippersByIdx[i] || []}
+                          loading={cwlTop3Loading === i}
+                          onToggle={() => {
+                            const next = expandedCwlWar === i ? null : i;
+                            setExpandedCwlWar(next);
+                            if (next !== null && !cwlTop3ByIdx[i] && w.war_end_time) {
+                              setCwlTop3Loading(i);
+                              api.getWarLogTopAttackers(w.war_end_time)
+                                .then((res: any) => {
+                                  setCwlTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] }));
+                                  setCwlSkippersByIdx(prev => ({ ...prev, [i]: res.skippers || [] }));
+                                })
+                                .catch(() => setCwlTop3ByIdx(prev => ({ ...prev, [i]: [] })))
+                                .finally(() => setCwlTop3Loading(null));
+                            }
+                          }} />
+                      ))}
                     </div>
                   </div>
                 ));
