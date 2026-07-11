@@ -117,25 +117,38 @@ function WeeklyReportView({ report }: { report: any }) {
 
 /* ─── Tab: Top Cúp ─────────────────────────────────────────────────────── */
 function TrophyLeaderboardTab() {
-  const [members, setMembers] = useState<any[]>([]);
+  const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scope, setScope] = useState<"clan" | "all">("clan");
 
   useEffect(() => {
-    api.getMembers().then((r: any) => setMembers(r.items || [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    setLoading(true);
+    api.getTopTrophies(50, scope).then((r: any) => setRows(r.top || [])).catch(() => {}).finally(() => setLoading(false));
+  }, [scope]);
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
-
-  const ranked = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
 
   return (
     <div className="card space-y-1.5">
-      <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏆 Top Cúp thành viên</h3>
-      {ranked.map((m, i) => (
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <h3 className="font-bold text-white flex items-center gap-2">🏆 Top Cúp thành viên</h3>
+        <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+          <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+          <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+        </div>
+      </div>
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-800 rounded-xl animate-pulse"/>)}</div>
+      ) : rows.map((m, i) => (
         <div key={m.tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
           <span className="text-sm w-6 text-center shrink-0">{medal(i) || i + 1}</span>
-          <span className="text-sm text-white flex-1 truncate">{m.name}</span>
+          {scope === "all" && (
+            m.clan_badge ? <img src={m.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={m.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
+          )}
+          <span className="text-sm text-white flex-1 min-w-0 truncate">
+            {m.name}
+            {scope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {m.clan_name}</span>}
+          </span>
           <span className="text-xs text-yellow-400 shrink-0">🏆 {(m.trophies || 0).toLocaleString()}</span>
         </div>
       ))}
@@ -148,13 +161,15 @@ function ReputationLeaderboardTab() {
   const [rows, setRows] = useState<any[]>([]);
   const [tierInfo, setTierInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scope, setScope] = useState<"clan" | "all">("clan");
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      api.getReputationLeaderboard(50).catch(() => []),
+      api.getReputationLeaderboard(50, scope).catch(() => []),
       api.getReputationTierConfig().catch(() => []),
     ]).then(([r, t]) => { setRows(r); setTierInfo(t); }).finally(() => setLoading(false));
-  }, []);
+  }, [scope]);
 
   if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
 
@@ -181,7 +196,13 @@ function ReputationLeaderboardTab() {
         )}
       </div>
       <div className="card space-y-1.5">
-        <h3 className="font-bold text-white flex items-center gap-2 mb-2">🏵️ Xếp hạng Danh vọng</h3>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <h3 className="font-bold text-white flex items-center gap-2">🏵️ Xếp hạng Danh vọng</h3>
+          <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+            <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+            <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+          </div>
+        </div>
         {rows.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Chưa có dữ liệu Danh vọng.</p>}
         {rows.length > 0 && (
           <div className="flex items-center gap-2 px-3 text-[10px] text-gray-600 uppercase tracking-wide">
@@ -194,7 +215,13 @@ function ReputationLeaderboardTab() {
         {rows.map((r, i) => (
           <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
             {i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
-            <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
+            {scope === "all" && (
+              r.clan_badge ? <img src={r.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={r.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
+            )}
+            <span className="text-sm text-white flex-1 min-w-0 truncate">
+              {r.player_name}
+              {scope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {r.clan_name}</span>}
+            </span>
             <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
             <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
           </div>

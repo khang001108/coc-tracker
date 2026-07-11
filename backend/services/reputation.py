@@ -110,12 +110,15 @@ TIERS = DEFAULT_TIERS  # giữ tên cũ để tương thích ngược nếu nơi
 
 
 def get_tiers(sb) -> list:
-    """Ngưỡng Tier hiện hành — admin có thể ghi đè điểm bắt đầu của Bạc/Vàng/
-    Kim Cương trong Cài đặt. Đồng luôn là 0 (mặc định thấp nhất)."""
+    """Ngưỡng + hệ số Tier hiện hành — admin có thể ghi đè cả điểm bắt đầu
+    LẪN hệ số nhân của Bạc/Vàng/Kim Cương trong Cài đặt. Đồng luôn cố định
+    (0đ, hệ số x1)."""
     try:
-        res = sb.table("settings").select("key,value").in_(
-            "key", ["reputation_tier_bac", "reputation_tier_vang", "reputation_tier_kimcuong"]
-        ).execute()
+        keys = [
+            "reputation_tier_bac", "reputation_tier_vang", "reputation_tier_kimcuong",
+            "reputation_tier_bac_mult", "reputation_tier_vang_mult", "reputation_tier_kimcuong_mult",
+        ]
+        res = sb.table("settings").select("key,value").in_("key", keys).execute()
         overrides = {r["key"]: r["value"] for r in (res.data or [])}
 
         def _int(key, default):
@@ -124,10 +127,16 @@ def get_tiers(sb) -> list:
             except (ValueError, TypeError):
                 return default
 
+        def _float(key, default):
+            try:
+                return float(overrides[key]) if key in overrides else default
+            except (ValueError, TypeError):
+                return default
+
         return [
-            (_int("reputation_tier_kimcuong", 1000), "Kim Cương", 1.5),
-            (_int("reputation_tier_vang", 500),       "Vàng",      1.25),
-            (_int("reputation_tier_bac", 200),         "Bạc",       1.1),
+            (_int("reputation_tier_kimcuong", 1000), "Kim Cương", _float("reputation_tier_kimcuong_mult", 1.5)),
+            (_int("reputation_tier_vang", 500),       "Vàng",      _float("reputation_tier_vang_mult", 1.25)),
+            (_int("reputation_tier_bac", 200),         "Bạc",       _float("reputation_tier_bac_mult", 1.1)),
             (0,                                        "Đồng",      1.0),
         ]
     except Exception:

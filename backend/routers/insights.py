@@ -76,6 +76,43 @@ def _period_cutoff(period: str) -> str | None:
     return None  # "all" — từ ngày thành lập web, không giới hạn
 
 
+@router.get("/top-trophies")
+async def top_trophies(request: Request, limit: int = Query(10, le=50), scope: str = Query("clan")):
+    """Xếp hạng Cúp — scope=clan: chỉ trong clan đang chọn (dùng dữ liệu
+    thành viên hiện tại). scope=all: liên clan (mọi clan, dùng snapshot đã
+    lưu sẵn cho nhanh, không gọi lại CoC API cho từng clan)."""
+    sb = get_supabase()
+
+    if scope == "all":
+        clans_res = sb.table("clans").select("id, clan_name").execute()
+        clan_info = {c["id"]: c for c in (clans_res.data or [])}
+        rows = []
+        for cid in clan_info:
+            try:
+                snap = sb.table("snapshot_clan").select("data").eq("clan_id", cid).order("id", desc=True).limit(1).execute()
+                if not snap.data:
+                    continue
+                clan_data = json.loads(snap.data[0]["data"])
+                badge = clan_data.get("badgeUrls", {}).get("medium", "")
+                for m in clan_data.get("memberList", []):
+                    rows.append({
+                        "tag": m["tag"], "name": m["name"], "trophies": m.get("trophies", 0),
+                        "clan_id": cid, "clan_name": clan_info[cid]["clan_name"], "clan_badge": badge,
+                    })
+            except Exception:
+                continue
+        rows.sort(key=lambda r: -r["trophies"])
+        return {"top": rows[:limit]}
+
+    clan_id = get_clan_id(request)
+    from clan_context import get_tag_by_clan_id
+    from services.coc_api import get_clan_members
+    tag = await get_tag_by_clan_id(clan_id)
+    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    ranked = sorted(members, key=lambda m: -(m.get("trophies") or 0))
+    return {"top": [{"tag": m["tag"], "name": m["name"], "trophies": m.get("trophies", 0)} for m in ranked[:limit]]}
+
+
 @router.get("/war-activity")
 async def war_activity(request: Request, period: str = Query("all", pattern="^(week|month|all)$")):
     clan_id = get_clan_id(request)

@@ -1122,7 +1122,7 @@ function ReputationFormulaSettings() {
 
 function ReputationTierSettings() {
   const [tiers, setTiers] = useState<any[]>([]);
-  const [edits, setEdits] = useState<{ bac?: string; vang?: string; kimcuong?: string }>({});
+  const [edits, setEdits] = useState<{ bac?: string; vang?: string; kimcuong?: string; bac_mult?: string; vang_mult?: string; kimcuong_mult?: string }>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
@@ -1174,31 +1174,43 @@ function ReputationTierSettings() {
             <span className="text-sm text-orange-400 flex-1">🟤 Đồng</span>
             <span className="text-xs text-gray-500">từ 0 (cố định)</span>
           </div>
-          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-            <span className="text-sm text-gray-300 flex-1">⚪ Bạc — hệ số x1.1</span>
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2 flex-wrap">
+            <span className="text-sm text-gray-300 flex-1 min-w-[70px]">⚪ Bạc</span>
             <span className="text-xs text-gray-500">từ</span>
-            <input type="number" min={1} className="input !w-24 !py-1 text-xs"
+            <input type="number" min={1} className="input !w-20 !py-1 text-xs"
               defaultValue={find("Bạc")?.threshold ?? 200}
               onChange={e => setEdits(d => ({ ...d, bac: e.target.value }))}/>
+            <span className="text-xs text-gray-500">hệ số x</span>
+            <input type="number" min={1} step={0.05} className="input !w-16 !py-1 text-xs"
+              defaultValue={find("Bạc")?.multiplier ?? 1.1}
+              onChange={e => setEdits(d => ({ ...d, bac_mult: e.target.value }))}/>
           </div>
-          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-            <span className="text-sm text-yellow-400 flex-1">🟡 Vàng — hệ số x1.25</span>
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2 flex-wrap">
+            <span className="text-sm text-yellow-400 flex-1 min-w-[70px]">🟡 Vàng</span>
             <span className="text-xs text-gray-500">từ</span>
-            <input type="number" min={1} className="input !w-24 !py-1 text-xs"
+            <input type="number" min={1} className="input !w-20 !py-1 text-xs"
               defaultValue={find("Vàng")?.threshold ?? 500}
               onChange={e => setEdits(d => ({ ...d, vang: e.target.value }))}/>
+            <span className="text-xs text-gray-500">hệ số x</span>
+            <input type="number" min={1} step={0.05} className="input !w-16 !py-1 text-xs"
+              defaultValue={find("Vàng")?.multiplier ?? 1.25}
+              onChange={e => setEdits(d => ({ ...d, vang_mult: e.target.value }))}/>
           </div>
-          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-            <span className="text-sm text-cyan-300 flex-1">🔷 Kim Cương — hệ số x1.5</span>
+          <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2 flex-wrap">
+            <span className="text-sm text-cyan-300 flex-1 min-w-[70px]">🔷 Kim Cương</span>
             <span className="text-xs text-gray-500">từ</span>
-            <input type="number" min={1} className="input !w-24 !py-1 text-xs"
+            <input type="number" min={1} className="input !w-20 !py-1 text-xs"
               defaultValue={find("Kim Cương")?.threshold ?? 1000}
               onChange={e => setEdits(d => ({ ...d, kimcuong: e.target.value }))}/>
+            <span className="text-xs text-gray-500">hệ số x</span>
+            <input type="number" min={1} step={0.05} className="input !w-16 !py-1 text-xs"
+              defaultValue={find("Kim Cương")?.multiplier ?? 1.5}
+              onChange={e => setEdits(d => ({ ...d, kimcuong_mult: e.target.value }))}/>
           </div>
         </div>
       )}
       <button onClick={handleSave} disabled={saving} className="btn-gold text-sm">
-        {saving ? "Đang lưu..." : "Lưu ngưỡng Tier"}
+        {saving ? "Đang lưu..." : "Lưu ngưỡng & hệ số Tier"}
       </button>
     </div>
   );

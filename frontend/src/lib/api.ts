@@ -334,7 +334,8 @@ export const api = {
   },
 
   // Danh vọng
-  getReputationLeaderboard: (limit = 50) => apiFetch(`/api/reputation/leaderboard?limit=${limit}`),
+  getReputationLeaderboard: (limit = 50, scope: "clan" | "all" = "clan") => apiFetch(`/api/reputation/leaderboard?limit=${limit}&scope=${scope}`),
+  getTopTrophies: (limit = 10, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/top-trophies?limit=${limit}&scope=${scope}`),
   getMemberReputation: (playerTag: string) => apiFetch(`/api/reputation/member/${encodeURIComponent(playerTag)}`),
   adjustReputation: (player_tag: string, player_name: string, points: number, note?: string) =>
     apiFetch("/api/reputation/adjust", { method: "POST", body: JSON.stringify({ player_tag, player_name, points, note }) }),
@@ -342,7 +343,7 @@ export const api = {
   updateReputationPointsConfig: (values: Record<string, number>) =>
     apiFetch("/api/reputation/points-config", { method: "PUT", body: JSON.stringify(values) }),
   getReputationTierConfig: () => apiFetch("/api/reputation/tier-config"),
-  updateReputationTierConfig: (values: { bac?: number; vang?: number; kimcuong?: number }) =>
+  updateReputationTierConfig: (values: { bac?: number; vang?: number; kimcuong?: number; bac_mult?: number; vang_mult?: number; kimcuong_mult?: number }) =>
     apiFetch("/api/reputation/tier-config", { method: "PUT", body: JSON.stringify(values) }),
 
   // Nhiệm vụ (thưởng Danh vọng/Coins, tự chấm qua CoC API)

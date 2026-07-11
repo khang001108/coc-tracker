@@ -6,6 +6,7 @@ from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin
 from services.coc_api import get_clan_members
 from services.reputation import get_all_totals, get_tier, get_tiers, add_reputation, REASON_LABELS, get_points, DEFAULT_POINTS, SETTINGS_KEY_PREFIX
+import json
 
 router = APIRouter()
 
@@ -21,17 +22,30 @@ async def get_tier_config(request: Request):
 
 @router.put("/tier-config")
 async def update_tier_config(request: Request, _: bool = Depends(require_admin)):
-    """body: {bac: int, vang: int, kimcuong: int} — Đồng cố định = 0."""
+    """body: {bac, vang, kimcuong: ngưỡng điểm; bac_mult, vang_mult, kimcuong_mult: hệ số nhân}."""
     body = await request.json()
     sb = get_supabase()
-    mapping = {"bac": "reputation_tier_bac", "vang": "reputation_tier_vang", "kimcuong": "reputation_tier_kimcuong"}
-    for key, setting_key in mapping.items():
+    threshold_mapping = {"bac": "reputation_tier_bac", "vang": "reputation_tier_vang", "kimcuong": "reputation_tier_kimcuong"}
+    mult_mapping = {"bac_mult": "reputation_tier_bac_mult", "vang_mult": "reputation_tier_vang_mult", "kimcuong_mult": "reputation_tier_kimcuong_mult"}
+
+    for key, setting_key in threshold_mapping.items():
         if key in body:
             try:
                 val = int(body[key])
             except (ValueError, TypeError):
                 continue
             sb.table("settings").upsert({"key": setting_key, "value": str(val)}, on_conflict="key").execute()
+
+    for key, setting_key in mult_mapping.items():
+        if key in body:
+            try:
+                val = float(body[key])
+                if val <= 0:
+                    continue
+            except (ValueError, TypeError):
+                continue
+            sb.table("settings").upsert({"key": setting_key, "value": str(val)}, on_conflict="key").execute()
+
     return {"ok": True}
 
 
@@ -68,11 +82,39 @@ async def update_points_config(request: Request, _: bool = Depends(require_admin
 
 
 @router.get("/leaderboard")
-async def get_leaderboard(request: Request, limit: int = Query(50, le=200)):
+async def get_leaderboard(request: Request, limit: int = Query(50, le=200), scope: str = Query("clan")):
     """Xếp hạng Danh vọng — gồm cả người hiện KHÔNG có điểm nào (hiện 0đ,
-    Tier Đồng) để thấy đủ toàn bộ thành viên hiện tại."""
-    clan_id = get_clan_id(request)
+    Tier Đồng) để thấy đủ toàn bộ thành viên hiện tại.
+    scope=clan: chỉ trong clan đang chọn. scope=all: liên clan (mọi clan)."""
     sb = get_supabase()
+
+    if scope == "all":
+        clans_res = sb.table("clans").select("id, clan_name").execute()
+        clan_info = {c["id"]: c for c in (clans_res.data or [])}
+        badges: dict[int, str] = {}
+        rows = []
+        for cid in clan_info:
+            try:
+                snap = sb.table("snapshot_clan").select("data").eq("clan_id", cid).order("id", desc=True).limit(1).execute()
+                if not snap.data:
+                    continue
+                clan_data = json.loads(snap.data[0]["data"])
+                badges[cid] = clan_data.get("badgeUrls", {}).get("medium", "")
+                totals = get_all_totals(sb, cid)
+                for m in clan_data.get("memberList", []):
+                    entry = totals.get(m["tag"])
+                    total = entry["total"] if entry else 0
+                    rows.append({
+                        "player_tag": m["tag"], "player_name": m["name"],
+                        "total": total, "tier": get_tier(total, sb),
+                        "clan_id": cid, "clan_name": clan_info[cid]["clan_name"], "clan_badge": badges.get(cid, ""),
+                    })
+            except Exception:
+                continue
+        rows.sort(key=lambda r: -r["total"])
+        return rows[:limit]
+
+    clan_id = get_clan_id(request)
     tag = await get_tag_by_clan_id(clan_id)
     members = await get_clan_members(tag, clan_id=clan_id) if tag else []
     totals = get_all_totals(sb, clan_id)
