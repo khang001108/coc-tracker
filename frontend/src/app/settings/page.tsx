@@ -1163,7 +1163,7 @@ function ReputationTierSettings() {
       <p className="text-sm text-gray-400">
         Tier tính theo TỔNG điểm Danh vọng (khác huy hiệu Top 10 theo thứ hạng) — dùng để nhân hệ số
         Coins thưởng war-star. <strong className="text-gray-300">Đồng</strong> là mặc định khi chưa đạt
-        ngưỡng Bạc (luôn bắt đầu từ 0đ, không chỉnh được). Đổi ngưỡng bên dưới để lên Bạc/Vàng/Kim Cương.
+        ngưỡng Bạc (luôn bắt đầu từ 0, không chỉnh được). Đổi ngưỡng bên dưới để lên Bạc/Vàng/Kim Cương.
       </p>
       {msg && <MiniToast msg={msg.text} type={msg.type} />}
       {loading ? (
@@ -1172,7 +1172,7 @@ function ReputationTierSettings() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
             <span className="text-sm text-orange-400 flex-1">🟤 Đồng</span>
-            <span className="text-xs text-gray-500">từ 0đ (cố định)</span>
+            <span className="text-xs text-gray-500">từ 0 (cố định)</span>
           </div>
           <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
             <span className="text-sm text-gray-300 flex-1">⚪ Bạc — hệ số x1.1</span>
@@ -1180,7 +1180,6 @@ function ReputationTierSettings() {
             <input type="number" min={1} className="input !w-24 !py-1 text-xs"
               defaultValue={find("Bạc")?.threshold ?? 200}
               onChange={e => setEdits(d => ({ ...d, bac: e.target.value }))}/>
-            <span className="text-xs text-gray-500">đ</span>
           </div>
           <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
             <span className="text-sm text-yellow-400 flex-1">🟡 Vàng — hệ số x1.25</span>
@@ -1188,7 +1187,6 @@ function ReputationTierSettings() {
             <input type="number" min={1} className="input !w-24 !py-1 text-xs"
               defaultValue={find("Vàng")?.threshold ?? 500}
               onChange={e => setEdits(d => ({ ...d, vang: e.target.value }))}/>
-            <span className="text-xs text-gray-500">đ</span>
           </div>
           <div className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
             <span className="text-sm text-cyan-300 flex-1">🔷 Kim Cương — hệ số x1.5</span>
@@ -1196,7 +1194,6 @@ function ReputationTierSettings() {
             <input type="number" min={1} className="input !w-24 !py-1 text-xs"
               defaultValue={find("Kim Cương")?.threshold ?? 1000}
               onChange={e => setEdits(d => ({ ...d, kimcuong: e.target.value }))}/>
-            <span className="text-xs text-gray-500">đ</span>
           </div>
         </div>
       )}

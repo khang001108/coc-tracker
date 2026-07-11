@@ -415,6 +415,7 @@ function WeeklyReportCarousel() {
 
 function TopTrophiesBox({ members }: { members: any[] }) {
   const bannerSrc = usePageBanner("overview_trophies", "/art/prince-celebration.jpg");
+  const repRankMap = useReputationRankMap();
   const ranked = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0)).slice(0, 5);
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
   return (
@@ -429,7 +430,10 @@ function TopTrophiesBox({ members }: { members: any[] }) {
           {ranked.map((m, i) => (
             <div key={m.tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
-              <span className="text-sm text-white flex-1 truncate">{m.name}</span>
+              <span className="text-sm text-white flex-1 truncate flex items-center gap-1.5">
+                {m.name}
+                {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
+              </span>
               <span className="text-xs text-yellow-400 shrink-0">🏆 {formatNumber(m.trophies || 0)}</span>
             </div>
           ))}
@@ -446,7 +450,6 @@ function TopReputationBox() {
   useEffect(() => {
     api.getReputationLeaderboard(5).then(setRows).catch(() => {}).finally(() => setLoading(false));
   }, []);
-  const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
   return (
     <div className="card relative overflow-hidden">
       <ArtBanner src={bannerSrc} opacity={0.75} objectPosition="center 30%" />
@@ -460,9 +463,9 @@ function TopReputationBox() {
         <div className="relative space-y-1.5 banner-content">
           {rows.map((r, i) => (
             <div key={r.player_tag} className="flex items-center gap-2">
-              <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
+              <ReputationBadge rank={i + 1}/>
               <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
-              <span className="text-xs text-yellow-400 shrink-0">{r.total}đ</span>
+              <span className="text-xs text-yellow-400 shrink-0">{r.total}</span>
             </div>
           ))}
         </div>

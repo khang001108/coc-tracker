@@ -401,7 +401,20 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
                     f"{len(missing)} thanh vien chua danh, con {war_reminder_hours}h la ket thuc! (Da danh {attacks_used}/{attacks_total} luot)", kind="war")
 
         if state == "warEnded":
-            _log_war_participation(sb, c["id"], data, war_type="random")
+            # BUG đã fix: trong lúc đang ở CWL, endpoint currentwar của CoC vẫn
+            # có thể trả về war CWL đó (không phân biệt được qua field nào),
+            # nên nếu clan đang ở trong 1 mùa CWL thật (leaguegroup tồn tại),
+            # BỎ QUA việc ghi log "random" ở đây — để _log_cwl_participation
+            # bên dưới tự ghi đúng war_type="cwl" từ chính API CWL, tránh war
+            # CWL bị gắn nhầm thành "War thường" trong Lịch sử.
+            is_in_cwl = False
+            try:
+                group = await get_cwl_group(tag, clan_id=c["id"])
+                is_in_cwl = group.get("state") in ("preparation", "war", "inWar", "ended")
+            except Exception:
+                is_in_cwl = False
+            if not is_in_cwl:
+                _log_war_participation(sb, c["id"], data, war_type="random")
 
         await _log_cwl_participation(sb, c["id"], tag)
         await _check_cwl_season_completed(sb, c["id"], tag)

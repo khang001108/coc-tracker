@@ -63,29 +63,28 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
           </div>
         </div>
 
-        {/* Name + stars + lượt đánh */}
-        <div className={`flex-1 min-w-0 ${isRight ? "text-right" : "text-left"}`}>
-          <p className={`text-[10px] font-semibold truncate leading-tight flex items-center gap-1 ${isRight ? "flex-row-reverse justify-start" : ""}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
-            <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
-            {repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
-          </p>
-          {/* Đã bỏ dòng tổng sao (trùng lặp với badge từng đòn đánh bên dưới,
-              lại còn dễ hiểu sai khi tổng > 3 sao vì chỉ vẽ tối đa 3 ô sao) */}
+        {/* Cạnh lâu đài: 2 hàng nhỏ — lượt đánh (tia đạn) + số sao từng đòn */}
+        <div className="flex-1 min-w-0 space-y-0.5">
           {/* Lượt đánh — hiện icon tia đạn đang sở hữu, sáng = còn lượt, mờ = đã dùng */}
-          <div className={`flex gap-0.5 mt-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
+          <div className={`flex gap-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
             {Array.from({ length: maxAttacks }).map((_, i) => (
               <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={!!attacks[i]} />
             ))}
           </div>
+          {/* Số sao từng đòn đánh */}
+          {attacks.length > 0 && (
+            <div className={`flex flex-wrap gap-0.5 ${isRight ? "justify-end" : "justify-start"}`}>
+              {attacks.map((a, i) => <AttackBadge key={i} attack={a} />)}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Attack badges — hiện bên phải card bên trái, bên trái card bên phải */}
-      {attacks.length > 0 && (
-        <div className={`flex flex-wrap gap-0.5 mt-1 ${isRight ? "justify-end" : "justify-start"}`}>
-          {attacks.map((a, i) => <AttackBadge key={i} attack={a} />)}
-        </div>
-      )}
+      {/* Tên thành viên — hàng riêng bên dưới lâu đài */}
+      <p className={`text-[10px] font-semibold truncate leading-tight mt-1 flex items-center gap-1 ${isRight ? "flex-row-reverse justify-end" : "justify-start"}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
+        <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
+        {repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
+      </p>
     </button>
   );
 }

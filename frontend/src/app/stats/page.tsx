@@ -173,7 +173,7 @@ function ReputationLeaderboardTab() {
             <span>Tier theo tổng điểm:</span>
             {tierInfo.slice().reverse().map((t, i) => (
               <span key={t.name}>
-                <span className={tierColor[t.name] || "text-gray-400"}>{t.name} từ <strong>{t.threshold}đ</strong> (x{t.multiplier})</span>
+                <span className={tierColor[t.name] || "text-gray-400"}>{t.name} từ <strong>{t.threshold}</strong> (x{t.multiplier})</span>
                 {i < tierInfo.length - 1 ? " ·" : ""}
               </span>
             ))}
@@ -196,7 +196,7 @@ function ReputationLeaderboardTab() {
             {i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
             <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
             <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
-            <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}đ</span>
+            <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
           </div>
         ))}
       </div>

@@ -83,18 +83,22 @@ export default function WarPage() {
   const [war, setWar] = useState<any>(null);
   const [cwlNext, setCwlNext] = useState<any>(null);
   const [showNextDetail, setShowNextDetail] = useState(false);
-  const [warLog, setWarLog] = useState<any[]>([]);
   const [logSubTab, setLogSubTab] = useState<"random" | "cwl">("random");
   const [cwlHistory, setCwlHistory] = useState<any[]>([]);
   const [cwlHistoryLoading, setCwlHistoryLoading] = useState(false);
+  const [randomHistory, setRandomHistory] = useState<any[]>([]);
+  const [randomHistoryLoading, setRandomHistoryLoading] = useState(false);
+  const [expandedRandomWar, setExpandedRandomWar] = useState<number | null>(null);
+  const [randomTop3ByIdx, setRandomTop3ByIdx] = useState<Record<number, any[]>>({});
+  const [randomTop3Loading, setRandomTop3Loading] = useState<number | null>(null);
   const [cwlStandings, setCwlStandings] = useState<any>(null);
   const [cwlTop, setCwlTop] = useState<any>(null);
   const [cwlExtraLoading, setCwlExtraLoading] = useState(false);
   const emberColor = useEmberColor();
   const bannerSrc = usePageBanner("war", "/art/pekka-lava.jpg");
-  const [expandedWar, setExpandedWar] = useState<number | null>(null);
-  const [logTop3ByIdx, setLogTop3ByIdx] = useState<Record<number, any[]>>({});
-  const [logTop3Loading, setLogTop3Loading] = useState<number | null>(null);
+  const [expandedCwlWar, setExpandedCwlWar] = useState<number | null>(null);
+  const [cwlTop3ByIdx, setCwlTop3ByIdx] = useState<Record<number, any[]>>({});
+  const [cwlTop3Loading, setCwlTop3Loading] = useState<number | null>(null);
   const [cwl, setCwl] = useState<any>(null);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [tab, setTab] = useState<"current" | "log" | "cwl">(() => {
@@ -110,8 +114,8 @@ export default function WarPage() {
 
   async function load() {
     setLoading(true);
-    const [w, wl, c, cwlWar, roster] = await Promise.allSettled([
-      api.getCurrentWar(), api.getWarLog(), api.getCWL(), api.getCWLCurrentWar(), api.getRoster()
+    const [w, c, cwlWar, roster] = await Promise.allSettled([
+      api.getCurrentWar(), api.getCWL(), api.getCWLCurrentWar(), api.getRoster()
     ]);
     if (roster.status === "fulfilled") {
       const map: Record<string, any> = {};
@@ -133,7 +137,6 @@ export default function WarPage() {
       if (warData.opponent?.badgeUrls?.medium) warData.opponent.badgeUrl = warData.opponent.badgeUrls.medium;
     }
     setWar(warData);
-    if (wl.status === "fulfilled") setWarLog((wl.value as any).items || []);
     if (c.status === "fulfilled") setCwl(c.value);
     setLoading(false);
   }
@@ -146,6 +149,12 @@ export default function WarPage() {
     if (tab !== "log" || logSubTab !== "cwl" || cwlHistory.length > 0) return;
     setCwlHistoryLoading(true);
     api.getWarHistoryLog("cwl", 30).then((res: any) => setCwlHistory(res.items || [])).finally(() => setCwlHistoryLoading(false));
+  }, [tab, logSubTab]);
+
+  useEffect(() => {
+    if (tab !== "log" || logSubTab !== "random" || randomHistory.length > 0) return;
+    setRandomHistoryLoading(true);
+    api.getWarHistoryLog("random", 30).then((res: any) => setRandomHistory(res.items || [])).finally(() => setRandomHistoryLoading(false));
   }, [tab, logSubTab]);
 
   useEffect(() => {
@@ -370,54 +379,51 @@ export default function WarPage() {
           </div>
 
           {logSubTab === "random" ? (
-            warLog.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">Không có lịch sử war</p>
+            randomHistoryLoading ? (
+              <p className="text-gray-500 text-center py-8">Đang tải...</p>
+            ) : randomHistory.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Chưa có lịch sử war thường nào được ghi nhận</p>
+                <p className="text-[11px] text-gray-600 mt-1">Web chỉ tự lưu lại từ lúc bạn cập nhật tính năng này trở đi.</p>
+              </div>
             ) : (
               <div className="space-y-3">
-                {warLog.map((w: any, i: number) => {
-                  const won = w.clan?.stars > w.opponent?.stars;
-                  const draw = w.clan?.stars === w.opponent?.stars;
-                  const ringColor = won ? "ring-green-400" : draw ? "ring-yellow-400" : "ring-red-400";
-                  const expanded = expandedWar === i;
-                  const liveTop3 = expanded ? computeTop3(w.clan?.members || [], w.opponent?.members || []) : [];
-                  // CoC API warlog chính thức không kèm chi tiết từng đòn đánh
-                  // của war cũ — nếu rỗng thì lấy lại từ dữ liệu web đã tự ghi.
-                  const top3 = liveTop3.length > 0 ? liveTop3 : (logTop3ByIdx[i] || []);
+                {randomHistory.map((w: any, i: number) => {
+                  const won = w.result === "win";
+                  const draw = w.result === "tie";
+                  const expanded = expandedRandomWar === i;
+                  const top3 = randomTop3ByIdx[i] || [];
                   return (
-                    <div key={i} className="rounded-xl bg-gray-800 overflow-hidden">
+                    <div key={w.id} className="rounded-xl bg-gray-800 overflow-hidden">
                       <button onClick={() => {
                         const next = expanded ? null : i;
-                        setExpandedWar(next);
-                        if (next !== null && liveTop3.length === 0 && !logTop3ByIdx[i] && w.endTime) {
-                          setLogTop3Loading(i);
-                          api.getWarLogTopAttackers(w.endTime)
-                            .then((res: any) => setLogTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
-                            .catch(() => setLogTop3ByIdx(prev => ({ ...prev, [i]: [] })))
-                            .finally(() => setLogTop3Loading(null));
+                        setExpandedRandomWar(next);
+                        if (next !== null && !randomTop3ByIdx[i] && w.war_end_time) {
+                          setRandomTop3Loading(i);
+                          api.getWarLogTopAttackers(w.war_end_time)
+                            .then((res: any) => setRandomTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
+                            .catch(() => setRandomTop3ByIdx(prev => ({ ...prev, [i]: [] })))
+                            .finally(() => setRandomTop3Loading(null));
                         }
                       }} className="w-full flex items-center gap-4 p-3 text-left">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-2 ${ringColor} overflow-hidden bg-gray-900`}>
-                          {w.opponent?.badgeUrls?.small ? (
-                            <img src={w.opponent.badgeUrls.small} alt="" className="w-full h-full object-contain" />
-                          ) : (
-                            <span className={`font-bold text-sm ${won ? "text-green-400" : draw ? "text-yellow-400" : "text-red-400"}`}>
-                              {won ? "W" : draw ? "D" : "L"}
-                            </span>
-                          )}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                          won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
+                        }`}>
+                          {won ? "W" : draw ? "D" : "L"}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">vs {w.opponent?.name}</p>
-                          <p className="text-xs text-gray-500">{w.teamSize}v{w.teamSize} · {w.endTime?.slice(0, 8)}</p>
+                          <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
+                          <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-bold text-yellow-400">⭐{w.clan?.stars} — {w.opponent?.stars}⭐</p>
-                          <p className="text-xs text-gray-500">{w.clan?.destructionPercentage?.toFixed(1)}% vs {w.opponent?.destructionPercentage?.toFixed(1)}%</p>
+                          <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
+                          <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
                         </div>
                       </button>
                       {expanded && (
                         <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
                           <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
-                          {logTop3Loading === i ? (
+                          {randomTop3Loading === i ? (
                             <p className="text-xs text-gray-600">Đang tải...</p>
                           ) : top3.length === 0 ? (
                             <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
@@ -444,24 +450,54 @@ export default function WarPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {cwlHistory.map((w: any) => {
+              {cwlHistory.map((w: any, i: number) => {
                 const won = w.result === "win";
                 const draw = w.result === "tie";
+                const expanded = expandedCwlWar === i;
+                const top3 = cwlTop3ByIdx[i] || [];
                 return (
-                  <div key={w.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-800">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                      won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
-                    }`}>
-                      {won ? "W" : draw ? "D" : "L"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
-                      <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
-                      <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
-                    </div>
+                  <div key={w.id} className="rounded-xl bg-gray-800 overflow-hidden">
+                    <button onClick={() => {
+                      const next = expanded ? null : i;
+                      setExpandedCwlWar(next);
+                      if (next !== null && !cwlTop3ByIdx[i] && w.war_end_time) {
+                        setCwlTop3Loading(i);
+                        api.getWarLogTopAttackers(w.war_end_time)
+                          .then((res: any) => setCwlTop3ByIdx(prev => ({ ...prev, [i]: res.top3 || [] })))
+                          .catch(() => setCwlTop3ByIdx(prev => ({ ...prev, [i]: [] })))
+                          .finally(() => setCwlTop3Loading(null));
+                      }
+                    }} className="w-full flex items-center gap-4 p-3 text-left">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                        won ? "bg-green-500/20 text-green-400" : draw ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
+                      }`}>
+                        {won ? "W" : draw ? "D" : "L"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">vs {w.opponent_name}</p>
+                        <p className="text-xs text-gray-500">{w.team_size}v{w.team_size} · {w.war_end_time?.slice(0, 10)}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-yellow-400">⭐{w.clan_stars} — {w.opponent_stars}⭐</p>
+                        <p className="text-xs text-gray-500">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
+                      </div>
+                    </button>
+                    {expanded && (
+                      <div className="px-3 pb-3 pt-1 border-t border-gray-700 space-y-2">
+                        <p className="text-xs text-gray-500 mb-1">🔥 Top 3 đánh hay nhất (sao cao nhất → % phá huỷ cao nhất → nhanh nhất)</p>
+                        {cwlTop3Loading === i ? (
+                          <p className="text-xs text-gray-600">Đang tải...</p>
+                        ) : top3.length === 0 ? (
+                          <p className="text-xs text-gray-600">Không có dữ liệu đòn đánh (war này chưa được web ghi lại lúc kết thúc)</p>
+                        ) : top3.map((m, idx) => (
+                          <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
+                            <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
+                            <span className="flex-1 text-gray-200 truncate">{m.name}</span>
+                            <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
