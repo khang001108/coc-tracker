@@ -131,17 +131,20 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
           <span className="text-[11px] text-gray-500 shrink-0">{w.team_size}v{w.team_size} · {fmtWarDate(w.war_end_time)}</span>
         </div>
 
-        {/* Hàng 2: số sao 2 bên, nền chéo vàng (thắng)/xám (thua) ngăn cách bằng đường chéo */}
-        <div className="relative h-10 rounded-lg overflow-hidden flex text-white font-bold text-base"
-          style={{
-            background: draw
-              ? "linear-gradient(105deg, #F4A130 0%, #F4A130 49%, #F4A130 51%, #F4A130 100%)"
-              : won
-                ? "linear-gradient(105deg, #D9971F 0%, #F4A130 45%, #3a3f4b 55%, #4B5563 100%)"
-                : "linear-gradient(105deg, #4B5563 0%, #3a3f4b 45%, #F4A130 55%, #D9971F 100%)",
-          }}>
-          <div className="flex-1 flex items-center justify-center gap-1 relative z-10">⭐ {w.clan_stars}</div>
-          <div className="flex-1 flex items-center justify-center gap-1 relative z-10">{w.opponent_stars} ⭐</div>
+        {/* Hàng 2: số sao 2 bên — chia CỨNG 2 màu (không pha trộn/loá), có
+            nhãn THẮNG/THUA/HÒA ở giữa đúng đường ngăn cách */}
+        <div className="relative h-10 rounded-lg overflow-hidden flex text-white font-bold text-base">
+          <div className={`flex-1 flex items-center justify-center gap-1 ${won ? "bg-yellow-500" : draw ? "bg-yellow-500" : "bg-gray-600"}`}>
+            ⭐ {w.clan_stars}
+          </div>
+          <div className={`flex-1 flex items-center justify-center gap-1 ${won ? "bg-gray-600" : draw ? "bg-yellow-500" : "bg-yellow-500"}`}>
+            {w.opponent_stars} ⭐
+          </div>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-gray-950 border border-gray-700 text-[10px] font-extrabold tracking-wide z-10 whitespace-nowrap">
+            <span className={draw ? "text-yellow-400" : won ? "text-green-400" : "text-red-400"}>
+              {draw ? "HÒA" : won ? "THẮNG" : "THUA"}
+            </span>
+          </div>
         </div>
         <p className="text-[11px] text-gray-500 text-center">{w.clan_destruction?.toFixed?.(1)}% vs {w.opponent_destruction?.toFixed?.(1)}%</p>
       </button>

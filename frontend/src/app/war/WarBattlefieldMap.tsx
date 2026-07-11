@@ -44,41 +44,45 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
   const darkCannons = Math.min(2, starsConceded);
   const castleRuined = starsConceded >= 3;
 
+  const castleBlock = (
+    <div className="shrink-0 relative" style={{ width: 34, height: 34 }}>
+      <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={34} animate={false} />
+      <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, left: -2, bottom: -2, background: 0 < darkCannons ? "rgba(20,15,10,0.55)" : "transparent" }}>
+        <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
+      </div>
+      <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, right: -2, bottom: -2, background: 1 < darkCannons ? "rgba(20,15,10,0.55)" : "transparent" }}>
+        <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
+      </div>
+    </div>
+  );
+
+  const attacksBlock = (
+    <div className={`min-w-0 space-y-0.5 flex flex-col ${isRight ? "items-end" : "items-start"}`}>
+      {Array.from({ length: maxAttacks }).map((_, i) => (
+        attacks[i]
+          ? <AttackBadge key={i} attack={attacks[i]} />
+          : <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={false} />
+      ))}
+    </div>
+  );
+
   return (
     <button onClick={onSelect}
       className={`w-full rounded-xl px-1.5 py-1.5 transition-all ${selected ? "ring-1 ring-yellow-500" : "hover:bg-black/5"}`}
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
-      <div className={`w-full flex ${isRight ? "flex-row-reverse justify-end" : "flex-row justify-start"} items-center gap-1.5`}>
-
-        {/* Lâu đài + 2 pháo phòng thủ dạng "huy hiệu" nhỏ đè lên 2 góc dưới —
-            không còn tốn thêm bề ngang như đặt cạnh nữa (đây là lý do bị chèn
-            trên điện thoại trước đó) — cả khối gọn trong đúng khung lâu đài. */}
-        <div className="shrink-0 relative" style={{ width: 34, height: 34 }}>
-          <CastleIcon th={member.townHallLevel} svgKey={castleRuined ? "castle_ruins" : iconMap[member.tag]?.equipped_castle} size={34} animate={false} />
-          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, left: -2, bottom: -2, background: 0 < darkCannons ? "rgba(20,15,10,0.55)" : "transparent" }}>
-            <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={0 < darkCannons} />
-          </div>
-          <div className="absolute rounded-full overflow-hidden" style={{ width: 13, height: 13, right: -2, bottom: -2, background: 1 < darkCannons ? "rgba(20,15,10,0.55)" : "transparent" }}>
-            <CannonIcon size={13} svgKey={iconMap[member.tag]?.equipped_cannon} broken={1 < darkCannons} />
-          </div>
-        </div>
-
-        {/* Cạnh lâu đài: 1 cột dọc — mỗi lượt đánh 1 dòng, CHƯA đánh thì hiện
-            icon tia đạn, ĐÃ đánh thì đổi thành badge kết quả (vị trí + sao) */}
-        <div className={`flex-1 min-w-0 space-y-0.5 flex flex-col ${isRight ? "items-end" : "items-start"}`}>
-          {Array.from({ length: maxAttacks }).map((_, i) => (
-            attacks[i]
-              ? <AttackBadge key={i} attack={attacks[i]} />
-              : <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={false} />
-          ))}
-        </div>
+      {/* Lưới 2 cột TƯỜNG MINH (không dùng flex-row-reverse để tránh sai
+          hướng) — lâu đài luôn ở cột SÁT NGOÀI (trái với bên mình, phải với
+          bên địch), cột kia chứa lượt đánh, giãn hết phần còn lại. */}
+      <div className="w-full grid items-center gap-1.5" style={{ gridTemplateColumns: isRight ? "1fr 34px" : "34px 1fr" }}>
+        {isRight ? (<>{attacksBlock}{castleBlock}</>) : (<>{castleBlock}{attacksBlock}</>)}
       </div>
 
-      {/* Tên thành viên — hàng riêng bên dưới lâu đài, luôn full-width để
-          justify-end/text-right có chỗ đẩy tên ra sát mép ngoài (phe địch). */}
-      <p className={`w-full text-[10px] font-semibold truncate leading-tight mt-1 flex items-center gap-1 ${isRight ? "flex-row-reverse justify-end text-right" : "justify-start text-left"}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
+      {/* Tên thành viên — hàng riêng bên dưới, dùng text-align thuần (không
+          flex) để chắc chắn dồn về đúng phía, không phụ thuộc flex-reverse. */}
+      <p className={`w-full text-[10px] font-semibold truncate leading-tight mt-1 ${isRight ? "text-right" : "text-left"}`} style={{ color: "var(--py-card-text, #e5e7eb)" }}>
+        {isRight && repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
         <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
-        {repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
+        {!isRight && repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
       </p>
     </button>
   );
