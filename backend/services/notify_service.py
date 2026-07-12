@@ -1,6 +1,6 @@
 import httpx
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase_client import get_supabase
 
 async def get_notify_config(clan_id: int = 1) -> dict:
@@ -94,12 +94,31 @@ async def notify_all(message: str, discord_color: int = 0x5865F2, title: str = "
 # trọng — notify_all() tự lo phần chuyển đổi cho đúng từng nền tảng.
 
 def _fmt_coc_time(coc_time: str) -> str:
-    """Đổi giờ dạng CoC ('20260709T142757.000Z') sang dễ đọc ('14:27 09/07/2026')."""
+    """Đổi giờ dạng CoC ('20260709T142757.000Z', LUÔN là giờ UTC) sang giờ
+    Việt Nam (UTC+7) — trước đây in thẳng giờ UTC kèm nhãn "UTC" nên bị lệch
+    7 tiếng so với giờ hiển thị trên web (trình duyệt tự quy đổi theo giờ
+    máy, thường là giờ VN) — gây hiểu nhầm là 2 nơi hiển thị sai khác nhau."""
     try:
-        dt = datetime.strptime(coc_time, "%Y%m%dT%H%M%S.%fZ")
-        return dt.strftime("%H:%M %d/%m/%Y") + " UTC"
+        dt_utc = datetime.strptime(coc_time, "%Y%m%dT%H%M%S.%fZ")
+        dt_vn = dt_utc + timedelta(hours=7)
+        return dt_vn.strftime("%H:%M %d/%m/%Y")
     except Exception:
         return coc_time
+
+
+def _hours_left_text(coc_time: str) -> str:
+    """'còn X giờ Y phút nữa' — tính từ giờ UTC hiện tại, không cần quy đổi
+    múi giờ vì là hiệu số thời gian (khoảng cách), không phải mốc thời điểm."""
+    try:
+        dt_utc = datetime.strptime(coc_time, "%Y%m%dT%H%M%S.%fZ")
+        delta = dt_utc - datetime.utcnow()
+        total_minutes = int(delta.total_seconds() / 60)
+        if total_minutes <= 0:
+            return "đã kết thúc"
+        h, m = divmod(total_minutes, 60)
+        return (f"còn {h} giờ {m} phút nữa" if h else f"còn {m} phút nữa")
+    except Exception:
+        return ""
 
 async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: int = 1, attacks_used: int = None, attacks_total: int = None, opponent_name: str = None):
     if not missing:
@@ -107,7 +126,7 @@ async def notify_war_attack_reminder(missing: list[str], war_end: str, clan_id: 
     names = ", ".join(missing)
     progress = f"\n📊 Đã đánh: **{attacks_used}/{attacks_total}** lượt" if attacks_used is not None and attacks_total is not None else ""
     vs = f" vs **{opponent_name}**" if opponent_name else ""
-    msg = f"⚔️ Nhắc đánh War{vs}!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}{progress}\nKết thúc: {_fmt_coc_time(war_end)}"
+    msg = f"⚔️ Nhắc đánh War{vs}!\n**{len(missing)} thành viên** chưa dùng hết attack:\n{names}{progress}\nKết thúc: {_fmt_coc_time(war_end)} (giờ VN) — {_hours_left_text(war_end)}"
     await notify_all(msg, discord_color=0xED4245, title="⚔️ Chưa đánh War", clan_id=clan_id)
 
 async def notify_raid_reminder(missing: list[str], clan_id: int = 1, raided: int = None, total: int = None):
