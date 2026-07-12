@@ -49,6 +49,11 @@ POINTS = {
     "leave_clan_2d":   -10,
     "leave_clan_3d":   -15,
     "leave_clan_7d":   -30,
+    # Đánh sớm trong war (trong 12 tiếng đầu kể từ lúc war bắt đầu) được
+    # thưởng nhiều hơn đánh muộn (sau 12 tiếng) — khuyến khích đánh sớm,
+    # không để dồn tới sát giờ chót.
+    "war_early_attack":  3,
+    "war_late_attack":   1,
 }
 DEFAULT_POINTS = dict(POINTS)  # giữ nguyên bản gốc để hiện "khôi phục mặc định" ở Cài đặt
 
@@ -93,6 +98,8 @@ REASON_LABELS = {
     "leave_clan_2d":    "Rời clan 2 ngày",
     "leave_clan_3d":    "Rời clan 3 ngày",
     "leave_clan_7d":    "Rời clan 7 ngày",
+    "war_early_attack": "Đánh sớm trong War (trong 12h đầu)",
+    "war_late_attack":  "Đánh muộn trong War (sau 12h)",
     "manual":           "Điều chỉnh thủ công",
 }
 
@@ -151,6 +158,16 @@ def get_tier(total: int, sb=None) -> dict:
         if total >= threshold:
             return {"name": name, "multiplier": mult, "threshold": threshold}
     return {"name": "Đồng", "multiplier": 1.0, "threshold": 0}
+
+
+def get_early_attack_hours(sb) -> float:
+    """Ngưỡng giờ tính là 'đánh sớm' trong war — mặc định 12h, admin chỉnh
+    được trong Cài đặt (công thức Danh vọng)."""
+    try:
+        res = sb.table("settings").select("value").eq("key", "reputation_early_attack_hours").execute()
+        return float(res.data[0]["value"]) if res.data and res.data[0]["value"] else 12.0
+    except Exception:
+        return 12.0
 
 
 def add_reputation(sb, clan_id: int, player_tag: str, player_name: str, reason: str,

@@ -1056,6 +1056,7 @@ function MemberAccountsSettings() {
 
 function ReputationFormulaSettings() {
   const [rows, setRows] = useState<any[]>([]);
+  const [earlyHours, setEarlyHours] = useState<number>(12);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1068,7 +1069,11 @@ function ReputationFormulaSettings() {
 
   async function load() {
     setLoading(true);
-    try { setRows(await api.getReputationPointsConfig()); } finally { setLoading(false); }
+    try {
+      const res = await api.getReputationPointsConfig();
+      setRows(res.items || []);
+      setEarlyHours(res.early_attack_hours ?? 12);
+    } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
 
@@ -1100,19 +1105,28 @@ function ReputationFormulaSettings() {
       {loading ? (
         <div className="h-32 bg-gray-800 rounded-xl animate-pulse" />
       ) : (
-        <div className="space-y-1.5">
-          {rows.map(r => (
-            <div key={r.reason} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
-              <span className="text-sm text-white flex-1 truncate">{r.label}</span>
-              <input type="number" className="input !w-20 !py-1 text-xs"
-                defaultValue={r.points}
-                onChange={e => setEdits(d => ({ ...d, [r.reason]: e.target.value }))}/>
-              {r.points !== r.default && (
-                <span className="text-[10px] text-gray-600 shrink-0">gốc {r.default}</span>
-              )}
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="flex items-center gap-2 bg-yellow-500/5 border border-yellow-500/15 rounded-xl px-3 py-2">
+            <span className="text-sm text-yellow-400 flex-1">⏱️ Ngưỡng "đánh sớm" trong War</span>
+            <input type="number" min={1} max={48} className="input !w-16 !py-1 text-xs"
+              defaultValue={earlyHours}
+              onChange={e => setEdits(d => ({ ...d, early_attack_hours: e.target.value }))}/>
+            <span className="text-xs text-gray-500">giờ</span>
+          </div>
+          <div className="space-y-1.5">
+            {rows.map(r => (
+              <div key={r.reason} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
+                <span className="text-sm text-white flex-1 truncate">{r.label}</span>
+                <input type="number" className="input !w-20 !py-1 text-xs"
+                  defaultValue={r.points}
+                  onChange={e => setEdits(d => ({ ...d, [r.reason]: e.target.value }))}/>
+                {r.points !== r.default && (
+                  <span className="text-[10px] text-gray-600 shrink-0">gốc {r.default}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
       <button onClick={handleSave} disabled={saving} className="btn-gold text-sm">
         {saving ? "Đang lưu..." : "Lưu công thức"}

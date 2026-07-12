@@ -55,20 +55,33 @@ async def get_points_config(request: Request):
     chỉnh) — dùng để hiện trong Cài đặt cho admin xem/sửa."""
     sb = get_supabase()
     current = get_points(sb)
-    return [
-        {"reason": k, "label": REASON_LABELS.get(k, k), "points": current.get(k, v), "default": v}
-        for k, v in DEFAULT_POINTS.items()
-    ]
+    from services.reputation import get_early_attack_hours
+    return {
+        "items": [
+            {"reason": k, "label": REASON_LABELS.get(k, k), "points": current.get(k, v), "default": v}
+            for k, v in DEFAULT_POINTS.items()
+        ],
+        "early_attack_hours": get_early_attack_hours(sb),
+    }
 
 
 @router.put("/points-config")
 async def update_points_config(request: Request, _: bool = Depends(require_admin)):
-    """Admin chỉnh công thức Danh vọng — body: {reason: points, ...}. Chỉ
-    ghi đè các reason hợp lệ (có trong DEFAULT_POINTS), bỏ qua phần lạ."""
+    """Admin chỉnh công thức Danh vọng — body: {reason: points, ..., early_attack_hours?: number}.
+    Chỉ ghi đè các reason hợp lệ (có trong DEFAULT_POINTS), bỏ qua phần lạ."""
     body = await request.json()
     sb = get_supabase()
     saved = {}
     for reason, pts in body.items():
+        if reason == "early_attack_hours":
+            try:
+                hours = float(pts)
+                if hours > 0:
+                    sb.table("settings").upsert({"key": "reputation_early_attack_hours", "value": str(hours)}, on_conflict="key").execute()
+                    saved["early_attack_hours"] = hours
+            except (ValueError, TypeError):
+                pass
+            continue
         if reason not in DEFAULT_POINTS:
             continue
         try:

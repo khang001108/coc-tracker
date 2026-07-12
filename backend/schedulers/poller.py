@@ -125,6 +125,52 @@ def _hours_until(coc_time: str) -> float | None:
         return None
 
 
+def _parse_coc_dt(coc_time: str):
+    if not coc_time:
+        return None
+    try:
+        return datetime.strptime(coc_time, "%Y%m%dT%H%M%S.%fZ")
+    except Exception:
+        return None
+
+
+def _check_early_attacks(sb, clan_id: int, war_data: dict, war_type: str):
+    """Thưởng Danh vọng cho đòn đánh SỚM trong war (trong N giờ đầu kể từ
+    lúc war bắt đầu, mặc định 12h — admin chỉnh được) — đánh càng sớm thưởng
+    càng cao. Gọi lặp lại mỗi lần poll (5 phút/lần) trong lúc war đang diễn
+    ra vẫn AN TOÀN nhờ ref_key gắn với war_end_time + player_tag + order
+    (UNIQUE constraint tự chặn cộng trùng cho cùng 1 đòn đánh).
+
+    LƯU Ý: CoC API không trả về thời điểm THẬT của từng đòn đánh (chỉ có
+    'order' — thứ tự đánh), nên đây là ước lượng dựa trên thời điểm poll
+    phát hiện ra đòn đánh đó (trễ tối đa ~5 phút so với thực tế — đủ chính
+    xác cho ngưỡng tính theo giờ)."""
+    end_time = war_data.get("endTime")
+    start_time = war_data.get("startTime")
+    if not end_time or not start_time:
+        return
+    start_dt = _parse_coc_dt(start_time)
+    if not start_dt:
+        return
+    elapsed_hours = (datetime.utcnow() - start_dt).total_seconds() / 3600
+    if elapsed_hours < 0:
+        return  # war chưa thật sự bắt đầu (đang preparation lẫn vào)
+
+    try:
+        from services.reputation import add_reputation, get_early_attack_hours
+        threshold = get_early_attack_hours(sb)
+        reason = "war_early_attack" if elapsed_hours <= threshold else "war_late_attack"
+        for m in war_data.get("clan", {}).get("members", []):
+            tag_, name_ = m.get("tag"), m.get("name", "?")
+            for a in m.get("attacks", []):
+                order = a.get("order")
+                if order is None:
+                    continue
+                add_reputation(sb, clan_id, tag_, name_, reason, ref_key=f"{end_time}-{tag_}-{order}")
+    except Exception as e:
+        log.error(f"_check_early_attacks error (clan_id={clan_id}): {e}")
+
+
 def should_notify_once(sb, clan_id: int, notify_type: str, ref_key: str) -> bool:
     """Chỉ cho gửi thông báo 1 LẦN cho cùng 1 war/raid — trước đây mỗi vòng
     poll (5 phút/lần) đủ điều kiện là gửi lại, có thể spam hàng chục lần
@@ -363,7 +409,7 @@ async def _log_cwl_participation(sb, clan_id: int, tag: str):
                 w = await get_cwl_war(war_tag, clan_id=clan_id)
             except Exception:
                 continue
-            if w.get("state") != "warEnded":
+            if w.get("state") not in ("inWar", "warEnded"):
                 continue
             our_side = None
             if w.get("clan", {}).get("tag") == tag:
@@ -374,6 +420,11 @@ async def _log_cwl_participation(sb, clan_id: int, tag: str):
                 continue
             if our_side == "opponent":
                 w["clan"], w["opponent"] = w["opponent"], w["clan"]
+            # Đánh sớm/muộn: kiểm tra ngay cả khi war đang "inWar" (chưa kết
+            # thúc) để bắt kịp thời điểm đánh thật, không phải chờ war xong.
+            _check_early_attacks(sb, clan_id, w, "cwl")
+            if w.get("state") != "warEnded":
+                continue
             _log_war_participation(sb, clan_id, w, war_type="cwl", season=group.get("season"))
 
 
@@ -402,6 +453,7 @@ async def _poll_war_for_clan(sb, c, war_reminder_hours, notify_cwl_on):
             attacks_total = len(members) * attacks_per_member
             end_time = data.get("endTime", "")
             hours_left = _hours_until(end_time)
+            _check_early_attacks(sb, c["id"], data, "random")
             if (missing and c.get("notify_war", True) and end_time
                     and hours_left is not None and hours_left <= war_reminder_hours
                     and should_notify_once(sb, c["id"], "war_reminder", end_time)):
