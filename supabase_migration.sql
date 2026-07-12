@@ -1005,3 +1005,24 @@ ALTER TABLE war_history_log ADD COLUMN IF NOT EXISTS season TEXT;
 -- War, thay vì chỉ chữ W/L/D)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE war_history_log ADD COLUMN IF NOT EXISTS opponent_badge TEXT;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 30 (5 hiệu ứng nổ SPRITE THẬT mới — cao cấp hơn bản vẽ
+-- SVG cũ vì dùng đúng khung hình vẽ tay thật (Craftpix), không phải mảnh vỡ
+-- ghép hình học. Giá cao hơn nhóm cũ do chất lượng hình ảnh tốt hơn.)
+-- ════════════════════════════════════════════════════════════════
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('explosion', 'exp_craft_fireball',   'Nổ Cầu Lửa (Cao cấp)',        9000),
+  ('explosion', 'exp_craft_smoke',      'Nổ Khói (Cao cấp)',            8000),
+  ('explosion', 'exp_craft_burst',      'Nổ Bùng Nổ (Cao cấp)',         9500),
+  ('explosion', 'exp_craft_shockwave',  'Nổ Sóng Xung Kích (Cao cấp)', 11000),
+  ('explosion', 'exp_craft_inferno',    'Nổ Địa Ngục Hoả (Cao cấp)',   13000)
+ON CONFLICT DO NOTHING;
+
+-- Tháp Cung — 3 cấp (dùng chung slot "cannon" — thay cho hình pháo tròn cổ
+-- điển ở góc lâu đài phòng thủ, chọn được ở Cửa hàng như 1 skin pháo khác)
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('cannon', 'tower_tier1', 'Tháp Cung — Cấp 1', 5000),
+  ('cannon', 'tower_tier2', 'Tháp Cung — Cấp 2', 9000),
+  ('cannon', 'tower_tier3', 'Tháp Cung — Cấp 3', 15000)
+ON CONFLICT DO NOTHING;

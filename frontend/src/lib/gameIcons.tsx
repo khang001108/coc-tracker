@@ -27,6 +27,10 @@ const ANIM_CSS = `
   0%,100% { filter: drop-shadow(0 0 3px #F4A130); }
   50%      { filter: drop-shadow(0 0 9px #F4A130); }
 }
+@keyframes tower-idle-steps {
+  from { background-position: 0 0; }
+  to   { background-position: -400% 0; }
+}
 
 `;
 let injected = false;
@@ -693,11 +697,33 @@ export function CastleIcon({ svgKey, th, size, animate = true, showTh = true }: 
   );
 }
 
+/** Icon Tháp Cung dạng SPRITE THẬT (Craftpix, 4 khung idle/tier) — 1 trong
+ * các lựa chọn "Pháo phòng thủ" ở Cửa hàng, thay cho hình pháo vẽ tay. */
+const SPRITE_TOWER_KEYS = new Set(["tower_tier1", "tower_tier2", "tower_tier3"]);
+
+function TowerSprite({ svgKey, size = 32, animate = true }: { svgKey: string; size?: number; animate?: boolean }) {
+  const FRAMES = 4;
+  return (
+    <div style={{
+      width: size, height: size, overflow: "hidden", position: "relative",
+      backgroundImage: `url(/art/towers/${svgKey}.png)`,
+      backgroundSize: `${FRAMES * 100}% 100%`,
+      imageRendering: "pixelated",
+      animation: animate ? "tower-idle-steps 1.2s steps(3) infinite" : undefined,
+    }} />
+  );
+}
+
 /** Icon pháo trong War map */
 export function CannonIcon({ svgKey, fired, broken, size }: {
   svgKey?: string | null; fired?: boolean; broken?: boolean; size?: number;
 }) {
   ensureStyles();
+  if (svgKey && SPRITE_TOWER_KEYS.has(svgKey)) {
+    return <div style={{ opacity: broken ? 0.4 : 1, filter: broken ? "grayscale(0.8)" : undefined }}>
+      <TowerSprite svgKey={svgKey} size={size} animate={!fired && !broken} />
+    </div>;
+  }
   const Comp = CANNON_COMPONENTS[svgKey || "cannon_basic"] || CannonBasic;
   return (
     <div style={{ position: "relative", animation: fired || broken ? undefined : "cannon-glow 2s ease-in-out infinite" }}>
@@ -726,6 +752,7 @@ export function CastlePreview({ svgKey, size = 48 }: { svgKey: string; size?: nu
 
 export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: number }) {
   ensureStyles();
+  if (SPRITE_TOWER_KEYS.has(svgKey)) return <TowerSprite svgKey={svgKey} size={size} animate={true} />;
   const Comp = CANNON_COMPONENTS[svgKey] || CannonBasic;
   // fired=false → sáng + spin-fast (trạng thái "sẵn sàng" = đẹp nhất để preview)
   return (
@@ -1051,7 +1078,18 @@ export const EXPLOSION_SKINS: Record<string, {
   exp_snowflake:  { label: "Nổ Bông Tuyết", colors: ["#DFF6FF", "#BFE3FF", "#FFFFFF"],                       particles: 12, shape: "star",   burstDur: 1.2, scale: 1.3 },
   exp_splash:     { label: "Nổ Toé Nước",   colors: ["#38BDF8", "#7DD3FC", "#BFE3FF"],                       particles: 10, shape: "drop",   burstDur: 1.3, scale: 1.4 },
   exp_nuclear:    { label: "Nổ Hạt Nhân",   colors: ["#FFD700", "#FF8C00", "#FF3D00", "#6B7280"],           particles: 14, shape: "circle", burstDur: 1.9, scale: 2 },
+  // Hiệu ứng nổ dạng SPRITE THẬT (10 khung hình vẽ tay, không phải mảnh vỡ SVG
+  // ghép lại như trên) — cao cấp hơn, do Craftpix vẽ sẵn từng khung.
+  exp_craft_fireball:   { label: "Nổ Cầu Lửa (Sprite)",  colors: [], particles: 0, shape: "circle", burstDur: 1.0, scale: 1 },
+  exp_craft_smoke:      { label: "Nổ Khói (Sprite)",     colors: [], particles: 0, shape: "circle", burstDur: 1.0, scale: 1 },
+  exp_craft_burst:      { label: "Nổ Bùng Nổ (Sprite)",  colors: [], particles: 0, shape: "circle", burstDur: 1.0, scale: 1 },
+  exp_craft_shockwave:  { label: "Nổ Sóng Xung Kích (Sprite)", colors: [], particles: 0, shape: "circle", burstDur: 1.0, scale: 1 },
+  exp_craft_inferno:    { label: "Nổ Địa Ngục Hoả (Sprite)",   colors: [], particles: 0, shape: "circle", burstDur: 1.0, scale: 1 },
 };
+
+const SPRITE_EXPLOSION_KEYS = new Set([
+  "exp_craft_fireball", "exp_craft_smoke", "exp_craft_burst", "exp_craft_shockwave", "exp_craft_inferno",
+]);
 
 function ExplosionParticle({ shape, color, size }: { shape: string; color: string; size: number }) {
   if (shape === "square") return <rect x={-size / 2} y={-size / 2} width={size} height={size} fill={color} />;
@@ -1083,6 +1121,25 @@ export function ImpactExplosion({ svgKey, x, y, dur = PROJECTILE_DUR, begin = 0,
   // rồi lặp lại đúng mỗi chu kỳ dur tiếp theo.
   const beginList = repeatBegins(begin + dur * (firstBurstAtOverride ?? 0.97), dur);
   const keyTimes = "0;0.06;0.5;1";
+
+  // Nổ dạng SPRITE THẬT (10 khung hình vẽ tay ghép thành 1 dải ảnh ngang) —
+  // dùng <image> SVG + animate "x" theo kiểu discrete để nhảy khung chính
+  // xác, không mờ/nhoè như animate liên tục thông thường.
+  if (SPRITE_EXPLOSION_KEYS.has(svgKey)) {
+    const FRAME = 96, FRAMES = 10, DISPLAY = 34;
+    const xs = Array.from({ length: FRAMES + 1 }, (_, i) => -FRAME * Math.min(i, FRAMES - 1));
+    const kt = Array.from({ length: FRAMES + 1 }, (_, i) => (i / FRAMES).toFixed(3)).join(";");
+    return (
+      <g transform={`translate(${x} ${y})`}>
+        <svg x={-DISPLAY / 2} y={-DISPLAY / 2} width={DISPLAY} height={DISPLAY} viewBox={`0 0 ${FRAME} ${FRAME}`} style={{ overflow: "hidden" }}>
+          <image href={`/art/explosions/${svgKey}.png`} y="0" width={FRAME * FRAMES} height={FRAME} opacity={0}>
+            <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.9;1" dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+            <animate attributeName="x" values={xs.join(";")} keyTimes={kt} calcMode="discrete" dur={`${burstDur}s`} begin={beginList} fill="freeze" />
+          </image>
+        </svg>
+      </g>
+    );
+  }
 
   if (svgKey === "exp_nuclear") {
     return (
