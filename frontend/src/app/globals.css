@@ -501,3 +501,11 @@ html.custom-cursor-active * {
   50% { filter: drop-shadow(0 0 6px rgba(103,232,249,1)) drop-shadow(0 0 10px rgba(59,130,246,0.6)); }
 }
 .reputation-badge-sparkle { animation: reputation-sparkle 1.8s ease-in-out infinite; }
+
+/* Text tự chạy qua lại khi tràn chỗ (MarqueeText) — dừng ở 2 đầu 1 lúc để đọc kịp */
+@keyframes marquee-bounce {
+  0%, 12% { transform: translateX(0); }
+  45%, 55% { transform: translateX(var(--marquee-distance)); }
+  88%, 100% { transform: translateX(0); }
+}
+.marquee-anim { animation-name: marquee-bounce; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }

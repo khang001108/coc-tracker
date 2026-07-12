@@ -12,6 +12,7 @@ import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 
 const ROLE_ORDER = ["leader", "coLeader", "admin", "member"];
 const ROLE_TITLE: Record<string, string> = {
@@ -222,7 +223,7 @@ export default function MembersPage() {
                     <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.townHallLevel}</NumberEffect>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
+                    <MarqueeText className="text-sm font-semibold text-white">
                       <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                       {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                       {rosterMap[m.tag]?.claimed && (
@@ -230,7 +231,7 @@ export default function MembersPage() {
                           <ShieldCheck size={12} className="text-green-400 shrink-0" />
                         </span>
                       )}
-                    </p>
+                    </MarqueeText>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                       {war?.state === "inWar" && (

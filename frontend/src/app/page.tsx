@@ -16,6 +16,7 @@ import { EmberField } from "@/components/ui/EmberField";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { useRoleMap } from "@/lib/useRoleMap";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -440,11 +441,11 @@ function TopTrophiesBox({ members }: { members: any[] }) {
           {ranked.map((m, i) => (
             <div key={m.tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
-              <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
-                {m.name}
+              <MarqueeText className="text-sm text-white flex-1">
+                <span>{m.name}</span>
                 {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                 <span className={`text-[9px] shrink-0 ${roleClass(m.role)}`}>{roleLabel(m.role)}</span>
-              </span>
+              </MarqueeText>
               <span className="text-xs text-yellow-400 shrink-0">🏆 {formatNumber(m.trophies || 0)}</span>
             </div>
           ))}
@@ -476,10 +477,10 @@ function TopReputationBox() {
           {rows.map((r, i) => (
             <div key={r.player_tag} className="flex items-center gap-2">
               <ReputationBadge rank={i + 1}/>
-              <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
-                {r.player_name}
+              <MarqueeText className="text-sm text-white flex-1">
+                <span>{r.player_name}</span>
                 {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
-              </span>
+              </MarqueeText>
               <span className="text-xs text-yellow-400 shrink-0">{r.total}</span>
             </div>
           ))}
