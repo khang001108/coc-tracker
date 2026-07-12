@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { getCurrentClanId, getCurrentClanInfo, setCurrentClan, onClanChanged, ClanInfo } from "@/lib/clanContext";
 import { api } from "@/lib/api";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 
 function ClanBadge({ clan, size = 28 }: { clan: ClanInfo; size?: number }) {
   if (clan.badge_url) {
@@ -62,7 +63,7 @@ function ClanDropdown({ clans, currentId, isAdmin, publicSlot, onClose, onSlotUp
           className="w-full flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-yellow-400/10">
           <ClanBadge clan={cl} size={28} />
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-xs font-semibold truncate" style={{ color: "var(--py-card-text,#fff)" }}>{cl.clan_name}</p>
+            <MarqueeText className="text-xs font-semibold" style={{ color: "var(--py-card-text,#fff)" }}>{cl.clan_name}</MarqueeText>
             <p className="text-[10px] text-gray-500">{cl.clan_tag}</p>
           </div>
           {cl.id === currentId && <Check size={13} className="text-yellow-400 shrink-0"/>}
@@ -158,9 +159,9 @@ export function ClanSwitcher({ children }: { children?: React.ReactNode }) {
         <ClanBadge clan={currentClan as ClanInfo} size={32} />
         {/* Tên clan */}
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-xs font-bold truncate leading-tight" style={{ color: "var(--py-card-text,#fff)" }}>
+          <MarqueeText className="text-xs font-bold leading-tight" style={{ color: "var(--py-card-text,#fff)" }}>
             {name}
-          </p>
+          </MarqueeText>
           <p className="text-[10px] text-gray-500 truncate">{tag || "Bấm để đổi clan"}</p>
         </div>
         <ChevronDown size={14} className={`text-yellow-400/60 transition-transform shrink-0 ${open ? "rotate-180" : ""}`}/>

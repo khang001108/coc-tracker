@@ -7,6 +7,7 @@ import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { EmberField } from "@/components/ui/EmberField";
 import { useEmberColor } from "@/lib/useEmberColor";
@@ -122,10 +123,10 @@ export default function GamesPage() {
                       <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
+                      <MarqueeText className="text-sm font-semibold text-white">
                         <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                         {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
-                      </p>
+                      </MarqueeText>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {done && <span className="badge-green text-[10px]">✓ Hoàn thành</span>}

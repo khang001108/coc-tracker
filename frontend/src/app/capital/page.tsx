@@ -8,6 +8,7 @@ import { Castle, TrendingUp, Users, Coins, AlertCircle, Copy, Check, UserX } fro
 import { NameEffect } from "@/components/ui/NameEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { EmberField } from "@/components/ui/EmberField";
 import { useEmberColor } from "@/lib/useEmberColor";
 import { usePageBanner } from "@/lib/usePageBanner";
@@ -185,10 +186,10 @@ export default function CapitalPage() {
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                      <MarqueeText className="text-sm font-medium text-white">
                         <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                         {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
-                      </p>
+                      </MarqueeText>
                       <div className="progress-bar mt-1.5 w-full">
                         <div className="progress-fill" style={{ width: `${pct}%` }} />
                       </div>

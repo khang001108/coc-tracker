@@ -11,6 +11,7 @@ import { formatDate, thColor } from "@/lib/utils";
 import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, Copy, Check, AlertTriangle, RefreshCw } from "lucide-react";
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { getCurrentClanInfo } from "@/lib/clanContext";
 
 /** Top 3 đòn đánh hay nhất của 1 war cụ thể — sao cao nhất → % phá huỷ cao
@@ -60,9 +61,9 @@ function WarMemberRow({ member, mapPosition, maxAttacks = 2, rosterMap = {} }: {
         {member.townHallLevel}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">
+        <MarqueeText className="text-sm font-medium text-white">
           <NameEffect effectKey={rosterMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
-        </p>
+        </MarqueeText>
         {attacks.length > 0 && (
           <p className="text-xs text-gray-500">{bestDestruction.toFixed(0)}% phá hủy</p>
         )}
@@ -125,9 +126,11 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
               <img src={w.opponent_badge} alt="" className="w-6 h-6 rounded-full object-contain bg-gray-900 ring-2 ring-gray-800"/>
             ) : <div className="w-6 h-6 rounded-full bg-gray-700 ring-2 ring-gray-800"/>}
           </div>
-          <p className="text-xs text-gray-400 truncate flex-1 min-w-0">
-            <span className="text-white font-medium">{myClan?.clan_name || "Clan"}</span> vs <span className="text-white font-medium">{w.opponent_name}</span>
-          </p>
+          <MarqueeText className="text-xs text-gray-400 flex-1">
+            <span className="text-white font-medium">{myClan?.clan_name || "Clan"}</span>
+            <span>vs</span>
+            <span className="text-white font-medium">{w.opponent_name}</span>
+          </MarqueeText>
           <span className="text-[11px] text-gray-500 shrink-0">{w.team_size}v{w.team_size} · {fmtWarDate(w.war_end_time)}</span>
         </div>
 
@@ -160,7 +163,7 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
           ) : top3.map((m, idx) => (
             <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
               <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
-              <span className="flex-1 text-gray-200 truncate">{m.name}</span>
+              <MarqueeText className="flex-1 text-gray-200">{m.name}</MarqueeText>
               <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
             </div>
           ))}
@@ -337,7 +340,7 @@ export default function WarPage() {
                     {war.clan?.badgeUrl && (
                       <img src={war.clan.badgeUrl} alt="" className="w-10 h-10 object-contain drop-shadow-lg"/>
                     )}
-                    <p className="text-xs text-gray-300 font-semibold truncate max-w-[90px]">{war.clan?.name}</p>
+                    <MarqueeText className="text-xs text-gray-300 font-semibold max-w-[90px] justify-center">{war.clan?.name}</MarqueeText>
                     {war.state !== "preparation" ? (
                       <>
                         <p className="text-2xl font-bold text-yellow-400">⭐ {war.clan?.stars}</p>
@@ -378,7 +381,7 @@ export default function WarPage() {
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">🏰</div>
                     )}
-                    <p className="text-xs text-gray-300 font-semibold truncate max-w-[90px]">{war.opponent?.name}</p>
+                    <MarqueeText className="text-xs text-gray-300 font-semibold max-w-[90px] justify-center">{war.opponent?.name}</MarqueeText>
                     {war.state === "preparation" ? (
                       <p className="text-[10px] text-yellow-600 mt-0.5 italic">⚔️ Chờ đánh</p>
                     ) : (
@@ -410,7 +413,7 @@ export default function WarPage() {
                         <img src={cwlNext.opponent.badgeUrl} alt="" className="w-10 h-10 object-contain shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">vs {cwlNext.opponent?.name}</p>
+                        <MarqueeText className="text-sm font-semibold text-white">vs {cwlNext.opponent?.name}</MarqueeText>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {cwlNext.state === "preparation" ? "⚔️ Đang chuẩn bị" : cwlNext.state === "inWar" ? "🔥 Đang đánh" : cwlNext.state}
                         </p>
@@ -597,13 +600,13 @@ export default function WarPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {cwl.current.clan?.badgeUrl && <img src={cwl.current.clan.badgeUrl} className="w-9 h-9 shrink-0" alt="" />}
-                  <p className="text-sm font-semibold text-white truncate">{cwl.current.clan?.name}</p>
+                  <MarqueeText className="text-sm font-semibold text-white">{cwl.current.clan?.name}</MarqueeText>
                 </div>
                 <span className="text-gray-500 font-bold text-sm shrink-0">
                   {cwl.current.clan?.stars ?? 0} — {cwl.current.opponent?.stars ?? 0}
                 </span>
                 <div className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right">
-                  <p className="text-sm font-semibold text-white truncate">{cwl.current.opponent?.name}</p>
+                  <MarqueeText className="text-sm font-semibold text-white justify-end">{cwl.current.opponent?.name}</MarqueeText>
                   {cwl.current.opponent?.badgeUrl && <img src={cwl.current.opponent.badgeUrl} className="w-9 h-9 shrink-0" alt="" />}
                 </div>
               </div>

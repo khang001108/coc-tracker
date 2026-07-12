@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
  * dùng vẫn xem được đầy đủ thay vì bị cắt cụt (vd "Co-Le", "El", "C"...).
  * Nếu nội dung vừa đủ chỗ thì hiển thị tĩnh bình thường, không chạy.
  */
-export function MarqueeText({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function MarqueeText({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [distance, setDistance] = useState(0);
@@ -27,7 +27,7 @@ export function MarqueeText({ children, className = "" }: { children: React.Reac
   }, [children]);
 
   return (
-    <div ref={containerRef} className={`relative overflow-hidden min-w-0 ${className}`}>
+    <div ref={containerRef} className={`relative overflow-hidden min-w-0 ${className}`} style={style}>
       <div ref={contentRef}
         className={`whitespace-nowrap inline-flex items-center gap-1.5 ${distance > 0 ? "marquee-anim" : "truncate w-full"}`}
         style={distance > 0 ? { ["--marquee-distance" as any]: `-${distance}px`, animationDuration: `${Math.max(3, Math.min(9, distance / 25))}s` } : undefined}>

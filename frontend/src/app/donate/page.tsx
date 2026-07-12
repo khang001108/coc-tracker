@@ -9,6 +9,7 @@ import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 
@@ -102,9 +103,9 @@ export default function DonatePage() {
               <p className="text-xs text-gray-500 mt-1">Tổng nhận</p>
             </div>
             <div className="card text-center">
-              <p className="text-sm font-bold text-yellow-400 truncate">
+              <MarqueeText className="text-sm font-bold text-yellow-400 justify-center">
                 <NameEffect effectKey={topDonor ? rosterMap[topDonor.tag]?.equipped_effect : null}>{topDonor?.name || "—"}</NameEffect>
-              </p>
+              </MarqueeText>
               <p className="text-xs text-gray-500 mt-1">Top donor</p>
               {topDonor && <p className="text-xs text-green-400">{formatNumber(topDonor.donations)}</p>}
             </div>
@@ -133,10 +134,10 @@ export default function DonatePage() {
                       </div>
                     </div>
                     <div className="col-span-4 min-w-0">
-                      <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                      <MarqueeText className="text-sm font-medium text-white">
                         <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                         {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
-                      </p>
+                      </MarqueeText>
                       <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                     </div>
                     <div className="col-span-3 text-right">
@@ -178,10 +179,10 @@ export default function DonatePage() {
                   <NumberEffect effectKey={rosterMap[m.tag]?.equipped_number_effect}>{m.th}</NumberEffect>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                  <MarqueeText className="text-sm font-medium text-white">
                     <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                     {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
-                  </p>
+                  </MarqueeText>
                   <div className="progress-bar mt-1">
                     <div className="progress-fill" style={{ width: `${Math.min((m.donations / (sorted[0]?.donations || 1)) * 100, 100)}%` }} />
                   </div>

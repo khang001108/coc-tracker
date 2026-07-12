@@ -9,6 +9,7 @@ import { Portal } from "@/components/ui/Portal";
 import { FireworkField } from "@/components/ui/FireworkField";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
@@ -289,10 +290,10 @@ function ParticipantList({ participants }: { participants: any[] }) {
         {show.map((p: any, i: number) => (
           <div key={p.player_tag} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5">
             <span className="text-xs text-gray-600 w-4 text-right">{i+1}</span>
-            <span className="text-sm text-gray-200 flex-1 truncate flex items-center gap-1.5">
-              {p.player_name}
+            <MarqueeText className="text-sm text-gray-200 flex-1">
+              <span>{p.player_name}</span>
               {repRankMap[p.player_tag] && <ReputationBadge rank={repRankMap[p.player_tag]}/>}
-            </span>
+            </MarqueeText>
             <span className="text-[10px] text-gray-600">{fmtDateTime(p.joined_at)}</span>
           </div>
         ))}
@@ -635,10 +636,10 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                       <span className={`text-xs w-5 text-right font-bold ${m.rank===1?"text-yellow-400":m.rank===2?"text-gray-300":m.rank===3?"text-amber-600":"text-gray-500"}`}>
                         {m.rank<=3?["🥇","🥈","🥉"][m.rank-1]:m.rank}
                       </span>
-                      <span className="text-sm text-white flex-1 truncate flex items-center gap-1.5">
-                        {m.player_name}
+                      <MarqueeText className="text-sm text-white flex-1">
+                        <span>{m.player_name}</span>
                         {repRankMap[m.player_tag] && <ReputationBadge rank={repRankMap[m.player_tag]}/>}
-                      </span>
+                      </MarqueeText>
                       <span className="text-xs text-yellow-400 font-semibold">{m.metric_value}</span>
                     </div>
                   ))}
@@ -660,7 +661,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                   {claims.map((c: any) => (
                     <div key={c.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
                       <span className="text-xs text-gray-500 w-5 text-right">{c.rank}</span>
-                      <span className="text-sm text-white flex-1 truncate">{c.player_name}</span>
+                      <MarqueeText className="text-sm text-white flex-1">{c.player_name}</MarqueeText>
                       <span className="text-xs text-gray-500">{c.metric_value}</span>
                       {isAdmin && c.redeem_code && (
                         <span className="text-[10px] font-mono text-yellow-500/80 bg-black/30 rounded px-1.5 py-0.5">{c.redeem_code}</span>

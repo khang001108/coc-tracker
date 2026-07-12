@@ -272,7 +272,7 @@ export function MedalRewardBox() {
             {suggestions.slice(0, 6).map((s, i) => (
               <div key={s.player_tag} className="flex items-center gap-2">
                 <span className="text-[10px] text-gray-500 w-4 text-right shrink-0">{i+1}</span>
-                <span className="text-xs text-gray-200 w-20 truncate shrink-0">{s.player_name}</span>
+                <MarqueeText className="text-xs text-gray-200 w-20 shrink-0">{s.player_name}</MarqueeText>
                 <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
                     style={{ width: `${(s.score / maxScore) * 100}%` }}/>
@@ -294,7 +294,7 @@ export function MedalRewardBox() {
             {history.length === 0 && <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>}
             {history.map(h => (
               <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
-                <span className="text-white flex-1 truncate">{h.player_name}</span>
+                <MarqueeText className="text-white flex-1">{h.player_name}</MarqueeText>
                 <span className="text-gray-500 shrink-0">Mùa {h.season_number ?? "?"}</span>
                 <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
                 {perm.is_admin && (

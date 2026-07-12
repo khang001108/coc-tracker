@@ -7,6 +7,7 @@ import { CastleIcon, CannonIcon, ProjectileBall, PROJECTILE_DUR, ImpactExplosion
 import { NameEffect } from "@/components/ui/NameEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { Swords, Shield, Eye, EyeOff } from "lucide-react";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
@@ -257,9 +258,9 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
       {/* Team labels */}
       <div className="grid px-2" style={{ gridTemplateColumns: "1fr 20px 1fr" }}>
-        <p className="text-[9px] font-bold text-blue-600 truncate">{war?.clan?.name}</p>
+        <MarqueeText className="text-[9px] font-bold text-blue-600">{war?.clan?.name}</MarqueeText>
         <div />
-        <p className="text-[9px] font-bold text-red-500 truncate text-right">{war?.opponent?.name}</p>
+        <MarqueeText className="text-[9px] font-bold text-red-500 justify-end">{war?.opponent?.name}</MarqueeText>
       </div>
 
       {/* Member rows */}

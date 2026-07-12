@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
+import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
@@ -1038,7 +1039,7 @@ function MemberAccountsSettings() {
           {claimedList.map(m => (
             <div key={m.tag} className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                <MarqueeText className="text-sm font-semibold text-white">{m.name}</MarqueeText>
                 <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
               </div>
               <button onClick={() => handleRelease(m.tag, m.name)} disabled={busyTag === m.tag}
@@ -1621,7 +1622,7 @@ function ClanManagement() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: "var(--py-card-text)" }}>{cl.clan_name}</p>
+                <MarqueeText className="text-sm font-semibold" style={{ color: "var(--py-card-text)" }}>{cl.clan_name}</MarqueeText>
                 <p className="text-xs text-gray-500">{cl.clan_tag}</p>
                 <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
                   <input type="checkbox" checked={!!cl.public_editable}

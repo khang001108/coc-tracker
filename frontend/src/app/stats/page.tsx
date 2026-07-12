@@ -58,7 +58,7 @@ function WeeklyRankRow({ e, i, tone }: { e: any; i: number; tone: "good" | "bad"
       : "flex items-start gap-2 bg-red-500/5 border border-red-500/10 rounded-lg px-2.5 py-1.5"}>
       <span className="text-xs w-4 text-gray-500 shrink-0 pt-0.5">{i + 1}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white truncate">{e.player_name}</p>
+        <MarqueeText className="text-sm text-white">{e.player_name}</MarqueeText>
         {e.value && <p className={isGood ? "text-[10px] text-green-400 truncate" : "text-[10px] text-red-400 truncate"}>{e.value}</p>}
       </div>
     </div>
@@ -610,10 +610,10 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                   p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
                     : <span className="w-5 h-5 shrink-0" />
                 )}
-                <span className="flex-1 min-w-0 truncate">
+                <MarqueeText className="flex-1">
                   <span className="text-gray-300">{p.name}</span>
-                  {coinsScope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {p.clan_name}</span>}
-                </span>
+                  {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                </MarqueeText>
                 <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
               </div>
             ))}
@@ -656,8 +656,8 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             ) : (
               <div className="space-y-2">
                 {warActivity.weakest_war.map(p => (
-                  <div key={p.tag} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 truncate">{p.name}</span>
+                  <div key={p.tag} className="flex items-center gap-2 text-sm">
+                    <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
                     <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
                   </div>
                 ))}
@@ -682,8 +682,8 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             ) : (
               <div className="space-y-2">
                 {warActivity.most_skips.map(p => (
-                  <div key={p.tag} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 truncate">{p.name}</span>
+                  <div key={p.tag} className="flex items-center gap-2 text-sm">
+                    <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
                     <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
                   </div>
                 ))}

@@ -271,7 +271,7 @@ export default function MembersPage() {
                     {log.status === "active" ? <UserPlus size={16} className="text-green-400" /> : <UserMinus size={16} className="text-red-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{log.name}</p>
+                    <MarqueeText className="text-sm font-medium text-white">{log.name}</MarqueeText>
                     <p className="text-xs text-gray-500">
                       TH{log.th_level} · {log.status === "active" ? "Tham gia" : "Rời clan"}
                       {" · "}{formatDate(log.joined_at || log.left_at)}
