@@ -13,6 +13,7 @@ import { MedalRewardBox } from "@/components/ui/MedalRewardBox";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SortToggle } from "@/components/ui/SortToggle";
+import { Portal } from "@/components/ui/Portal";
 import { useRoleMap } from "@/lib/useRoleMap";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -258,6 +259,7 @@ function ReputationLeaderboardTab() {
       </div>
 
       {selected && (
+        <Portal>
         <div className="modal-overlay" onClick={() => { setSelected(null); setDetail(null); }}>
           <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
             style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
@@ -306,6 +308,7 @@ function ReputationLeaderboardTab() {
             )}
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );
@@ -393,6 +396,7 @@ function WeeklyReportTab() {
       )}
 
       {selected && (
+        <Portal>
         <div className="modal-overlay" onClick={() => setSelected(null)}>
           <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
             style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
@@ -404,6 +408,7 @@ function WeeklyReportTab() {
             <WeeklyReportView report={selected}/>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );
