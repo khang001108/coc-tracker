@@ -19,11 +19,25 @@ CONDITIONS = {
     "best_trophies_reach":       {"label": "Đạt Cúp cao nhất từng có",     "field": "bestTrophies"},
     "th_level_reach":            {"label": "Đạt cấp Town Hall",           "field": "townHallLevel"},
     "war_stars_reach":           {"label": "Đạt tổng War Stars (career)", "field": "warStars"},
-    "attack_wins_reach":         {"label": "Đạt số trận thắng tấn công",  "field": "attackWins"},
-    "defense_wins_reach":        {"label": "Đạt số trận thắng phòng thủ","field": "defenseWins"},
-    "donations_reach":           {"label": "Đạt số quân donate hiện tại", "field": "donations"},
+    "donations_reach":           {"label": "Đạt số quân donate hiện tại (mùa này)", "field": "donations"},
+    "donations_received_reach":  {"label": "Đạt số quân đã nhận (mùa này)", "field": "donationsReceived"},
     "capital_contributions_reach": {"label": "Đạt tổng Gold góp Clan Capital (career)", "field": "clanCapitalContributions"},
+    "clan_games_points_reach":   {"label": "Đạt điểm Clan Games (mùa hiện tại)", "achievement": "Games Champion"},
 }
+# LƯU Ý: đã bỏ 2 điều kiện cũ "attackWins"/"defenseWins" (Thắng tấn công /
+# Thắng phòng thủ) — Supercell đã ngừng cập nhật 2 field này qua API công
+# khai từ vài bản cập nhật trước (luôn trả về 0 bất kể người chơi thắng bao
+# nhiêu trận thật), không phải lỗi web. Thay bằng 2 điều kiện đáng tin cậy
+# hơn: "Đạt số quân đã nhận" và "Đạt điểm Clan Games".
+
+
+def _get_condition_value(player: dict, cond: dict) -> int:
+    """Lấy giá trị hiện tại của người chơi theo điều kiện — field thường
+    (top-level) hoặc achievement (nằm trong mảng achievements)."""
+    if "achievement" in cond:
+        return next((a.get("value", 0) for a in player.get("achievements", [])
+                     if a.get("name") == cond["achievement"]), 0)
+    return player.get(cond.get("field", ""), 0) or 0
 
 
 async def _require_admin_creator(x_admin_token: str | None) -> str:
@@ -69,7 +83,7 @@ async def list_quests(request: Request, x_member_token: str | None = Header(defa
         if member_tag:
             item["claimed"] = q["id"] in my_claims
             if my_player is not None and not item["claimed"]:
-                current = my_player.get(cond.get("field", ""), 0) or 0
+                current = _get_condition_value(my_player, cond)
                 item["my_progress"] = current
                 item["my_progress_met"] = current >= q["target_value"]
         out.append(item)
@@ -157,7 +171,7 @@ async def claim_quest(quest_id: int, request: Request, x_member_token: str | Non
         player = await get_player(member_tag, clan_id=clan_id)
     except Exception:
         raise HTTPException(502, "Không lấy được dữ liệu từ CoC API — thử lại sau")
-    current = player.get(cond["field"], 0) or 0
+    current = _get_condition_value(player, cond)
     if current < quest["target_value"]:
         raise HTTPException(400, f"Chưa đủ điều kiện — hiện tại {current}/{quest['target_value']}")
 
