@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { Award, Lock, CheckCircle2, Sparkles, Medal, Copy, Check } from "lucide-react";
+import { useRoleMap } from "@/lib/useRoleMap";
+import { roleLabel, roleClass } from "@/lib/utils";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -27,6 +29,7 @@ function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "suc
  */
 export function MedalRewardBox() {
   const [members, setMembers] = useState<any[]>([]);
+  const roleMap = useRoleMap();
   const [resetCount, setResetCount] = useState(3);
   const [resetCountInput, setResetCountInput] = useState("3");
   const [currentSeasonNumber, setCurrentSeasonNumber] = useState<number | null>(null);
@@ -174,7 +177,10 @@ export function MedalRewardBox() {
             {awardedThisSeason.map(m => (
               <div key={m.player_tag} className="flex items-center gap-2 bg-green-500/5 border border-green-500/15 rounded-xl px-3 py-2">
                 <Medal size={14} className="text-yellow-400 shrink-0"/>
-                <span className="text-sm text-white flex-1 truncate">{m.player_name}</span>
+                <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
+                  {m.player_name}
+                  {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
+                </span>
                 <span className="text-[10px] text-gray-500 shrink-0">bởi {m.last_award?.awarded_by || "?"}</span>
               </div>
             ))}
@@ -216,7 +222,10 @@ export function MedalRewardBox() {
                   ) : (
                     <Lock size={12} className="text-purple-300 shrink-0"/>
                   )}
-                  <span className="text-sm text-white flex-1 truncate">{m.player_name}</span>
+                  <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
+                    {m.player_name}
+                    {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
+                  </span>
                   {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} mùa</span>}
                   {m.eligible && perm.can_award && (
                     <input placeholder="Ghi chú" value={noteDraft[m.player_tag] || ""}

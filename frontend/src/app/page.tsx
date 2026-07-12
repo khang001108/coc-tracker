@@ -15,6 +15,7 @@ import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { useRoleMap } from "@/lib/useRoleMap";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -164,10 +165,19 @@ export default function DashboardPage() {
               <img src={clan.badgeUrls.medium} alt="badge" className="w-14 h-14 rounded-xl" />
             )}
             <div>
-              <h1 className="page-title flex items-center gap-2">
+              <h1 className="page-title flex items-center gap-2 flex-wrap">
                 {clan?.name || "Clan"}
                 {clan?.warLeague?.name && (
                   <span className="badge-gold text-xs">{clan.warLeague.name}</span>
+                )}
+                {clan?.type && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                    clan.type === "open" ? "bg-green-500/10 text-green-400 border-green-500/30"
+                      : clan.type === "inviteOnly" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
+                      : "bg-red-500/10 text-red-400 border-red-500/30"
+                  }`}>
+                    {clan.type === "open" ? "🔓 Mở tự do" : clan.type === "inviteOnly" ? "✉️ Cần mời" : "🔒 Đã đóng"}
+                  </span>
                 )}
               </h1>
               <p className="page-subtitle flex items-center gap-1.5">
@@ -430,9 +440,10 @@ function TopTrophiesBox({ members }: { members: any[] }) {
           {ranked.map((m, i) => (
             <div key={m.tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
-              <span className="text-sm text-white flex-1 truncate flex items-center gap-1.5">
+              <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
                 {m.name}
                 {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
+                <span className={`text-[9px] shrink-0 ${roleClass(m.role)}`}>{roleLabel(m.role)}</span>
               </span>
               <span className="text-xs text-yellow-400 shrink-0">🏆 {formatNumber(m.trophies || 0)}</span>
             </div>
@@ -447,6 +458,7 @@ function TopReputationBox() {
   const bannerSrc = usePageBanner("overview_reputation", "/art/skeleton-king.jpg");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const roleMap = useRoleMap();
   useEffect(() => {
     api.getReputationLeaderboard(5).then(setRows).catch(() => {}).finally(() => setLoading(false));
   }, []);
@@ -464,7 +476,10 @@ function TopReputationBox() {
           {rows.map((r, i) => (
             <div key={r.player_tag} className="flex items-center gap-2">
               <ReputationBadge rank={i + 1}/>
-              <span className="text-sm text-white flex-1 truncate">{r.player_name}</span>
+              <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
+                {r.player_name}
+                {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
+              </span>
               <span className="text-xs text-yellow-400 shrink-0">{r.total}</span>
             </div>
           ))}

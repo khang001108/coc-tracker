@@ -3,7 +3,7 @@ import { CocLoader } from "@/components/ui/CocLoader";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
-import { formatNumber, thColor, roleLabel } from "@/lib/utils";
+import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
 import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ShieldOff, HeartCrack, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
@@ -11,6 +11,7 @@ import { CoinIcon } from "@/components/ui/CoinIcon";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { MedalRewardBox } from "@/components/ui/MedalRewardBox";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { useRoleMap } from "@/lib/useRoleMap";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -120,6 +121,7 @@ function TrophyLeaderboardTab() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState<"clan" | "all">("clan");
+  const roleMap = useRoleMap();
 
   useEffect(() => {
     setLoading(true);
@@ -145,9 +147,10 @@ function TrophyLeaderboardTab() {
           {scope === "all" && (
             m.clan_badge ? <img src={m.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={m.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
           )}
-          <span className="text-sm text-white flex-1 min-w-0 truncate">
+          <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
             {m.name}
-            {scope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {m.clan_name}</span>}
+            {roleMap[m.tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.tag])}`}>{roleLabel(roleMap[m.tag])}</span>}
+            {scope === "all" && <span className="text-gray-600 text-xs ml-1">· {m.clan_name}</span>}
           </span>
           <span className="text-xs text-yellow-400 shrink-0">🏆 {(m.trophies || 0).toLocaleString()}</span>
         </div>
@@ -162,6 +165,7 @@ function ReputationLeaderboardTab() {
   const [tierInfo, setTierInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState<"clan" | "all">("clan");
+  const roleMap = useRoleMap();
 
   useEffect(() => {
     setLoading(true);
@@ -218,9 +222,10 @@ function ReputationLeaderboardTab() {
             {scope === "all" && (
               r.clan_badge ? <img src={r.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={r.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
             )}
-            <span className="text-sm text-white flex-1 min-w-0 truncate">
+            <span className="text-sm text-white flex-1 min-w-0 truncate flex items-center gap-1.5">
               {r.player_name}
-              {scope === "all" && <span className="text-gray-600 text-xs ml-1.5">· {r.clan_name}</span>}
+              {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
+              {scope === "all" && <span className="text-gray-600 text-xs">· {r.clan_name}</span>}
             </span>
             <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
             <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
