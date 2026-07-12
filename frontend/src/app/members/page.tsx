@@ -13,6 +13,7 @@ import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { SortToggle } from "@/components/ui/SortToggle";
 
 const ROLE_ORDER = ["leader", "coLeader", "admin", "member"];
 const ROLE_TITLE: Record<string, string> = {
@@ -134,6 +135,7 @@ export default function MembersPage() {
   const [memberLog, setMemberLog] = useState<any[]>([]);
   const [rosterMap, setRosterMap] = useState<Record<string, any>>({});
   const [search, setSearch] = useState("");
+  const [sortAsc, setSortAsc] = useState(false);
   const [tab, setTab] = useState<"list" | "pyramid" | "log">("pyramid");
   const [selected, setSelected] = useState<any>(null);
   const [playerDetail, setPlayerDetail] = useState<any>(null);
@@ -176,9 +178,9 @@ export default function MembersPage() {
   if (war?.state === "inWar" || war?.state === "warEnded") {
     (war.clan?.members || []).forEach((m: any) => { warAttackMap[m.tag] = (m.attacks || []).length > 0; });
   }
-  const filtered = members.filter(m =>
-    !search || m.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = members
+    .filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => sortAsc ? (a.trophies || 0) - (b.trophies || 0) : (b.trophies || 0) - (a.trophies || 0));
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -207,10 +209,13 @@ export default function MembersPage() {
       ) : tab === "list" ? (
         <>
           {/* Search */}
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input className="input pl-9" placeholder="Tìm kiếm thành viên..."
-              value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input className="input pl-9" placeholder="Tìm kiếm thành viên..."
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <SortToggle asc={sortAsc} onToggle={() => setSortAsc(a => !a)} title="Sắp xếp theo Cúp"/>
           </div>
 
           <div className="card !p-0 overflow-hidden">

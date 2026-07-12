@@ -12,6 +12,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { MedalRewardBox } from "@/components/ui/MedalRewardBox";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { SortToggle } from "@/components/ui/SortToggle";
 import { useRoleMap } from "@/lib/useRoleMap";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -122,6 +123,7 @@ function TrophyLeaderboardTab() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState<"clan" | "all">("clan");
+  const [asc, setAsc] = useState(false);
   const roleMap = useRoleMap();
 
   useEffect(() => {
@@ -130,21 +132,25 @@ function TrophyLeaderboardTab() {
   }, [scope]);
 
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+  const sortedRows = [...rows].sort((a, b) => asc ? (a.trophies || 0) - (b.trophies || 0) : (b.trophies || 0) - (a.trophies || 0));
 
   return (
     <div className="card space-y-1.5">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <h3 className="font-bold text-white flex items-center gap-2">🏆 Top Cúp thành viên</h3>
-        <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-          <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-          <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+        <div className="flex items-center gap-2">
+          <SortToggle asc={asc} onToggle={() => setAsc(a => !a)}/>
+          <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+            <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+            <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+          </div>
         </div>
       </div>
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-800 rounded-xl animate-pulse"/>)}</div>
-      ) : rows.map((m, i) => (
-        <div key={m.tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
-          <span className="text-sm w-6 text-center shrink-0">{medal(i) || i + 1}</span>
+      ) : sortedRows.map((m, i) => (
+        <div key={m.tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${!asc && i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+          <span className="text-sm w-6 text-center shrink-0">{(!asc && medal(i)) || i + 1}</span>
           {scope === "all" && (
             m.clan_badge ? <img src={m.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={m.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
           )}
@@ -166,6 +172,10 @@ function ReputationLeaderboardTab() {
   const [tierInfo, setTierInfo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState<"clan" | "all">("clan");
+  const [asc, setAsc] = useState(false);
+  const [selected, setSelected] = useState<any>(null);
+  const [detail, setDetail] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const roleMap = useRoleMap();
 
   useEffect(() => {
@@ -176,9 +186,18 @@ function ReputationLeaderboardTab() {
     ]).then(([r, t]) => { setRows(r); setTierInfo(t); }).finally(() => setLoading(false));
   }, [scope]);
 
+  async function openMember(r: any) {
+    setSelected(r);
+    setDetailLoading(true);
+    try { setDetail(await api.getMemberReputation(r.player_tag)); }
+    catch { setDetail(null); }
+    finally { setDetailLoading(false); }
+  }
+
   if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
 
   const tierColor: Record<string, string> = { "Kim Cương": "text-cyan-300", "Vàng": "text-yellow-400", "Bạc": "text-gray-300", "Đồng": "text-orange-400" };
+  const sortedRows = [...rows].sort((a, b) => asc ? a.total - b.total : b.total - a.total);
 
   return (
     <div className="space-y-4">
@@ -186,7 +205,7 @@ function ReputationLeaderboardTab() {
         <p className="text-xs text-gray-500">
           Danh vọng là thước đo uy tín lâu dài, tính theo CHẤT LƯỢNG đóng góp (tham gia/thắng
           War, 3 sao, CWL, Donate, Raid, Clan Games...). Danh vọng càng cao, hệ số Coins thưởng war-star càng lớn.
-          Top 10 Danh vọng có huy hiệu riêng: 💎 hạng 1-2, 🥇 hạng 3-5, 🥈 hạng 6-10.
+          Top 10 Danh vọng có huy hiệu riêng: 💎 hạng 1-2, 🥇 hạng 3-5, 🥈 hạng 6-10. Bấm vào 1 người để xem lịch sử cộng/trừ.
         </p>
         {tierInfo.length > 0 && (
           <p className="text-[11px] text-gray-600 mt-2 pt-2 border-t border-gray-800/60 flex flex-wrap items-center gap-x-1.5 gap-y-1">
@@ -203,9 +222,12 @@ function ReputationLeaderboardTab() {
       <div className="card space-y-1.5">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <h3 className="font-bold text-white flex items-center gap-2">🏵️ Xếp hạng Danh vọng</h3>
-          <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-            <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-            <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+          <div className="flex items-center gap-2">
+            <SortToggle asc={asc} onToggle={() => setAsc(a => !a)}/>
+            <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+              <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+              <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+            </div>
           </div>
         </div>
         {rows.length === 0 && <p className="text-sm text-gray-600 text-center py-4">Chưa có dữ liệu Danh vọng.</p>}
@@ -217,9 +239,10 @@ function ReputationLeaderboardTab() {
             <span className="shrink-0 w-14 text-right">Điểm</span>
           </div>
         )}
-        {rows.map((r, i) => (
-          <div key={r.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
-            {i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
+        {sortedRows.map((r, i) => (
+          <button key={r.player_tag} onClick={() => openMember(r)}
+            className={`w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left hover:brightness-110 transition-all ${!asc && i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+            {!asc && i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
             {scope === "all" && (
               r.clan_badge ? <img src={r.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={r.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
             )}
@@ -230,12 +253,75 @@ function ReputationLeaderboardTab() {
             </MarqueeText>
             <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
             <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
-          </div>
+          </button>
         ))}
       </div>
+
+      {selected && (
+        <div className="modal-overlay" onClick={() => { setSelected(null); setDetail(null); }}>
+          <div className="relative w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto rounded-2xl p-4 space-y-3"
+            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white flex items-center gap-2">🏵️ Lịch sử Danh vọng — {selected.player_name}</h3>
+              <button onClick={() => { setSelected(null); setDetail(null); }} className="text-gray-400 text-sm shrink-0">Đóng ✕</button>
+            </div>
+            {detailLoading ? (
+              <div className="h-40 bg-gray-800 rounded-xl animate-pulse"/>
+            ) : !detail ? (
+              <p className="text-sm text-gray-500">Không tải được dữ liệu.</p>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2">
+                  <span className="text-lg font-bold text-yellow-400">{detail.total}đ</span>
+                  <span className={`text-xs ${tierColor[detail.tier.name] || "text-gray-400"}`}>Tier {detail.tier.name} (x{detail.tier.multiplier})</span>
+                </div>
+                {detail.breakdown?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 mb-1.5">Tổng hợp theo lý do</p>
+                    <div className="space-y-1">
+                      {detail.breakdown.map((b: any) => (
+                        <div key={b.reason} className="flex items-center justify-between text-xs bg-gray-800/40 rounded-lg px-2.5 py-1.5">
+                          <span className="text-gray-300">{b.label} <span className="text-gray-600">×{b.count}</span></span>
+                          <span className={b.total >= 0 ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>{b.total >= 0 ? "+" : ""}{b.total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {detail.history?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 mb-1.5 mt-2">Lịch sử gần đây</p>
+                    <div className="space-y-1">
+                      {detail.history.map((h: any) => (
+                        <div key={h.id} className="flex items-center justify-between text-[11px] bg-gray-800/30 rounded-lg px-2.5 py-1.5">
+                          <span className="text-gray-400">{REASON_LABEL_FALLBACK[h.reason] || h.reason}{h.note ? ` — ${h.note}` : ""}</span>
+                          <span className={h.points >= 0 ? "text-green-400 shrink-0" : "text-red-400 shrink-0"}>{h.points >= 0 ? "+" : ""}{h.points}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const REASON_LABEL_FALLBACK: Record<string, string> = {
+  war_participate: "Tham gia War", war_win: "War thắng", three_star: "Đạt 3 sao",
+  cwl_participate: "Tham gia CWL", cwl_three_star: "3 sao trong CWL",
+  donate_500: "Donate đủ 500/tuần", clan_games: "Hoàn thành Clan Games",
+  raid_weekend: "Tham gia Raid Weekend", top_weekly_donor: "Top đóng góp tuần",
+  top_monthly_donor: "Top đóng góp tháng", war_skip: "Bỏ lượt War", cwl_skip: "Không đánh CWL",
+  top10_diamond: "Top 1-2 Danh vọng", top10_gold: "Top 3-5 Danh vọng", top10_silver: "Top 6-10 Danh vọng",
+  raid_registered_no_attack: "Đăng ký Raid không đánh", leave_clan_1d: "Rời clan 1 ngày",
+  leave_clan_2d: "Rời clan 2 ngày", leave_clan_3d: "Rời clan 3 ngày", leave_clan_7d: "Rời clan 7 ngày",
+  war_early_attack: "Đánh sớm trong War", war_late_attack: "Đánh muộn trong War", manual: "Điều chỉnh thủ công",
+};
 
 function WeeklyReportTab() {
   const [latest, setLatest] = useState<any>(null);

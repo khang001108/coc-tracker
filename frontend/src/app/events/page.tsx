@@ -11,11 +11,12 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { SortToggle } from "@/components/ui/SortToggle";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
   Gift, Sparkles, Upload, Image as ImageIcon, Trophy, Clock, Phone, ShieldCheck,
   ThumbsUp, ThumbsDown, AlertTriangle, Users, LogIn, LogOut, Lock, Coins, Edit3, Flag, Loader2,
-  Copy, Send, Check,
+  Copy, Send, Check, Search,
 } from "lucide-react";
 
 /* ─── Constants ───────────────────────────────────────────────────────── */
@@ -1232,6 +1233,8 @@ function QuestsSection() {
   const [quests, setQuests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"not_met" | "unclaimed" | "claimed">("not_met");
+  const [search, setSearch] = useState("");
+  const [sortAsc, setSortAsc] = useState(true);
   const isAdmin = !!getAdminToken();
 
   async function load() {
@@ -1240,11 +1243,14 @@ function QuestsSection() {
   }
   useEffect(() => { load(); }, []);
 
-  const filtered = quests.filter(q => {
-    if (filter === "claimed") return !!q.claimed;
-    if (filter === "unclaimed") return !q.claimed && q.my_progress_met;
-    return !q.claimed && !q.my_progress_met; // "not_met" — mặc định, kể cả khi chưa đăng nhập
-  });
+  const filtered = quests
+    .filter(q => {
+      if (filter === "claimed") return !!q.claimed;
+      if (filter === "unclaimed") return !q.claimed && q.my_progress_met;
+      return !q.claimed && !q.my_progress_met; // "not_met" — mặc định, kể cả khi chưa đăng nhập
+    })
+    .filter(q => !search || q.title.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => sortAsc ? a.target_value - b.target_value : b.target_value - a.target_value);
   const counts = {
     not_met: quests.filter(q => !q.claimed && !q.my_progress_met).length,
     unclaimed: quests.filter(q => !q.claimed && q.my_progress_met).length,
@@ -1260,6 +1266,15 @@ function QuestsSection() {
       </div>
 
       {isAdmin && <CreateQuestForm onCreated={load}/>}
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input className="input pl-9 !py-2 text-sm" placeholder="Tìm kiếm nhiệm vụ..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <SortToggle asc={sortAsc} onToggle={() => setSortAsc(a => !a)} title="Sắp xếp theo mục tiêu"/>
+      </div>
 
       <div className="overflow-x-auto -mx-1 px-1">
         <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800 w-fit">
