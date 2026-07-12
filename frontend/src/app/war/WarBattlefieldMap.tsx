@@ -223,6 +223,16 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
 
   return (
     <div className="card !p-0 overflow-hidden relative">
+      {/* Nền cỏ lặp lại (tileset Craftpix, CC free-license) — mờ nhẹ để
+          không ảnh hưởng độ đọc chữ/icon, chỉ tạo cảm giác "chiến trường"
+          ngoài trời thay vì nền phẳng đơn điệu. */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: "url(/art/tileset/grass.png)",
+        backgroundSize: "96px 96px",
+        opacity: 0.07,
+      }} />
+      <img src="/art/tileset/tree.png" alt="" className="absolute -top-2 -left-2 w-14 h-14 object-contain opacity-[0.12] pointer-events-none" />
+      <img src="/art/tileset/rock.png" alt="" className="absolute bottom-1 right-1 w-10 h-10 object-contain opacity-[0.12] pointer-events-none" />
       
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1 flex-wrap gap-1">

@@ -259,8 +259,8 @@ function ReputationLeaderboardTab() {
 
       {selected && (
         <div className="modal-overlay" onClick={() => { setSelected(null); setDetail(null); }}>
-          <div className="relative w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto rounded-2xl p-4 space-y-3"
-            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}
+          <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-white flex items-center gap-2">🏵️ Lịch sử Danh vọng — {selected.player_name}</h3>
@@ -273,7 +273,7 @@ function ReputationLeaderboardTab() {
             ) : (
               <>
                 <div className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2">
-                  <span className="text-lg font-bold text-yellow-400">{detail.total}đ</span>
+                  <span className="text-lg font-bold text-yellow-400">{detail.total}</span>
                   <span className={`text-xs ${tierColor[detail.tier.name] || "text-gray-400"}`}>Tier {detail.tier.name} (x{detail.tier.multiplier})</span>
                 </div>
                 {detail.breakdown?.length > 0 && (
@@ -394,8 +394,8 @@ function WeeklyReportTab() {
 
       {selected && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
-          <div className="relative w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto rounded-2xl p-4 space-y-3"
-            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}
+          <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-white">Báo cáo tuần</h3>
