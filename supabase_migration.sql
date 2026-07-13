@@ -1018,26 +1018,3 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('explosion', 'exp_craft_shockwave',  'Nổ Sóng Xung Kích (Cao cấp)', 11000),
   ('explosion', 'exp_craft_inferno',    'Nổ Địa Ngục Hoả (Cao cấp)',   13000)
 ON CONFLICT DO NOTHING;
-
--- ════════════════════════════════════════════════════════════════
--- MIGRATION — PART 31 (Nông trại — bản THU GỌN để test: mỗi thành viên có
--- 1 farm dạng lưới, đặt cây/vật nuôi/trang trí mua bằng Coins, trồng rau
--- theo thời gian rồi thu hoạch, chặt cây có hồi chờ, câu cá ngẫu nhiên —
--- TẤT CẢ ra Coins, dùng chung ví Coins/clan đã có sẵn. KHÔNG có di chuyển
--- thời gian thực / gặp nhau trực tiếp — chỉ xem farm người khác (ghé thăm).)
--- ════════════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS farms (
-  player_tag   TEXT PRIMARY KEY,
-  clan_id      INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
-  player_name  TEXT NOT NULL,
-  grid         JSONB NOT NULL DEFAULT '[]',   -- mảng 40 ô: {type, crop_key, planted_at, chopped_at}
-  last_fish_at TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ DEFAULT now(),
-  updated_at   TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_farms_clan ON farms(clan_id);
-
-ALTER TABLE farms ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "service_all" ON farms;
-CREATE POLICY "service_all" ON farms FOR ALL TO service_role USING (true);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.farms TO service_role;

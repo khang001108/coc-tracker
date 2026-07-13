@@ -368,39 +368,6 @@ export const api = {
     return apiFetch(`/api/quests/${id}/claim`, { method: "POST", headers: member ? { "X-Member-Token": member.token } : {} });
   },
 
-  // Nông trại (bản test thu gọn)
-  getFarmCatalog: () => apiFetch("/api/farms/catalog"),
-  getFarmList: () => apiFetch("/api/farms/list"),
-  getMyFarm: () => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/me", { headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-  viewFarm: (playerTag: string) => apiFetch(`/api/farms/${encodeURIComponent(playerTag)}`),
-  farmPlace: (index: number, item_key: string) => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/place", { method: "POST", body: JSON.stringify({ index, item_key }), headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-  farmRemove: (index: number) => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/remove", { method: "POST", body: JSON.stringify({ index }), headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-  farmPlant: (index: number, crop_key: string) => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/plant", { method: "POST", body: JSON.stringify({ index, crop_key }), headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-  farmHarvest: (index: number) => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/harvest", { method: "POST", body: JSON.stringify({ index }), headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-  farmChop: (index: number) => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/chop", { method: "POST", body: JSON.stringify({ index }), headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-  farmFish: () => {
-    const member = getMemberAuth();
-    return apiFetch("/api/farms/fish", { method: "POST", headers: member ? { "X-Member-Token": member.token } : {} });
-  },
-
   // Music
   getTracks:    () => apiFetch("/api/music/tracks"),
   getMusicConfig: () => apiFetch("/api/music/config"),

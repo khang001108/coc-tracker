@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from routers import clan, war, capital, games, members, settings, notify, events, music, member_auth, chat, shop, clans, push, insights, weekly_stats, medals, reputation, quests, farms
+from routers import clan, war, capital, games, members, settings, notify, events, music, member_auth, chat, shop, clans, push, insights, weekly_stats, medals, reputation, quests
 from schedulers.poller import start_scheduler, stop_scheduler
 
 @asynccontextmanager
@@ -40,7 +40,6 @@ app.include_router(weekly_stats.router, prefix="/api/weekly-stats", tags=["Weekl
 app.include_router(medals.router,   prefix="/api/medals",   tags=["Medals"])
 app.include_router(reputation.router, prefix="/api/reputation", tags=["Reputation"])
 app.include_router(quests.router, prefix="/api/quests", tags=["Quests"])
-app.include_router(farms.router, prefix="/api/farms", tags=["Farms"])
 
 @app.get("/")
 async def root():

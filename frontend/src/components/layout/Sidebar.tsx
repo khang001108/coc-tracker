@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Castle, Gamepad2,
-  Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle, UserCircle2, Store, RotateCw, Sprout
+  Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle, UserCircle2, Store, RotateCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -22,7 +22,6 @@ const NAV = [
   { href: "/events",    label: "Sự kiện",      icon: PartyPopper },
   { href: "/chat",      label: "Chat",         icon: MessageCircle },
   { href: "/shop",      label: "Cửa hàng",     icon: Store },
-  { href: "/farm",      label: "Nông trại",    icon: Sprout },
   { href: "/login",     label: "Đăng nhập",    icon: UserCheck },
   { href: "/stats",     label: "Thống kê",     icon: BarChart3 },
   { href: "/settings",  label: "Cài đặt",      icon: Settings },

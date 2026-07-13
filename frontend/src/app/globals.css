@@ -510,9 +510,3 @@ html.custom-cursor-active * {
   88%, 100% { transform: translateX(0); }
 }
 .marquee-anim { animation-name: marquee-bounce; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
-
-/* Sprite animation dùng chung cho Nông trại (cây/vật nuôi dạng strip N khung) */
-@keyframes farm-sprite-steps {
-  from { background-position: 0 0; }
-  to   { background-position: -100% 0; }
-}
