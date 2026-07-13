@@ -5,6 +5,16 @@ import { Award, Lock, CheckCircle2, Sparkles, Medal, Copy, Check } from "lucide-
 import { useRoleMap } from "@/lib/useRoleMap";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { Portal } from "@/components/ui/Portal";
+
+const CATEGORY_META: Record<string, { icon: string; label: string }> = {
+  war:          { icon: "⚔️", label: "War/CWL giỏi nhất" },
+  donate:       { icon: "💎", label: "Donate nhiều nhất" },
+  capital:      { icon: "🏰", label: "Kiếm Capital nhiều nhất" },
+  best_attack:  { icon: "💥", label: "Tấn công anh dũng nhất" },
+  best_defense: { icon: "🛡️", label: "Phòng thủ anh dũng nhất" },
+  coins:        { icon: "🪙", label: "Kiếm Coins nhiều nhất" },
+};
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -45,6 +55,8 @@ export function MedalRewardBox() {
   const [awardedCopied, setAwardedCopied] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [savingSelected, setSavingSelected] = useState(false);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
 
   const isLoggedIn = !!getAdminToken() || !!getMemberAuth();
 
@@ -261,6 +273,7 @@ export function MedalRewardBox() {
           Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
           thủ anh dũng, Coins) trong 8 tuần gần nhất, CỘNG THÊM Danh vọng hiện có (Danh vọng càng
           cao càng được ưu tiên) — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
+          Bấm vào 1 người để xem vì sao được xếp hạng đó.
         </p>
         {suggestions.length === 0 ? (
           <p className="text-sm text-gray-600 text-center py-3">
@@ -268,21 +281,80 @@ export function MedalRewardBox() {
             "Tạo lại ngay" ở tab Báo cáo tuần) mới có gợi ý ở đây.
           </p>
         ) : (
-          <div className="space-y-1.5">
-            {suggestions.slice(0, 6).map((s, i) => (
-              <div key={s.player_tag} className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500 w-4 text-right shrink-0">{i+1}</span>
-                <MarqueeText className="text-xs text-gray-200 w-20 shrink-0">{s.player_name}</MarqueeText>
-                <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
-                    style={{ width: `${(s.score / maxScore) * 100}%` }}/>
-                </div>
-                <span className="text-[10px] text-yellow-400 w-24 text-right shrink-0">{s.highlights} nổi bật{s.reputation ? ` · 🏵️${s.reputation}` : ""}</span>
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="space-y-1.5">
+              {(showAllSuggestions ? suggestions : suggestions.slice(0, 5)).map((s, i) => (
+                <button key={s.player_tag} onClick={() => setSelectedCandidate(s)}
+                  className="w-full flex items-center gap-2 text-left hover:brightness-110 rounded-lg px-1 py-0.5 -mx-1">
+                  <span className={`text-[10px] w-4 text-right shrink-0 ${i < 5 ? "text-yellow-500 font-bold" : "text-gray-500"}`}>{i+1}</span>
+                  <MarqueeText className="text-xs text-gray-200 w-20 shrink-0">{s.player_name}</MarqueeText>
+                  <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
+                      style={{ width: `${(s.score / maxScore) * 100}%` }}/>
+                  </div>
+                  <span className="text-[10px] text-yellow-400 w-24 text-right shrink-0">{s.highlights} nổi bật{s.reputation ? ` · 🏵️${s.reputation}` : ""}</span>
+                </button>
+              ))}
+            </div>
+            {suggestions.length > 5 && (
+              <button onClick={() => setShowAllSuggestions(s => !s)} className="text-[11px] text-yellow-500 hover:underline mt-2">
+                {showAllSuggestions ? "Thu gọn ▲" : `Xem tất cả ${suggestions.length} người ▼`}
+              </button>
+            )}
+          </>
         )}
       </div>
+
+      {selectedCandidate && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setSelectedCandidate(null)}>
+            <div className="relative w-full max-w-md mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <Sparkles size={14} className="text-yellow-400"/> {selectedCandidate.player_name}
+                </h3>
+                <button onClick={() => setSelectedCandidate(null)} className="text-gray-400 text-sm">✕</button>
+              </div>
+              <div className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2">
+                <span className="text-sm text-white">Điểm gợi ý: <strong className="text-yellow-400">{selectedCandidate.score}</strong></span>
+                {selectedCandidate.reputation != null && (
+                  <span className="text-sm text-gray-400">🏵️ Danh vọng: <strong className="text-cyan-300">{selectedCandidate.reputation}</strong></span>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-400 mb-1.5">Vì sao được xếp hạng này</p>
+                {Object.keys(selectedCandidate.category_counts || {}).length === 0 ? (
+                  <p className="text-xs text-gray-600">Chưa từng lọt Top 5 tuần nào — điểm đến từ Danh vọng hiện có.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {Object.entries(selectedCandidate.category_counts || {}).map(([cat, count]: [string, any]) => (
+                      <div key={cat} className="flex items-center justify-between text-xs bg-gray-800/40 rounded-lg px-2.5 py-1.5">
+                        <span className="text-gray-300">{CATEGORY_META[cat]?.icon || "📊"} {CATEGORY_META[cat]?.label || cat}</span>
+                        <span className="text-yellow-400 font-semibold shrink-0">{count} lần</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedCandidate.weeks?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 mb-1.5 mt-2">Chi tiết từng tuần</p>
+                  <div className="space-y-1">
+                    {selectedCandidate.weeks.slice(0, 10).map((w: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-[11px] bg-gray-800/30 rounded-lg px-2.5 py-1.5">
+                        <span className="text-gray-400">{CATEGORY_META[w.category]?.icon} {CATEGORY_META[w.category]?.label || w.category} — hạng {w.rank}</span>
+                        <span className="text-gray-500 shrink-0">{w.value || ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Portal>
+      )}
 
       {/* Lịch sử — chỉ Admin xoá được */}
       <div className="card">

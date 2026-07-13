@@ -231,9 +231,12 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
                     continue
                 entry = score_by_tag.setdefault(tag_, {
                     "player_tag": tag_, "player_name": e.get("player_name"), "score": 0, "highlights": 0,
+                    "category_counts": {}, "weeks": [],
                 })
                 entry["score"] += POINTS[i]
                 entry["highlights"] += 1
+                entry["category_counts"][cat_key] = entry["category_counts"].get(cat_key, 0) + 1
+                entry["weeks"].append({"date": row.get("created_at"), "category": cat_key, "rank": i + 1, "value": e.get("value")})
 
     ranked_candidates = list(score_by_tag.values())
 
@@ -248,7 +251,7 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
         if tag_ in limited_tags or info["total"] <= 0:
             continue
         if tag_ not in by_tag:
-            by_tag[tag_] = {"player_tag": tag_, "player_name": info["player_name"], "score": 0, "highlights": 0}
+            by_tag[tag_] = {"player_tag": tag_, "player_name": info["player_name"], "score": 0, "highlights": 0, "category_counts": {}, "weeks": []}
         by_tag[tag_]["reputation"] = info["total"]
         by_tag[tag_]["score"] += round(info["total"] / 10)
 
@@ -265,4 +268,4 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
         pass  # lỗi gọi CoC API — thà hiện dư còn hơn lỗi cả tính năng
 
     ranked = sorted(by_tag.values(), key=lambda e: -e["score"])
-    return {"weeks_considered": len(reports_res.data or []), "candidates": ranked[:10]}
+    return {"weeks_considered": len(reports_res.data or []), "candidates": ranked[:30]}
