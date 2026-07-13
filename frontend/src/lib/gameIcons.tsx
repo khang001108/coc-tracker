@@ -976,6 +976,7 @@ export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: stri
         backgroundSize: `${frames * 100}% 100%`,
         opacity: fired ? 0.35 : 1,
         imageRendering: "pixelated",
+        transform: "rotate(180deg)",
       }} />
     );
   }
@@ -999,6 +1000,9 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
 }) {
   // Tia đạn SPRITE THẬT (nhiều khung hình vẽ tay) — bay theo path như bình
   // thường nhưng thay vì Shape vector, dùng <image> đổi khung hình liên tục.
+  // Ảnh gốc Craftpix vẽ mặc định hướng NGƯỢC (quay về bên trái) nên phải
+  // xoay 180° cho quay đầu về phía trước, rồi dùng rotate="auto" để luôn
+  // chỉa đúng theo hướng đang bay (path cong lên rồi xuống).
   if (SPRITE_PROJECTILE_FRAMES[svgKey]) {
     const frames = SPRITE_PROJECTILE_FRAMES[svgKey];
     const FRAME = 64, DISPLAY = 22;
@@ -1007,9 +1011,10 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
     const kt = Array.from({ length: frames + 1 }, (_, i) => (i / frames).toFixed(3)).join(";");
     return (
       <g opacity={0}>
-        <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} />
+        <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} rotate="auto" />
         <animate attributeName="opacity" from="0" to="1" dur="0.01s" begin={`${begin}s`} fill="freeze" />
-        <svg x={-DISPLAY / 2} y={-DISPLAY / 2} width={DISPLAY} height={DISPLAY} viewBox={`0 0 ${FRAME} ${FRAME}`} style={{ overflow: "hidden" }}>
+        <svg x={-DISPLAY / 2} y={-DISPLAY / 2} width={DISPLAY} height={DISPLAY} viewBox={`0 0 ${FRAME} ${FRAME}`}
+          style={{ overflow: "hidden" }} transform={`rotate(180 ${DISPLAY / 2} ${DISPLAY / 2})`}>
           <image href={`/art/projectiles/${svgKey}.png`} y="0" width={FRAME * frames} height={FRAME}>
             <animate attributeName="x" values={xs.join(";")} keyTimes={kt} calcMode="discrete" dur="0.6s" repeatCount="indefinite" begin={`${begin}s`} />
           </image>
