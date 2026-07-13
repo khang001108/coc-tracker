@@ -965,7 +965,7 @@ export const SPRITE_PROJECTILE_FRAMES: Record<string, number> = {
 /** Icon tia đạn TĨNH, nhỏ — dùng làm biểu tượng "lượt đánh" (sáng = đã đánh,
  * mờ = chưa đánh) thay cho pháo trước đây — pháo giờ chuyển sang trang trí
  * lâu đài đại diện cho PHÒNG THỦ. */
-export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: string; fired?: boolean; size?: number }) {
+export function ProjectileMiniIcon({ svgKey, fired, size = 14, mirror }: { svgKey?: string; fired?: boolean; size?: number; mirror?: boolean }) {
   const key = svgKey || "proj_classic";
   if (SPRITE_PROJECTILE_FRAMES[key]) {
     const frames = SPRITE_PROJECTILE_FRAMES[key];
@@ -976,14 +976,16 @@ export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: stri
         backgroundSize: `${frames * 100}% 100%`,
         opacity: fired ? 0.35 : 1,
         imageRendering: "pixelated",
-        transform: "rotate(180deg)",
+        // Phe địch ở bên phải màn hình — lật ngang để icon "chỉa" đúng
+        // hướng tấn công của phe đó (ngược với phe mình bên trái).
+        transform: mirror ? "rotate(180deg) scaleX(-1)" : "rotate(180deg)",
       }} />
     );
   }
   const ShapeComp = PROJECTILE_SHAPES[key];
   const skin = PROJECTILE_SKINS[key] || PROJECTILE_SKINS.proj_classic;
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" opacity={fired ? 0.35 : 1}>
+    <svg width={size} height={size} viewBox="0 0 20 20" opacity={fired ? 0.35 : 1} style={mirror ? { transform: "scaleX(-1)" } : undefined}>
       <g transform="translate(10 10)">
         {ShapeComp ? (
           <g transform={`scale(${skin.coreScale * 0.85})`}><ShapeComp /></g>

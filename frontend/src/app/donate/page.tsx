@@ -103,7 +103,7 @@ export default function DonatePage() {
               <p className="text-xs text-gray-500 mt-1">Tổng nhận</p>
             </div>
             <div className="card text-center">
-              <MarqueeText className="text-sm font-bold text-yellow-400 justify-center">
+              <MarqueeText className="text-sm font-bold text-yellow-400" align="center">
                 <NameEffect effectKey={topDonor ? rosterMap[topDonor.tag]?.equipped_effect : null}>{topDonor?.name || "—"}</NameEffect>
               </MarqueeText>
               <p className="text-xs text-gray-500 mt-1">Top donor</p>

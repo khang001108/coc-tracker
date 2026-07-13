@@ -62,7 +62,7 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
       {Array.from({ length: maxAttacks }).map((_, i) => (
         attacks[i]
           ? <AttackBadge key={i} attack={attacks[i]} />
-          : <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={false} />
+          : <ProjectileMiniIcon key={i} size={14} svgKey={iconMap[member.tag]?.equipped_projectile} fired={false} mirror={isRight} />
       ))}
     </div>
   );
@@ -267,7 +267,7 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
       <div className="grid px-2" style={{ gridTemplateColumns: "1fr 20px 1fr" }}>
         <MarqueeText className="text-[9px] font-bold text-blue-600">{war?.clan?.name}</MarqueeText>
         <div />
-        <MarqueeText className="text-[9px] font-bold text-red-500 justify-end">{war?.opponent?.name}</MarqueeText>
+        <MarqueeText className="text-[9px] font-bold text-red-500" align="right">{war?.opponent?.name}</MarqueeText>
       </div>
 
       {/* Member rows */}

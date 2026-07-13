@@ -340,7 +340,7 @@ export default function WarPage() {
                     {war.clan?.badgeUrl && (
                       <img src={war.clan.badgeUrl} alt="" className="w-10 h-10 object-contain drop-shadow-lg"/>
                     )}
-                    <MarqueeText className="text-xs text-gray-300 font-semibold max-w-[90px] justify-center">{war.clan?.name}</MarqueeText>
+                    <MarqueeText className="text-xs text-gray-300 font-semibold max-w-[90px]" align="center">{war.clan?.name}</MarqueeText>
                     {war.state !== "preparation" ? (
                       <>
                         <p className="text-2xl font-bold text-yellow-400">⭐ {war.clan?.stars}</p>
@@ -381,7 +381,7 @@ export default function WarPage() {
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">🏰</div>
                     )}
-                    <MarqueeText className="text-xs text-gray-300 font-semibold max-w-[90px] justify-center">{war.opponent?.name}</MarqueeText>
+                    <MarqueeText className="text-xs text-gray-300 font-semibold max-w-[90px]" align="center">{war.opponent?.name}</MarqueeText>
                     {war.state === "preparation" ? (
                       <p className="text-[10px] text-yellow-600 mt-0.5 italic">⚔️ Chờ đánh</p>
                     ) : (
@@ -606,7 +606,7 @@ export default function WarPage() {
                   {cwl.current.clan?.stars ?? 0} — {cwl.current.opponent?.stars ?? 0}
                 </span>
                 <div className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right">
-                  <MarqueeText className="text-sm font-semibold text-white justify-end">{cwl.current.opponent?.name}</MarqueeText>
+                  <MarqueeText className="text-sm font-semibold text-white" align="right">{cwl.current.opponent?.name}</MarqueeText>
                   {cwl.current.opponent?.badgeUrl && <img src={cwl.current.opponent.badgeUrl} className="w-9 h-9 shrink-0" alt="" />}
                 </div>
               </div>
