@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
-import { Award, Lock, CheckCircle2, Sparkles, Medal, Copy, Check } from "lucide-react";
+import { Award, Lock, CheckCircle2, Sparkles, Medal, Copy, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRoleMap } from "@/lib/useRoleMap";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { MarqueeText } from "@/components/ui/MarqueeText";
@@ -68,10 +68,9 @@ export function MedalRewardBox() {
   async function load() {
     setLoading(true);
     try {
-      const [elig, hist, sug, permRes] = await Promise.all([
+      const [elig, hist, permRes] = await Promise.all([
         api.getMedalEligibility(),
         api.getMedalHistory(50).catch(() => []),
-        api.getMedalSuggestions(8).catch(() => ({ candidates: [] })),
         api.getMedalPermission().catch(() => ({ is_admin: false, can_award: false })),
       ]);
       setMembers(elig.members || []);
@@ -79,13 +78,21 @@ export function MedalRewardBox() {
       setResetCountInput(String(elig.reset_cwl_count || 3));
       setCurrentSeasonNumber(elig.current_season_number ?? null);
       setHistory(hist || []);
-      setSuggestions(sug.candidates || []);
       setPerm(permRes);
     } catch (e: any) {
       flashMsg(e.message || "Không tải được dữ liệu — kiểm tra kết nối tới server");
     } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+
+  const WEEKS_PRESETS = [4, 8, 12, 16, 24];
+  const [weeksIdx, setWeeksIdx] = useState(1); // mặc định 8 tuần
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  useEffect(() => {
+    setSuggestionsLoading(true);
+    api.getMedalSuggestions(WEEKS_PRESETS[weeksIdx]).then((sug: any) => setSuggestions(sug.candidates || []))
+      .catch(() => {}).finally(() => setSuggestionsLoading(false));
+  }, [weeksIdx]);
 
   async function saveResetCount() {
     const n = parseInt(resetCountInput, 10);
@@ -108,7 +115,7 @@ export function MedalRewardBox() {
   async function handleSaveSelected() {
     if (selectedTags.size === 0) return;
     const chosen = notAwardedYet.filter(m => m.eligible && selectedTags.has(m.player_tag));
-    if (!confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.`)) return;
+    if (!confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.\n\n🔒 Sau khi xác nhận, CHỈ ADMIN mới sửa/xoá lại được — bạn (Đồng thủ lĩnh) sẽ không tự sửa lại được nữa.`)) return;
     setSavingSelected(true);
     let okCount = 0;
     for (const m of chosen) {
@@ -205,77 +212,109 @@ export function MedalRewardBox() {
       </div>
 
       {/* Xác nhận trao cho người chưa nhận — gọn lại, mở khi cần */}
-      <div className="card !p-0">
-        <button onClick={() => setShowAwardPanel(s => !s)}
-          className="w-full flex items-center justify-between p-4 text-left">
-          <span className="font-bold text-white text-sm">Xác nhận trao cho người chưa nhận mùa này ({notAwardedYet.length})</span>
-          <span className="text-xs text-gray-500">{showAwardPanel ? "▲" : "▼"}</span>
-        </button>
-        {showAwardPanel && (
-          <div className="px-4 pb-4 space-y-3 border-t border-gray-800/60 pt-3">
-            {perm.is_admin && (
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-400 shrink-0">Khôi phục sau (mùa CWL thật):</label>
-                <input type="number" min={1} value={resetCountInput} onChange={e => setResetCountInput(e.target.value)}
-                  className="input !py-1 !px-2 w-16 text-sm"/>
-                <button onClick={saveResetCount} className="btn-secondary text-xs px-2 py-1">Lưu</button>
-              </div>
-            )}
-            <div className="space-y-1.5">
-              {notAwardedYet.map(m => (
-                <div key={m.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${m.eligible ? "bg-gray-800/50" : "bg-purple-500/5 border border-purple-500/15 opacity-70"}`}>
-                  {m.eligible ? (
-                    perm.can_award ? (
-                      <input type="checkbox" checked={selectedTags.has(m.player_tag)}
-                        onChange={() => toggleSelect(m.player_tag)}
-                        className="w-4 h-4 rounded accent-yellow-500 shrink-0"/>
-                    ) : (
-                      <CheckCircle2 size={12} className="text-green-400 shrink-0"/>
-                    )
-                  ) : (
-                    <Lock size={12} className="text-purple-300 shrink-0"/>
-                  )}
-                  <MarqueeText className="text-sm text-white flex-1">
-                    <span>{m.player_name}</span>
-                    {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
-                  </MarqueeText>
-                  {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} mùa</span>}
-                  {m.eligible && perm.can_award && (
-                    <input placeholder="Ghi chú" value={noteDraft[m.player_tag] || ""}
-                      onChange={e => setNoteDraft(d => ({ ...d, [m.player_tag]: e.target.value }))}
-                      className="input !py-1 !px-2 text-xs w-24 shrink-0"/>
-                  )}
-                </div>
-              ))}
-            </div>
-            {perm.can_award && notAwardedYet.some(m => m.eligible) && (
-              <button onClick={handleSaveSelected} disabled={selectedTags.size === 0 || savingSelected}
-                className="btn-gold w-full text-sm disabled:opacity-40">
-                {savingSelected ? "Đang lưu..." : `Lưu (${selectedTags.size} đã tích)`}
-              </button>
-            )}
-            {!perm.can_award && isLoggedIn && (
-              <p className="text-[11px] text-gray-600">Chỉ Đồng thủ lĩnh trở lên mới xác nhận trao thưởng được.</p>
-            )}
-            {!isLoggedIn && (
-              <p className="text-[11px] text-gray-600">Đăng nhập bằng tài khoản Đồng thủ lĩnh trở lên để xác nhận trao thưởng.</p>
-            )}
-          </div>
-        )}
-      </div>
+      <button onClick={() => setShowAwardPanel(true)}
+        className="w-full card !p-4 flex items-center justify-between text-left hover:brightness-110">
+        <span className="font-bold text-white text-sm flex items-center gap-2">
+          <Medal size={16} className="text-yellow-400"/> Xác nhận trao cho người chưa nhận mùa này
+        </span>
+        <span className="text-xs text-gray-400 shrink-0">{awardedThisSeason.length}/{members.length} đã trao</span>
+      </button>
 
-      {/* Gợi ý tiềm năng mùa sau */}
+      {showAwardPanel && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setShowAwardPanel(false)}>
+            <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white text-sm">Xác nhận trao cho người chưa nhận mùa này ({notAwardedYet.length})</h3>
+                <button onClick={() => setShowAwardPanel(false)} className="text-gray-400 text-sm">✕</button>
+              </div>
+              <div className="space-y-3">
+                {perm.is_admin && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-400 shrink-0">Khôi phục sau (mùa CWL thật):</label>
+                    <input type="number" min={1} value={resetCountInput} onChange={e => setResetCountInput(e.target.value)}
+                      className="input !py-1 !px-2 w-16 text-sm"/>
+                    <button onClick={saveResetCount} className="btn-secondary text-xs px-2 py-1">Lưu</button>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  {notAwardedYet.map(m => (
+                    <div key={m.player_tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${m.eligible ? "bg-gray-800/50" : "bg-purple-500/5 border border-purple-500/15 opacity-70"}`}>
+                      {m.eligible ? (
+                        perm.can_award ? (
+                          <input type="checkbox" checked={selectedTags.has(m.player_tag)}
+                            onChange={() => toggleSelect(m.player_tag)}
+                            className="w-4 h-4 rounded accent-yellow-500 shrink-0"/>
+                        ) : (
+                          <CheckCircle2 size={12} className="text-green-400 shrink-0"/>
+                        )
+                      ) : (
+                        <Lock size={12} className="text-purple-300 shrink-0"/>
+                      )}
+                      <MarqueeText className="text-sm text-white flex-1">
+                        <span>{m.player_name}</span>
+                        {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
+                      </MarqueeText>
+                      {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} mùa</span>}
+                      {m.eligible && perm.can_award && (
+                        <input placeholder="Ghi chú" value={noteDraft[m.player_tag] || ""}
+                          onChange={e => setNoteDraft(d => ({ ...d, [m.player_tag]: e.target.value }))}
+                          className="input !py-1 !px-2 text-xs w-24 shrink-0"/>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {perm.can_award && notAwardedYet.some(m => m.eligible) && (
+                  <>
+                    <p className="text-[11px] text-purple-300">🔒 Sau khi bấm Lưu, chỉ Admin mới sửa/xoá lại được — kiểm tra kỹ danh sách đã tích trước khi xác nhận.</p>
+                    <button onClick={handleSaveSelected} disabled={selectedTags.size === 0 || savingSelected}
+                      className="btn-gold w-full text-sm disabled:opacity-40">
+                      {savingSelected ? "Đang lưu..." : `Lưu (${selectedTags.size} đã tích)`}
+                    </button>
+                  </>
+                )}
+                {!perm.can_award && isLoggedIn && (
+                  <p className="text-[11px] text-gray-600">Chỉ Đồng thủ lĩnh trở lên mới xác nhận trao thưởng được.</p>
+                )}
+                {!isLoggedIn && (
+                  <p className="text-[11px] text-gray-600">Đăng nhập bằng tài khoản Đồng thủ lĩnh trở lên để xác nhận trao thưởng.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Gợi ý tiềm năng mùa tiếp theo */}
       <div className="card">
-        <p className="text-xs font-semibold text-white flex items-center gap-1.5 mb-2">
-          <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa sau
-        </p>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <p className="text-xs font-semibold text-white flex items-center gap-1.5">
+            <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa tiếp theo
+            {currentSeasonNumber != null && <span className="badge-gold text-[9px]">Mùa {currentSeasonNumber + 1}</span>}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setWeeksIdx(i => Math.max(0, i - 1))} disabled={weeksIdx <= 0}
+              title="Xem khung thời gian ngắn hơn" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
+              <ChevronLeft size={14}/>
+            </button>
+            <span className="text-[10px] text-gray-500 w-16 text-center shrink-0">{WEEKS_PRESETS[weeksIdx]} tuần</span>
+            <button onClick={() => setWeeksIdx(i => Math.min(WEEKS_PRESETS.length - 1, i + 1))} disabled={weeksIdx >= WEEKS_PRESETS.length - 1}
+              title="Xem khung thời gian dài hơn" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
+              <ChevronRight size={14}/>
+            </button>
+          </div>
+        </div>
         <p className="text-[10px] text-gray-600 mb-2">
           Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
-          thủ anh dũng, Coins) trong 8 tuần gần nhất, CỘNG THÊM Danh vọng hiện có (Danh vọng càng
+          thủ anh dũng, Coins) trong khung thời gian đã chọn, CỘNG THÊM Danh vọng hiện có (Danh vọng càng
           cao càng được ưu tiên) — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
           Bấm vào 1 người để xem vì sao được xếp hạng đó.
         </p>
-        {suggestions.length === 0 ? (
+        {suggestionsLoading ? (
+          <div className="h-32 bg-gray-800 rounded-xl animate-pulse"/>
+        ) : suggestions.length === 0 ? (
           <p className="text-sm text-gray-600 text-center py-3">
             Chưa có dữ liệu — Báo cáo tuần cần chạy ít nhất 1 lần (tự động mỗi thứ 2, hoặc admin bấm
             "Tạo lại ngay" ở tab Báo cáo tuần) mới có gợi ý ở đây.
@@ -357,26 +396,41 @@ export function MedalRewardBox() {
       )}
 
       {/* Lịch sử — chỉ Admin xoá được */}
-      <div className="card">
-        <button onClick={() => setShowHistory(s => !s)} className="text-xs text-gray-500 hover:text-yellow-400">
-          {showHistory ? "Ẩn lịch sử ▲" : `Xem lịch sử tất cả các mùa (${history.length}) ▼`}
-        </button>
-        {showHistory && (
-          <div className="space-y-1.5 mt-3">
-            {history.length === 0 && <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>}
-            {history.map(h => (
-              <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
-                <MarqueeText className="text-white flex-1">{h.player_name}</MarqueeText>
-                <span className="text-gray-500 shrink-0">Mùa {h.season_number ?? "?"}</span>
-                <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
-                {perm.is_admin && (
-                  <button onClick={() => handleDeleteHistory(h.id, h.player_name)} className="text-red-400 hover:underline shrink-0">Xoá</button>
-                )}
+      <button onClick={() => setShowHistory(true)}
+        className="w-full card !p-4 flex items-center justify-between text-left hover:brightness-110">
+        <span className="font-bold text-white text-sm flex items-center gap-2">
+          <Clock size={16} className="text-gray-400"/> Lịch sử trao thưởng
+        </span>
+        <span className="text-xs text-gray-400 shrink-0">{history.length} lượt</span>
+      </button>
+
+      {showHistory && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setShowHistory(false)}>
+            <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white text-sm flex items-center gap-2"><Clock size={15} className="text-gray-400"/> Lịch sử trao thưởng tất cả các mùa</h3>
+                <button onClick={() => setShowHistory(false)} className="text-gray-400 text-sm">✕</button>
               </div>
-            ))}
+              <div className="space-y-1.5">
+                {history.length === 0 && <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>}
+                {history.map(h => (
+                  <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
+                    <MarqueeText className="text-white flex-1">{h.player_name}</MarqueeText>
+                    <span className="text-gray-500 shrink-0">Mùa {h.season_number ?? "?"}</span>
+                    <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
+                    {perm.is_admin && (
+                      <button onClick={() => handleDeleteHistory(h.id, h.player_name)} className="text-red-400 hover:underline shrink-0">Xoá</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </Portal>
+      )}
 
       {msg && <MiniToast msg={msg.text} type={msg.type} />}
     </div>
