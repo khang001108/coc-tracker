@@ -260,7 +260,7 @@ export function MedalRewardBox() {
         <p className="text-[10px] text-gray-600 mb-2">
           Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
           thủ anh dũng, Coins) trong 8 tuần gần nhất, CỘNG THÊM Danh vọng hiện có (Danh vọng càng
-          cao càng được ưu tiên) — đã loại người đang bị giới hạn.
+          cao càng được ưu tiên) — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
         </p>
         {suggestions.length === 0 ? (
           <p className="text-sm text-gray-600 text-center py-3">

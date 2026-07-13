@@ -195,8 +195,11 @@ async def delete_history_entry(entry_id: int, request: Request, _: bool = Depend
 async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
     """Gợi ý ứng viên tiềm năng cho mùa CWL kế tiếp — dựa vào số lần lọt Top 5
     'tốt' của Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng thủ anh
-    dũng, Coins) trong N tuần gần nhất. KHÔNG gợi ý người đang bị giới hạn
-    (vừa được thưởng, còn trong thời gian chờ khôi phục)."""
+    dũng, Coins) trong N tuần gần nhất, CỘNG Danh vọng hiện có. Tính LẠI TỪ
+    ĐẦU mỗi lần gọi (không cache/không đợi lịch tuần) nên luôn phản ánh đúng
+    hiện tại. KHÔNG gợi ý người đang bị giới hạn (vừa được thưởng, còn trong
+    thời gian chờ khôi phục) và KHÔNG gợi ý người đã rời clan (dù server
+    chưa tới hạn dọn tài khoản 7 ngày — họ không thể dự CWL mùa sau nữa)."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
 
@@ -248,6 +251,18 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
             by_tag[tag_] = {"player_tag": tag_, "player_name": info["player_name"], "score": 0, "highlights": 0}
         by_tag[tag_]["reputation"] = info["total"]
         by_tag[tag_]["score"] += round(info["total"] / 10)
+
+    # Chỉ gợi ý người HIỆN CÒN trong clan — ai đã rời clan (dù chưa tới hạn
+    # dọn tài khoản 7 ngày) sẽ không thể tham gia mùa CWL kế tiếp nên loại
+    # khỏi danh sách, tránh gợi ý nhầm người đã nghỉ.
+    try:
+        from clan_context import get_tag_by_clan_id
+        from services.coc_api import get_clan_members
+        tag = await get_tag_by_clan_id(clan_id)
+        current_tags = {m["tag"] for m in (await get_clan_members(tag, clan_id=clan_id) if tag else [])}
+        by_tag = {t: e for t, e in by_tag.items() if t in current_tags}
+    except Exception:
+        pass  # lỗi gọi CoC API — thà hiện dư còn hơn lỗi cả tính năng
 
     ranked = sorted(by_tag.values(), key=lambda e: -e["score"])
     return {"weeks_considered": len(reports_res.data or []), "candidates": ranked[:10]}
