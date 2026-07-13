@@ -53,7 +53,12 @@ function FarmGrid({ grid, catalog, readOnly, onAction }: {
   (catalog?.decor || []).forEach((d: any) => { decorByKey[d.key] = d; });
 
   return (
-    <div className="grid grid-cols-8 gap-1 rounded-xl p-2" style={{ background: "linear-gradient(180deg, #4a7c3f, #3d6633)" }}>
+    <div className="grid grid-cols-8 gap-1 rounded-xl p-2" style={{
+      backgroundImage: "url(/art/farm/grass_tile.png)",
+      backgroundSize: "32px 32px",
+      imageRendering: "pixelated",
+      boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.15)",
+    }}>
       {grid.map((cell, i) => {
         let content = null;
         let sub = null;
