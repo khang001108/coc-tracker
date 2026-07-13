@@ -27,10 +27,6 @@ const ANIM_CSS = `
   0%,100% { filter: drop-shadow(0 0 3px #F4A130); }
   50%      { filter: drop-shadow(0 0 9px #F4A130); }
 }
-@keyframes tower-idle-steps {
-  from { background-position: 0 0; }
-  to   { background-position: -400% 0; }
-}
 
 `;
 let injected = false;
@@ -697,33 +693,11 @@ export function CastleIcon({ svgKey, th, size, animate = true, showTh = true }: 
   );
 }
 
-/** Icon Tháp Cung dạng SPRITE THẬT (Craftpix, 4 khung idle/tier) — 1 trong
- * các lựa chọn "Pháo phòng thủ" ở Cửa hàng, thay cho hình pháo vẽ tay. */
-const SPRITE_TOWER_KEYS = new Set(["tower_tier1", "tower_tier2", "tower_tier3"]);
-
-function TowerSprite({ svgKey, size = 32, animate = true }: { svgKey: string; size?: number; animate?: boolean }) {
-  const FRAMES = 4;
-  return (
-    <div style={{
-      width: size, height: size, overflow: "hidden", position: "relative",
-      backgroundImage: `url(/art/towers/${svgKey}.png)`,
-      backgroundSize: `${FRAMES * 100}% 100%`,
-      imageRendering: "pixelated",
-      animation: animate ? "tower-idle-steps 1.2s steps(3) infinite" : undefined,
-    }} />
-  );
-}
-
 /** Icon pháo trong War map */
 export function CannonIcon({ svgKey, fired, broken, size }: {
   svgKey?: string | null; fired?: boolean; broken?: boolean; size?: number;
 }) {
   ensureStyles();
-  if (svgKey && SPRITE_TOWER_KEYS.has(svgKey)) {
-    return <div style={{ opacity: broken ? 0.4 : 1, filter: broken ? "grayscale(0.8)" : undefined }}>
-      <TowerSprite svgKey={svgKey} size={size} animate={!fired && !broken} />
-    </div>;
-  }
   const Comp = CANNON_COMPONENTS[svgKey || "cannon_basic"] || CannonBasic;
   return (
     <div style={{ position: "relative", animation: fired || broken ? undefined : "cannon-glow 2s ease-in-out infinite" }}>
@@ -752,7 +726,6 @@ export function CastlePreview({ svgKey, size = 48 }: { svgKey: string; size?: nu
 
 export function CannonPreview({ svgKey, size = 32 }: { svgKey: string; size?: number }) {
   ensureStyles();
-  if (SPRITE_TOWER_KEYS.has(svgKey)) return <TowerSprite svgKey={svgKey} size={size} animate={true} />;
   const Comp = CANNON_COMPONENTS[svgKey] || CannonBasic;
   // fired=false → sáng + spin-fast (trạng thái "sẵn sàng" = đẹp nhất để preview)
   return (

@@ -1018,11 +1018,3 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('explosion', 'exp_craft_shockwave',  'Nổ Sóng Xung Kích (Cao cấp)', 11000),
   ('explosion', 'exp_craft_inferno',    'Nổ Địa Ngục Hoả (Cao cấp)',   13000)
 ON CONFLICT DO NOTHING;
-
--- Tháp Cung — 3 cấp (dùng chung slot "cannon" — thay cho hình pháo tròn cổ
--- điển ở góc lâu đài phòng thủ, chọn được ở Cửa hàng như 1 skin pháo khác)
-INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
-  ('cannon', 'tower_tier1', 'Tháp Cung — Cấp 1', 5000),
-  ('cannon', 'tower_tier2', 'Tháp Cung — Cấp 2', 9000),
-  ('cannon', 'tower_tier3', 'Tháp Cung — Cấp 3', 15000)
-ON CONFLICT DO NOTHING;
