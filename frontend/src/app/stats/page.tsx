@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
-import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ShieldOff, HeartCrack, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ShieldOff, HeartCrack, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
@@ -127,6 +127,7 @@ function TrophyLeaderboardTab() {
   const [asc, setAsc] = useState(false);
   const [seasons, setSeasons] = useState<any[]>([]);
   const [seasonsLoading, setSeasonsLoading] = useState(true);
+  const [seasonIdx, setSeasonIdx] = useState(0);
   const roleMap = useRoleMap();
 
   useEffect(() => {
@@ -134,7 +135,7 @@ function TrophyLeaderboardTab() {
     api.getTopTrophies(50, scope).then((r: any) => setRows(r.top || [])).catch(() => {}).finally(() => setLoading(false));
   }, [scope]);
   useEffect(() => {
-    api.getTrophySeasons(3).then(setSeasons).catch(() => {}).finally(() => setSeasonsLoading(false));
+    api.getTrophySeasons(12).then(setSeasons).catch(() => {}).finally(() => setSeasonsLoading(false));
   }, []);
 
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
@@ -172,30 +173,41 @@ function TrophyLeaderboardTab() {
     </div>
 
     <div className="card space-y-3">
-      <h3 className="font-bold text-white flex items-center gap-2">📅 Top Cúp 3 mùa gần nhất</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-white flex items-center gap-2">📅 Top Cúp theo mùa</h3>
+        {seasons.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSeasonIdx(i => Math.min(seasons.length - 1, i + 1))} disabled={seasonIdx >= seasons.length - 1}
+              title="Mùa trước (cũ hơn)" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
+              <ChevronLeft size={16}/>
+            </button>
+            <span className="text-xs text-gray-500 w-10 text-center shrink-0">{seasonIdx + 1}/{seasons.length}</span>
+            <button onClick={() => setSeasonIdx(i => Math.max(0, i - 1))} disabled={seasonIdx <= 0}
+              title="Mùa sau (mới hơn)" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
+              <ChevronRight size={16}/>
+            </button>
+          </div>
+        )}
+      </div>
       <p className="text-[11px] text-gray-600">
-        Chụp lại vào ngày 1 mỗi tháng (coi như Cúp cuối mùa vừa qua) — mùa gần nhất chỉ xuất hiện sau khi web chạy đủ 1 tháng.
+        Chụp lại vào ngày 1 mỗi tháng (coi như Cúp cuối mùa vừa qua, trước khi CoC reset) — dùng mũi tên để lật lại các mùa trước, tìm mùa đạt Cúp cao nhất.
       </p>
       {seasonsLoading ? (
-        <div className="h-24 bg-gray-800 rounded-xl animate-pulse"/>
+        <div className="h-40 bg-gray-800 rounded-xl animate-pulse"/>
       ) : seasons.length === 0 ? (
         <p className="text-sm text-gray-600 text-center py-3">Chưa có dữ liệu mùa nào — chờ tới ngày 1 tháng sau.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {seasons.map(s => (
-            <div key={s.season} className="rounded-xl bg-gray-800/50 p-2.5">
-              <p className="text-xs font-bold text-yellow-500 mb-1.5">Mùa {s.season}</p>
-              <div className="space-y-1">
-                {s.top.slice(0, 5).map((m: any, i: number) => (
-                  <div key={m.player_tag} className="flex items-center gap-1.5 text-[11px]">
-                    <span className="w-4 text-center shrink-0 text-gray-500">{medal(i) || i + 1}</span>
-                    <span className="text-gray-300 flex-1 truncate">{m.player_name}</span>
-                    <span className="text-yellow-400 shrink-0">🏆{m.trophies}</span>
-                  </div>
-                ))}
+        <div className="rounded-xl bg-gray-800/50 p-3">
+          <p className="text-sm font-bold text-yellow-500 mb-2">Mùa {seasons[seasonIdx].season}</p>
+          <div className="space-y-1">
+            {seasons[seasonIdx].top.map((m: any, i: number) => (
+              <div key={m.player_tag} className="flex items-center gap-2 text-xs">
+                <span className="w-5 text-center shrink-0 text-gray-500">{medal(i) || i + 1}</span>
+                <span className="text-gray-300 flex-1 truncate">{m.player_name}</span>
+                <span className="text-yellow-400 shrink-0">🏆 {m.trophies}</span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -214,6 +226,18 @@ function ReputationLeaderboardTab() {
   const [detail, setDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const roleMap = useRoleMap();
+  const [showFormula, setShowFormula] = useState(false);
+  const [formula, setFormula] = useState<any>(null);
+  const [formulaLoading, setFormulaLoading] = useState(false);
+
+  async function openFormula() {
+    setShowFormula(true);
+    if (formula) return;
+    setFormulaLoading(true);
+    try { setFormula(await api.getReputationPointsConfig()); }
+    catch { setFormula(null); }
+    finally { setFormulaLoading(false); }
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -258,7 +282,12 @@ function ReputationLeaderboardTab() {
       </div>
       <div className="card space-y-1.5">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <h3 className="font-bold text-white flex items-center gap-2">🏵️ Xếp hạng Danh vọng</h3>
+          <h3 className="font-bold text-white flex items-center gap-2">
+            🏵️ Xếp hạng Danh vọng
+            <button onClick={openFormula} title="Xem công thức tính điểm" className="text-gray-500 hover:text-yellow-400">
+              <Info size={15}/>
+            </button>
+          </h3>
           <div className="flex items-center gap-2">
             <SortToggle asc={asc} onToggle={() => setAsc(a => !a)}/>
             <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
@@ -344,6 +373,42 @@ function ReputationLeaderboardTab() {
             )}
           </div>
         </div>
+        </Portal>
+      )}
+
+      {showFormula && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setShowFormula(false)}>
+            <div className="relative w-full max-w-md mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white flex items-center gap-2">🏵️ Công thức Danh vọng</h3>
+                <button onClick={() => setShowFormula(false)} className="text-gray-400 text-sm">✕</button>
+              </div>
+              <p className="text-xs text-gray-500">Điểm cộng/trừ cho từng hoạt động — admin có thể chỉnh trong Cài đặt.</p>
+              {formulaLoading ? (
+                <div className="h-40 bg-gray-800 rounded-xl animate-pulse"/>
+              ) : !formula ? (
+                <p className="text-sm text-gray-500">Không tải được dữ liệu.</p>
+              ) : (
+                <div className="space-y-1">
+                  {(formula.items || []).map((f: any) => (
+                    <div key={f.reason} className="flex items-center justify-between text-xs bg-gray-800/40 rounded-lg px-2.5 py-1.5">
+                      <span className="text-gray-300">{f.label}</span>
+                      <span className={`flex items-center gap-1 font-semibold shrink-0 ${f.points >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {f.points >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                        {f.points >= 0 ? "+" : ""}{f.points}
+                      </span>
+                    </div>
+                  ))}
+                  {formula.early_attack_hours && (
+                    <p className="text-[11px] text-gray-600 pt-1">⏱️ Ngưỡng "đánh sớm" trong War: {formula.early_attack_hours} giờ đầu.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </Portal>
       )}
     </div>

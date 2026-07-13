@@ -1006,19 +1006,33 @@ export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR,
   if (SPRITE_PROJECTILE_FRAMES[svgKey]) {
     const frames = SPRITE_PROJECTILE_FRAMES[svgKey];
     const FRAME = 64, DISPLAY = 22;
-    const xs = Array.from({ length: frames }, (_, i) => -FRAME * i);
-    xs.push(0); // quay lại khung đầu để loop mượt
+    const scale = DISPLAY / FRAME;
+    const half = FRAME / 2;
+    // Khung 0 bắt đầu tại x=-half, khung i lùi thêm FRAME*i; lặp lại khung 0 ở cuối để loop mượt.
+    const xs = Array.from({ length: frames }, (_, i) => -half - FRAME * i);
+    xs.push(-half);
     const kt = Array.from({ length: frames + 1 }, (_, i) => (i / frames).toFixed(3)).join(";");
+    const clipId = `projClip-${svgKey}`;
     return (
       <g opacity={0}>
+        {/* animateMotion di chuyển ĐÚNG gốc toạ độ (0,0) của <g> này theo path —
+            mọi thứ bên trong phải lấy (0,0) làm tâm, KHÔNG dùng <svg> lồng có
+            x/y riêng (dễ lệch tâm khi kết hợp rotate="auto") — chỉ dùng
+            transform trên <g> + clipPath để cắt đúng 1 khung hình. */}
         <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} rotate="auto" />
         <animate attributeName="opacity" from="0" to="1" dur="0.01s" begin={`${begin}s`} fill="freeze" />
-        <svg x={-DISPLAY / 2} y={-DISPLAY / 2} width={DISPLAY} height={DISPLAY} viewBox={`0 0 ${FRAME} ${FRAME}`}
-          style={{ overflow: "hidden" }} transform={`rotate(180 ${DISPLAY / 2} ${DISPLAY / 2})`}>
-          <image href={`/art/projectiles/${svgKey}.png`} y="0" width={FRAME * frames} height={FRAME}>
-            <animate attributeName="x" values={xs.join(";")} keyTimes={kt} calcMode="discrete" dur="0.6s" repeatCount="indefinite" begin={`${begin}s`} />
-          </image>
-        </svg>
+        <g transform={`rotate(180) scale(${scale})`}>
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={-half} y={-half} width={FRAME} height={FRAME} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${clipId})`}>
+            <image href={`/art/projectiles/${svgKey}.png`} y={-half} width={FRAME * frames} height={FRAME}>
+              <animate attributeName="x" values={xs.join(";")} keyTimes={kt} calcMode="discrete" dur="0.6s" repeatCount="indefinite" begin={`${begin}s`} />
+            </image>
+          </g>
+        </g>
       </g>
     );
   }

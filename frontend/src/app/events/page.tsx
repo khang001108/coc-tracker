@@ -1267,6 +1267,10 @@ function QuestsSection() {
 
       {isAdmin && <CreateQuestForm onCreated={load}/>}
 
+      {loading ? (
+        <div className="grid gap-3">{[1,2].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse bg-gray-800"/>)}</div>
+      ) : (
+        <>
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -1291,9 +1295,7 @@ function QuestsSection() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="grid gap-3">{[1,2].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse bg-gray-800"/>)}</div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="card text-center py-10">
           <p className="text-gray-300 font-medium">Không có nhiệm vụ nào ở mục này</p>
         </div>
@@ -1301,6 +1303,8 @@ function QuestsSection() {
         <div className="grid gap-3">
           {filtered.map(q => <QuestCard key={q.id} quest={q} isCreator={isAdmin} onChanged={load}/>)}
         </div>
+      )}
+        </>
       )}
     </div>
   );
