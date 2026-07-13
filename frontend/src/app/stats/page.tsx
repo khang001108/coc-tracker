@@ -143,35 +143,6 @@ function TrophyLeaderboardTab() {
 
   return (
     <div className="space-y-4">
-    <div className="card space-y-1.5">
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <h3 className="font-bold text-white flex items-center gap-2">🏆 Top Cúp thành viên</h3>
-        <div className="flex items-center gap-2">
-          <SortToggle asc={asc} onToggle={() => setAsc(a => !a)}/>
-          <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-            <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-            <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
-          </div>
-        </div>
-      </div>
-      {loading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-800 rounded-xl animate-pulse"/>)}</div>
-      ) : sortedRows.map((m, i) => (
-        <div key={m.tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${!asc && i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
-          <span className="text-sm w-6 text-center shrink-0">{(!asc && medal(i)) || i + 1}</span>
-          {scope === "all" && (
-            m.clan_badge ? <img src={m.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={m.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
-          )}
-          <MarqueeText className="text-sm text-white flex-1">
-            <span>{m.name}</span>
-            {roleMap[m.tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.tag])}`}>{roleLabel(roleMap[m.tag])}</span>}
-            {scope === "all" && <span className="text-gray-600 text-xs">· {m.clan_name}</span>}
-          </MarqueeText>
-          <span className="text-xs text-yellow-400 shrink-0">🏆 {(m.trophies || 0).toLocaleString()}</span>
-        </div>
-      ))}
-    </div>
-
     <div className="card space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-white flex items-center gap-2">📅 Top Cúp theo mùa</h3>
@@ -210,6 +181,35 @@ function TrophyLeaderboardTab() {
           </div>
         </div>
       )}
+    </div>
+
+    <div className="card space-y-1.5">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <h3 className="font-bold text-white flex items-center gap-2">🏆 Top Cúp thành viên</h3>
+        <div className="flex items-center gap-2">
+          <SortToggle asc={asc} onToggle={() => setAsc(a => !a)}/>
+          <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+            <button onClick={() => setScope("clan")} className={`px-2.5 py-1 ${scope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+            <button onClick={() => setScope("all")} className={`px-2.5 py-1 ${scope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+          </div>
+        </div>
+      </div>
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-800 rounded-xl animate-pulse"/>)}</div>
+      ) : sortedRows.map((m, i) => (
+        <div key={m.tag} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${!asc && i < 3 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+          <span className="text-sm w-6 text-center shrink-0">{(!asc && medal(i)) || i + 1}</span>
+          {scope === "all" && (
+            m.clan_badge ? <img src={m.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={m.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
+          )}
+          <MarqueeText className="text-sm text-white flex-1">
+            <span>{m.name}</span>
+            {roleMap[m.tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.tag])}`}>{roleLabel(roleMap[m.tag])}</span>}
+            {scope === "all" && <span className="text-gray-600 text-xs">· {m.clan_name}</span>}
+          </MarqueeText>
+          <span className="text-xs text-yellow-400 shrink-0">🏆 {(m.trophies || 0).toLocaleString()}</span>
+        </div>
+      ))}
     </div>
     </div>
   );

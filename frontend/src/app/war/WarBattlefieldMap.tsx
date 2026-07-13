@@ -99,12 +99,19 @@ export default function WarBattlefieldMap({ war }: { war: any }) {
   const [arcs, setArcs] = useState<{ id: string; x1: number; y1: number; x2: number; y2: number; side: "left" | "right"; attackerTag: string; begin: number }[]>([]);
 
   useEffect(() => {
-    api.getRoster().then((roster: any[]) => {
-      const m: Record<string, any> = {};
-      roster.forEach(r => { m[r.tag] = r; });
-      setIconMap(m);
+    const ourTags = (war?.clan?.members || []).map((m: any) => m.tag);
+    const theirTags = (war?.opponent?.members || []).map((m: any) => m.tag);
+    const allTags = [...ourTags, ...theirTags];
+    if (allTags.length === 0) return;
+    // Tra trang bị THEO TAG, không lọc theo clan_id — để hiện đúng lâu đài/
+    // pháo/hiệu ứng của CẢ 2 PHE, kể cả khi đối thủ cũng là 1 clan đang được
+    // web theo dõi (vd 2 clan cùng hệ thống đấu giao hữu/thách đấu nhau).
+    api.equipLookup(allTags).then((m: Record<string, any>) => {
+      const mapped: Record<string, any> = {};
+      Object.entries(m).forEach(([tag, r]) => { mapped[tag] = r; });
+      setIconMap(mapped);
     }).catch(() => {});
-  }, []);
+  }, [war]);
 
   const ourTeam  = [...(war?.clan?.members   || [])].sort((a, b) => a.mapPosition - b.mapPosition);
   const theirTeam = [...(war?.opponent?.members || [])].sort((a, b) => a.mapPosition - b.mapPosition);

@@ -395,6 +395,7 @@ export const api = {
 
   // Member identity (claim/login)
   getRoster:    () => apiFetch("/api/member/roster"),
+  equipLookup: (tags: string[]) => apiFetch("/api/member/equip-lookup", { method: "POST", body: JSON.stringify({ tags }) }),
   claimMember:  (player_tag: string, player_name: string, pin: string, setup_code: string) =>
     apiFetch("/api/member/claim", { method: "POST", body: JSON.stringify({ player_tag, player_name, pin, setup_code }) }),
   isSetupCodeRequired: () => apiFetch("/api/member/setup-code-required"),

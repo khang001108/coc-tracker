@@ -10,6 +10,33 @@ from datetime import datetime
 router = APIRouter()
 
 
+@router.post("/equip-lookup")
+async def equip_lookup(request: Request):
+    """Tra cứu trang bị (lâu đài/pháo/hiệu ứng...) theo player_tag — KHÔNG
+    lọc theo clan_id (tài khoản web là của người chơi, không phải của riêng
+    1 clan). Dùng để bản đồ chiến trường War hiện ĐÚNG trang bị của CẢ 2 PHE
+    khi đối thủ cũng là 1 clan đang được web theo dõi (vd 2 clan cùng hệ
+    thống đấu giao hữu/thách đấu với nhau) — trước đây chỉ tra được trang bị
+    của phe mình vì /roster chỉ trả về đúng 1 clan đang chọn xem."""
+    body = await request.json()
+    tags = body.get("tags") or []
+    if not tags or not isinstance(tags, list):
+        return {}
+    sb = get_supabase()
+    try:
+        res = sb.table("member_accounts").select(
+            "player_tag,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect,equipped_projectile,equipped_explosion"
+        ).in_("player_tag", tags[:100]).execute()
+    except Exception:
+        try:
+            res = sb.table("member_accounts").select(
+                "player_tag,equipped_castle,equipped_cannon,equipped_effect,equipped_number_effect"
+            ).in_("player_tag", tags[:100]).execute()
+        except Exception:
+            return {}
+    return {r["player_tag"]: r for r in (res.data or [])}
+
+
 @router.get("/roster")
 async def roster(request: Request):
     """Danh sách thành viên trong clan (đúng clan đang chọn) kèm trạng thái đã có
