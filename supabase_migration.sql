@@ -1018,3 +1018,60 @@ INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
   ('explosion', 'exp_craft_shockwave',  'Nổ Sóng Xung Kích (Cao cấp)', 11000),
   ('explosion', 'exp_craft_inferno',    'Nổ Địa Ngục Hoả (Cao cấp)',   13000)
 ON CONFLICT DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 32 (6 tia đạn SPRITE THẬT mới — cao cấp hơn hình vẽ SVG
+-- cũ vì dùng đúng khung hình vẽ tay thật (Craftpix).)
+-- ════════════════════════════════════════════════════════════════
+INSERT INTO shop_items (item_type, svg_key, name, price_coins) VALUES
+  ('projectile', 'proj_craft_waterball',   'Cầu Nước (Cao cấp)',        7500),
+  ('projectile', 'proj_craft_waterspell',  'Phép Nước (Cao cấp)',       8000),
+  ('projectile', 'proj_craft_firespell',   'Phép Lửa (Cao cấp)',        8500),
+  ('projectile', 'proj_craft_waterarrow',  'Tên Nước (Cao cấp)',        6500),
+  ('projectile', 'proj_craft_fireball',    'Cầu Lửa Rồng (Cao cấp)',   10000),
+  ('projectile', 'proj_craft_firearrow',   'Tên Lửa (Cao cấp)',         7000)
+ON CONFLICT DO NOTHING;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 33 (Lịch sử Coins — ghi lại từng lần cộng/trừ Coins để
+-- xem được khi bấm vào 1 người ở Thống kê → Tích luỹ → Nhiều Coins nhất)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS coins_log (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  reason      TEXT NOT NULL,   -- war_star | donate | quest | shop_purchase | event_reward | event_refund | manual
+  amount      INTEGER NOT NULL,  -- âm = trừ
+  note        TEXT,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_coins_log_clan_tag ON coins_log(clan_id, player_tag);
+CREATE INDEX IF NOT EXISTS idx_coins_log_clan_time ON coins_log(clan_id, created_at);
+
+ALTER TABLE coins_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON coins_log;
+CREATE POLICY "service_all" ON coins_log FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.coins_log TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 34 (Lưu snapshot Top Cúp hàng tháng để xem lại lịch sử
+-- 3 mùa Cúp gần nhất — chụp vào ngày 1 mỗi tháng, coi như Cúp cuối mùa vừa
+-- qua (xấp xỉ, vì CoC không có API báo chính xác lúc mùa Cúp/Legend reset).)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS trophy_season_log (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  season      TEXT NOT NULL,   -- "YYYY-MM" của tháng vừa chụp (= mùa vừa kết thúc)
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  trophies    INTEGER NOT NULL DEFAULT 0,
+  snapshot_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, season, player_tag)
+);
+CREATE INDEX IF NOT EXISTS idx_trophy_season_clan ON trophy_season_log(clan_id, season);
+
+ALTER TABLE trophy_season_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON trophy_season_log;
+CREATE POLICY "service_all" ON trophy_season_log FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.trophy_season_log TO service_role;

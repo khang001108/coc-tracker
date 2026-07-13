@@ -53,6 +53,7 @@ async def start_scheduler():
     # Danh vọng — 2 khoản chỉ tính được theo THÁNG (Clan Games + Top đóng góp
     # tháng) chạy vào 0h ngày 1 hàng tháng.
     scheduler.add_job(poll_monthly_reputation, CronTrigger(day=1, hour=0, minute=30), id="poll_monthly_reputation", replace_existing=True)
+    scheduler.add_job(poll_trophy_season_snapshot, CronTrigger(day=1, hour=0, minute=45), id="poll_trophy_season_snapshot", replace_existing=True)
     # Job "canh" cấu hình — cho phép đổi chu kỳ quét Donate/Thành viên trong Cài
     # đặt có hiệu lực NGAY, không cần khởi động lại server.
     scheduler.add_job(poll_check_intervals, IntervalTrigger(minutes=2), id="poll_check_intervals", replace_existing=True)
@@ -637,8 +638,9 @@ async def _award_war_star_coins(sb, clan_id: int, war_data: dict, coins_per_star
         except Exception:
             coins_awarded = stars_gained * coins_per_star
         if acc.data:
-            new_coins = (acc.data[0].get("coins") or 0) + coins_awarded
-            sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+            from services.coins import add_coins
+            new_coins = add_coins(sb, clan_id, m["tag"], m.get("name", "?"), "war_star", coins_awarded,
+                                   note=f"+{stars_gained} sao war")
             if notify_war_coins_on:
                 await notify_war_coins(m.get("name", "?"), stars_gained, coins_awarded, clan_id=clan_id)
             msg_row = {
@@ -748,8 +750,8 @@ async def poll_donations():
                     except Exception:
                         sb.table("chat_messages").insert(msg_row).execute()
                     if has_account:
-                        new_coins = (acc.data[0].get("coins") or 0) + diff
-                        sb.table("member_accounts").update({"coins": new_coins}).eq("player_tag", m["tag"]).execute()
+                        from services.coins import add_coins
+                        new_coins = add_coins(sb, clan_id, m["tag"], m.get("name", "?"), "donate", diff, note=f"Donate +{diff} quân")
                         if notify_donate_on:
                             await notify_donate_coins(m.get("name", "?"), diff, cur, diff, clan_id=clan_id)
                 sb.table("donation_tracker").upsert({"player_tag": m["tag"], "last_donations": cur, "last_donations_received": cur_recv}).execute()
@@ -894,3 +896,33 @@ async def poll_monthly_reputation():
             await run_monthly_reputation(c["id"])
         except Exception as e:
             log.error(f"poll_monthly_reputation error (clan_id={c.get('id')}): {e}")
+
+
+async def poll_trophy_season_snapshot():
+    """Chụp Cúp hiện tại của mọi thành viên vào ngày 1 hàng tháng — coi như
+    Cúp cuối mùa vừa qua (xấp xỉ, vì CoC không có API báo thời điểm chính
+    xác lúc mùa Cúp/Legend reset). Dùng để xem lại 'Top Cúp 3 mùa gần nhất'."""
+    from clan_context import get_tag_by_clan_id
+    from services.coc_api import get_clan_members
+    sb = get_supabase()
+    now = datetime.utcnow()
+    # Season "vừa kết thúc" = tháng trước (vì chụp vào ngày 1, Cúp đang thấy
+    # là kết quả của tháng vừa trôi qua).
+    prev_month = (now.replace(day=1) - timedelta(days=1))
+    season = prev_month.strftime("%Y-%m")
+    clans = await get_all_clans()
+    for c in clans:
+        clan_id = c["id"]
+        try:
+            tag = await get_tag_by_clan_id(clan_id)
+            if not tag:
+                continue
+            members = await get_clan_members(tag, clan_id=clan_id)
+            rows = [{
+                "clan_id": clan_id, "season": season, "player_tag": m["tag"],
+                "player_name": m["name"], "trophies": m.get("trophies", 0) or 0,
+            } for m in members]
+            if rows:
+                sb.table("trophy_season_log").upsert(rows, on_conflict="clan_id,season,player_tag").execute()
+        except Exception as e:
+            log.error(f"poll_trophy_season_snapshot error (clan_id={clan_id}): {e}")

@@ -955,11 +955,30 @@ const PROJECTILE_SHAPES: Record<string, () => JSX.Element> = {
   proj_throwdart: ShapeThrowingDart, proj_pan: ShapePan, proj_bread: ShapeBread, proj_lollipop: ShapeLollipop,
 };
 
+/** Tia đạn dạng SPRITE THẬT (Craftpix, nhiều khung hình vẽ tay) — khác với
+ * các Shape vẽ vector ở trên. Value = số khung hình trong sprite sheet. */
+export const SPRITE_PROJECTILE_FRAMES: Record<string, number> = {
+  proj_craft_waterball: 12, proj_craft_waterspell: 8, proj_craft_firespell: 8,
+  proj_craft_waterarrow: 8, proj_craft_fireball: 8, proj_craft_firearrow: 8,
+};
+
 /** Icon tia đạn TĨNH, nhỏ — dùng làm biểu tượng "lượt đánh" (sáng = đã đánh,
  * mờ = chưa đánh) thay cho pháo trước đây — pháo giờ chuyển sang trang trí
  * lâu đài đại diện cho PHÒNG THỦ. */
 export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: string; fired?: boolean; size?: number }) {
   const key = svgKey || "proj_classic";
+  if (SPRITE_PROJECTILE_FRAMES[key]) {
+    const frames = SPRITE_PROJECTILE_FRAMES[key];
+    return (
+      <div style={{
+        width: size, height: size, overflow: "hidden", position: "relative",
+        backgroundImage: `url(/art/projectiles/${key}.png)`,
+        backgroundSize: `${frames * 100}% 100%`,
+        opacity: fired ? 0.35 : 1,
+        imageRendering: "pixelated",
+      }} />
+    );
+  }
   const ShapeComp = PROJECTILE_SHAPES[key];
   const skin = PROJECTILE_SKINS[key] || PROJECTILE_SKINS.proj_classic;
   return (
@@ -978,6 +997,27 @@ export function ProjectileMiniIcon({ svgKey, fired, size = 14 }: { svgKey?: stri
 export function ProjectileBall({ svgKey, pathD, teamColor, dur = PROJECTILE_DUR, begin = 0 }: {
   svgKey: string; pathD: string; teamColor?: string; dur?: number; begin?: number;
 }) {
+  // Tia đạn SPRITE THẬT (nhiều khung hình vẽ tay) — bay theo path như bình
+  // thường nhưng thay vì Shape vector, dùng <image> đổi khung hình liên tục.
+  if (SPRITE_PROJECTILE_FRAMES[svgKey]) {
+    const frames = SPRITE_PROJECTILE_FRAMES[svgKey];
+    const FRAME = 64, DISPLAY = 22;
+    const xs = Array.from({ length: frames }, (_, i) => -FRAME * i);
+    xs.push(0); // quay lại khung đầu để loop mượt
+    const kt = Array.from({ length: frames + 1 }, (_, i) => (i / frames).toFixed(3)).join(";");
+    return (
+      <g opacity={0}>
+        <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${begin}s`} path={pathD} />
+        <animate attributeName="opacity" from="0" to="1" dur="0.01s" begin={`${begin}s`} fill="freeze" />
+        <svg x={-DISPLAY / 2} y={-DISPLAY / 2} width={DISPLAY} height={DISPLAY} viewBox={`0 0 ${FRAME} ${FRAME}`} style={{ overflow: "hidden" }}>
+          <image href={`/art/projectiles/${svgKey}.png`} y="0" width={FRAME * frames} height={FRAME}>
+            <animate attributeName="x" values={xs.join(";")} keyTimes={kt} calcMode="discrete" dur="0.6s" repeatCount="indefinite" begin={`${begin}s`} />
+          </image>
+        </svg>
+      </g>
+    );
+  }
+
   const skin = PROJECTILE_SKINS[svgKey] || PROJECTILE_SKINS.proj_classic;
   const color = skin.spark || teamColor || "#F4A130";
   const trailDelays = Array.from({ length: skin.trail }, (_, i) => (skin.trail - 1 - i) * (0.16 / Math.max(1, skin.trail - 1)));

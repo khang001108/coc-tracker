@@ -189,8 +189,7 @@ async def claim_quest(quest_id: int, request: Request, x_member_token: str | Non
         add_reputation(sb, clan_id, member_tag, player_name, "manual",
                         ref_key=f"quest-{quest_id}", note=f"Nhiệm vụ: {quest['title']}", points=quest["reward_amount"])
     else:
-        current_coins = sb.table("member_accounts").select("coins").eq("player_tag", member_tag).execute()
-        coins_now = (current_coins.data[0]["coins"] if current_coins.data else 0) or 0
-        sb.table("member_accounts").update({"coins": coins_now + quest["reward_amount"]}).eq("player_tag", member_tag).execute()
+        from services.coins import add_coins
+        add_coins(sb, clan_id, member_tag, player_name, "quest", quest["reward_amount"], note=f"Nhiệm vụ: {quest['title']}")
 
     return {"ok": True, "reward_type": quest["reward_type"], "reward_amount": quest["reward_amount"]}

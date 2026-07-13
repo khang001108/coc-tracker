@@ -13,6 +13,28 @@ import json
 router = APIRouter()
 
 
+@router.get("/coins-history/{player_tag}")
+async def coins_history(player_tag: str, request: Request, limit: int = Query(50, le=200)):
+    """Lịch sử cộng/trừ Coins của 1 người — dùng khi bấm vào tên ở
+    Thống kê → Tích luỹ → Nhiều Coins nhất."""
+    sb = get_supabase()
+    try:
+        res = (sb.table("coins_log").select("*").eq("player_tag", player_tag)
+               .order("created_at", desc=True).limit(limit).execute())
+        rows = res.data or []
+    except Exception:
+        return {"total": 0, "history": [], "error": "chưa chạy migration PART 33"}
+
+    acc = sb.table("member_accounts").select("coins,player_name").eq("player_tag", player_tag).execute()
+    total = (acc.data[0].get("coins") or 0) if acc.data else 0
+    name = (acc.data[0].get("player_name") if acc.data else None) or (rows[0]["player_name"] if rows else player_tag)
+
+    from services.coins import REASON_LABELS
+    for r in rows:
+        r["reason_label"] = REASON_LABELS.get(r["reason"], r["reason"])
+    return {"total": total, "player_name": name, "history": rows}
+
+
 @router.get("/top-coins")
 async def top_coins(request: Request, limit: int = Query(10, le=50), scope: str = Query("clan")):
     """Xếp hạng ai đang có nhiều Coins nhất (chỉ tính người đã đăng nhập/nhận
@@ -76,6 +98,26 @@ def _period_cutoff(period: str) -> str | None:
     return None  # "all" — từ ngày thành lập web, không giới hạn
 
 
+@router.get("/trophy-seasons")
+async def trophy_seasons(request: Request, seasons_count: int = Query(3, le=12)):
+    """Top Cúp của N mùa gần nhất (chụp vào ngày 1 mỗi tháng — xem
+    poll_trophy_season_snapshot). Trả về nhóm theo từng mùa, mới nhất trước."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    try:
+        res = (sb.table("trophy_season_log").select("season").eq("clan_id", clan_id)
+               .order("season", desc=True).execute())
+        seasons = sorted({r["season"] for r in (res.data or [])}, reverse=True)[:seasons_count]
+        out = []
+        for s in seasons:
+            rows = (sb.table("trophy_season_log").select("player_tag,player_name,trophies")
+                    .eq("clan_id", clan_id).eq("season", s).order("trophies", desc=True).limit(10).execute())
+            out.append({"season": s, "top": rows.data or []})
+        return out
+    except Exception:
+        return []
+
+
 @router.get("/top-trophies")
 async def top_trophies(request: Request, limit: int = Query(10, le=50), scope: str = Query("clan")):
     """Xếp hạng Cúp — scope=clan: chỉ trong clan đang chọn (dùng dữ liệu
@@ -104,13 +146,12 @@ async def top_trophies(request: Request, limit: int = Query(10, le=50), scope: s
         rows.sort(key=lambda r: -r["trophies"])
         return {"top": rows[:limit]}
 
-    clan_id = get_clan_id(request)
-    from clan_context import get_tag_by_clan_id
+    from clan_context import get_tag_for_request
     from services.coc_api import get_clan_members
-    tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    _, tag = await get_tag_for_request(request)
+    members = await get_clan_members(tag, clan_id=get_clan_id(request)) if tag else []
     ranked = sorted(members, key=lambda m: -(m.get("trophies") or 0))
-    return {"top": [{"tag": m["tag"], "name": m["name"], "trophies": m.get("trophies", 0)} for m in ranked[:limit]]}
+    return {"top": [{"tag": m["tag"], "name": m["name"], "trophies": m.get("trophies") or 0} for m in ranked[:limit]]}
 
 
 @router.get("/war-activity")

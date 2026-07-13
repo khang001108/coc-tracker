@@ -125,17 +125,23 @@ function TrophyLeaderboardTab() {
   const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState<"clan" | "all">("clan");
   const [asc, setAsc] = useState(false);
+  const [seasons, setSeasons] = useState<any[]>([]);
+  const [seasonsLoading, setSeasonsLoading] = useState(true);
   const roleMap = useRoleMap();
 
   useEffect(() => {
     setLoading(true);
     api.getTopTrophies(50, scope).then((r: any) => setRows(r.top || [])).catch(() => {}).finally(() => setLoading(false));
   }, [scope]);
+  useEffect(() => {
+    api.getTrophySeasons(3).then(setSeasons).catch(() => {}).finally(() => setSeasonsLoading(false));
+  }, []);
 
   const medal = (i: number) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
   const sortedRows = [...rows].sort((a, b) => asc ? (a.trophies || 0) - (b.trophies || 0) : (b.trophies || 0) - (a.trophies || 0));
 
   return (
+    <div className="space-y-4">
     <div className="card space-y-1.5">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <h3 className="font-bold text-white flex items-center gap-2">🏆 Top Cúp thành viên</h3>
@@ -163,6 +169,36 @@ function TrophyLeaderboardTab() {
           <span className="text-xs text-yellow-400 shrink-0">🏆 {(m.trophies || 0).toLocaleString()}</span>
         </div>
       ))}
+    </div>
+
+    <div className="card space-y-3">
+      <h3 className="font-bold text-white flex items-center gap-2">📅 Top Cúp 3 mùa gần nhất</h3>
+      <p className="text-[11px] text-gray-600">
+        Chụp lại vào ngày 1 mỗi tháng (coi như Cúp cuối mùa vừa qua) — mùa gần nhất chỉ xuất hiện sau khi web chạy đủ 1 tháng.
+      </p>
+      {seasonsLoading ? (
+        <div className="h-24 bg-gray-800 rounded-xl animate-pulse"/>
+      ) : seasons.length === 0 ? (
+        <p className="text-sm text-gray-600 text-center py-3">Chưa có dữ liệu mùa nào — chờ tới ngày 1 tháng sau.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {seasons.map(s => (
+            <div key={s.season} className="rounded-xl bg-gray-800/50 p-2.5">
+              <p className="text-xs font-bold text-yellow-500 mb-1.5">Mùa {s.season}</p>
+              <div className="space-y-1">
+                {s.top.slice(0, 5).map((m: any, i: number) => (
+                  <div key={m.player_tag} className="flex items-center gap-1.5 text-[11px]">
+                    <span className="w-4 text-center shrink-0 text-gray-500">{medal(i) || i + 1}</span>
+                    <span className="text-gray-300 flex-1 truncate">{m.player_name}</span>
+                    <span className="text-yellow-400 shrink-0">🏆{m.trophies}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
     </div>
   );
 }
@@ -266,7 +302,7 @@ function ReputationLeaderboardTab() {
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-white flex items-center gap-2">🏵️ Lịch sử Danh vọng — {selected.player_name}</h3>
-              <button onClick={() => { setSelected(null); setDetail(null); }} className="text-gray-400 text-sm shrink-0">Đóng ✕</button>
+              <button onClick={() => { setSelected(null); setDetail(null); }} className="text-gray-400 text-sm shrink-0">✕</button>
             </div>
             {detailLoading ? (
               <div className="h-40 bg-gray-800 rounded-xl animate-pulse"/>
@@ -403,7 +439,7 @@ function WeeklyReportTab() {
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-white">Báo cáo tuần</h3>
-              <button onClick={() => setSelected(null)} className="text-gray-400 text-sm">Đóng ✕</button>
+              <button onClick={() => setSelected(null)} className="text-gray-400 text-sm">✕</button>
             </div>
             <WeeklyReportView report={selected}/>
           </div>
@@ -662,6 +698,19 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
   };
   const rangeLabel = warActivity.period_start && warActivity.period_end
     ? `${fmtD(warActivity.period_start)} → ${fmtD(warActivity.period_end)}` : null;
+
+  const [coinHistTag, setCoinHistTag] = useState<string | null>(null);
+  const [coinHistData, setCoinHistData] = useState<any>(null);
+  const [coinHistLoading, setCoinHistLoading] = useState(false);
+
+  async function openCoinsHistory(tag: string) {
+    setCoinHistTag(tag);
+    setCoinHistLoading(true);
+    try { setCoinHistData(await api.getCoinsHistory(tag)); }
+    catch { setCoinHistData(null); }
+    finally { setCoinHistLoading(false); }
+  }
+
   return (
     <div className="space-y-5">
       <div className="card !py-3 !px-4">
@@ -695,7 +744,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           </div>
           <div className="space-y-2">
             {topCoins.map((p, i) => (
-              <div key={p.tag} className="flex items-center gap-3 text-sm">
+              <button key={p.tag} onClick={() => openCoinsHistory(p.tag)} className="w-full flex items-center gap-3 text-sm hover:brightness-110 text-left">
                 <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
                 {coinsScope === "all" && (
                   p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
@@ -706,7 +755,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                   {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                 </MarqueeText>
                 <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
-              </div>
+              </button>
             ))}
           </div>
           <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
@@ -788,6 +837,44 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
         </p>
       </div>
+
+      {coinHistTag && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => { setCoinHistTag(null); setCoinHistData(null); }}>
+            <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white flex items-center gap-2"><CoinIcon size={16}/> Lịch sử Coins — {coinHistData?.player_name || "..."}</h3>
+                <button onClick={() => { setCoinHistTag(null); setCoinHistData(null); }} className="text-gray-400 text-sm">✕</button>
+              </div>
+              {coinHistLoading ? (
+                <div className="h-40 bg-gray-800 rounded-xl animate-pulse"/>
+              ) : !coinHistData ? (
+                <p className="text-sm text-gray-500">Không tải được dữ liệu.</p>
+              ) : (
+                <>
+                  <div className="bg-gray-800/50 rounded-xl px-3 py-2">
+                    <span className="text-lg font-bold text-yellow-400 flex items-center gap-1.5"><CoinIcon size={16}/> {coinHistData.total?.toLocaleString()}</span>
+                  </div>
+                  {coinHistData.history?.length > 0 ? (
+                    <div className="space-y-1">
+                      {coinHistData.history.map((h: any) => (
+                        <div key={h.id} className="flex items-center justify-between text-[11px] bg-gray-800/30 rounded-lg px-2.5 py-1.5">
+                          <span className="text-gray-400">{h.reason_label}{h.note ? ` — ${h.note}` : ""}</span>
+                          <span className={h.amount >= 0 ? "text-green-400 shrink-0" : "text-red-400 shrink-0"}>{h.amount >= 0 ? "+" : ""}{h.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600 text-center py-4">Chưa có lịch sử giao dịch (chỉ ghi từ khi bật tính năng này).</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 }

@@ -85,10 +85,12 @@ async def buy_item(item_id: int, x_member_token: str | None = Header(default=Non
         if my_rep < unlock_rep:
             raise HTTPException(403, f"Cần {unlock_rep} Danh vọng để mở khoá vật phẩm này (hiện có {my_rep})")
 
-    acc = sb.table("member_accounts").select("coins").eq("player_tag", tag).execute()
+    acc = sb.table("member_accounts").select("coins,clan_id,player_name").eq("player_tag", tag).execute()
     if not acc.data:
         raise HTTPException(404, "Không tìm thấy tài khoản")
     coins = acc.data[0].get("coins") or 0
+    clan_id = acc.data[0].get("clan_id") or 1
+    player_name = acc.data[0].get("player_name") or tag
     if coins < price:
         raise HTTPException(400, f"Không đủ Coins (cần {price}, hiện có {coins})")
 
@@ -97,8 +99,9 @@ async def buy_item(item_id: int, x_member_token: str | None = Header(default=Non
         raise HTTPException(409, "Bạn đã sở hữu vật phẩm này rồi")
 
     sb.table("member_inventory").insert({"player_tag": tag, "item_id": item_id}).execute()
-    sb.table("member_accounts").update({"coins": coins - price}).eq("player_tag", tag).execute()
-    return {"ok": True, "remaining_coins": coins - price}
+    from services.coins import add_coins
+    remaining = add_coins(sb, clan_id, tag, player_name, "shop_purchase", -price, note=item.data[0].get("name"))
+    return {"ok": True, "remaining_coins": remaining}
 
 
 @router.post("/equip")
