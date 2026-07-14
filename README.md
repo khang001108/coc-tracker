@@ -8,7 +8,7 @@ Theo dõi clan Clash of Clans: War, Raid, Donate, Thành viên, Thống kê.
 - **Database**: Supabase (PostgreSQL)
 - **API**: Supercell Official CoC API
 - **Notify**: Discord Webhook + Telegram Bot
-- **Deploy**: Render.com
+- **Deploy**: Backend trên Render.com, Frontend trên Vercel (hoặc Render — cả hai đều chạy được)
 
 ---
 
@@ -32,7 +32,19 @@ Theo dõi clan Clash of Clans: War, Raid, Donate, Thành viên, Thống kê.
 6. Deploy → lấy URL backend (VD: `https://coc-tracker-api.onrender.com`)
 7. **Lưu ý**: Lấy Static IP của Render để đăng ký CoC API Key
 
-### 3. Render — Frontend (Next.js)
+### 3. Frontend (Next.js) — chọn 1 trong 2
+
+#### 3a. Vercel (khuyên dùng — free tier tốt hơn, build/deploy nhanh hơn)
+1. [vercel.com](https://vercel.com) → Add New Project → Import GitHub repo
+2. **Root Directory**: bấm Edit → chọn `frontend` (bắt buộc vì repo là monorepo)
+3. Framework Preset: Next.js (tự nhận diện), Build/Output Command giữ mặc định
+4. Environment Variables:
+   ```
+   NEXT_PUBLIC_API_URL = https://coc-tracker-api.onrender.com
+   ```
+5. Deploy → lấy URL dạng `https://xxxx.vercel.app` (có thể gắn domain riêng trong Settings → Domains)
+
+#### 3b. Render — Frontend (Next.js)
 1. New Web Service → Connect GitHub repo
 2. Root Dir: `frontend`
 3. Build: `npm install && npm run build`
@@ -120,5 +132,7 @@ coc-tracker/
 ## ⚠️ Lưu ý
 
 - CoC API **không có webhook** → phải dùng polling
+- Backend **phải** deploy ở nơi có Static IP cố định (Render, VPS...) vì CoC API Key bị khoá theo IP — **không** deploy backend lên Vercel (serverless, IP đổi liên tục)
 - Render free tier **không có Static IP** → cần upgrade hoặc dùng proxy
+- Frontend deploy ở đâu cũng được (Vercel/Render) vì chỉ gọi API qua `NEXT_PUBLIC_API_URL`, không phụ thuộc IP
 - Supabase free tier: 500MB, project pause sau 7 ngày không hoạt động
