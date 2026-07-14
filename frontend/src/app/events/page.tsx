@@ -798,13 +798,28 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (url: 
   const [error, setError]         = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadFile(file: File) {
     setUploading(true); setError("");
     try { onChange((await api.uploadEventImage(file)).url); }
     catch (err: any) { setError(err.message || "Lỗi tải ảnh"); }
-    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+    finally { setUploading(false); }
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  // Cho dán ảnh (Ctrl+V) trực tiếp vào ô — nhiều người quen dán ảnh chụp màn
+  // hình như dán vào Zalo/Discord, chứ không có sẵn link ảnh để gõ vào ô này.
+  async function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const item = Array.from(e.clipboardData.items).find(it => it.type.startsWith("image/"));
+    if (!item) return; // không có ảnh trong clipboard — để hành vi dán chữ bình thường
+    e.preventDefault();
+    const file = item.getAsFile();
+    if (file) await uploadFile(file);
   }
 
   return (
@@ -824,8 +839,8 @@ function ImageUploadField({ value, onChange }: { value: string; onChange: (url: 
             <Upload size={13}/> {uploading ? "Đang tải..." : "Tải từ thiết bị"}
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile}/>
-          <input className="input text-xs" placeholder="...hoặc dán link ảnh URL"
-            value={value} onChange={e => onChange(e.target.value)}/>
+          <input className="input text-xs" placeholder={uploading ? "Đang tải ảnh đã dán..." : "...hoặc dán ảnh / dán link ảnh URL"}
+            value={value} onChange={e => onChange(e.target.value)} onPaste={handlePaste} disabled={uploading}/>
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
       </div>
