@@ -1075,3 +1075,9 @@ ALTER TABLE trophy_season_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "service_all" ON trophy_season_log;
 CREATE POLICY "service_all" ON trophy_season_log FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.trophy_season_log TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 35 (Link chia sẻ/giới thiệu hội — bấm vào icon "Xem hội"
+-- cạnh cờ clan ở Tổng quan sẽ mở link này, VD Facebook page/group của hội)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clans ADD COLUMN IF NOT EXISTS share_link TEXT DEFAULT '';

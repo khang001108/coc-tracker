@@ -103,13 +103,19 @@ async def list_clans():
 async def current_clan_links(request: Request):
     """Link nhóm Zalo/Telegram/Discord công khai của clan ĐANG CHỌN — để mọi
     người bấm tham gia. Khác hẳn webhook/bot token (dùng để web TỰ gửi
-    thông báo), đây chỉ là link mời vào nhóm."""
+    thông báo), đây chỉ là link mời vào nhóm. Kèm luôn `share_link` — link
+    giới thiệu/chia sẻ hội mở khi bấm icon "Xem hội" ở Tổng quan."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
-    res = sb.table("clans").select("zalo_group_link, telegram_group_link, discord_group_link").eq("id", clan_id).execute()
+    default = {"zalo_group_link": "", "telegram_group_link": "", "discord_group_link": "", "share_link": ""}
+    try:
+        res = sb.table("clans").select("zalo_group_link, telegram_group_link, discord_group_link, share_link").eq("id", clan_id).execute()
+    except Exception:
+        # Chưa chạy migration PART 35 (thiếu cột share_link)
+        res = sb.table("clans").select("zalo_group_link, telegram_group_link, discord_group_link").eq("id", clan_id).execute()
     if not res.data:
-        return {"zalo_group_link": "", "telegram_group_link": "", "discord_group_link": ""}
-    return res.data[0]
+        return default
+    return {**default, **res.data[0]}
 
 
 @router.get("/public-slot")
@@ -230,7 +236,7 @@ async def update_clan(clan_id: int, request: Request, _: bool = Depends(require_
     allowed = ["clan_name", "clan_tag", "coc_api_key", "discord_webhook",
                "telegram_bot_token", "telegram_chat_id",
                "notify_war", "notify_raid", "notify_join_leave", "public_editable",
-               "zalo_group_link", "telegram_group_link", "discord_group_link"]
+               "zalo_group_link", "telegram_group_link", "discord_group_link", "share_link"]
     update = {k: v for k, v in body.items() if k in allowed}
     if not update:
         raise HTTPException(400, "Không có gì để cập nhật")

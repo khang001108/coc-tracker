@@ -1495,7 +1495,7 @@ function ClanManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ clan_tag: "", coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "" });
+  const [form, setForm] = useState({ clan_tag: "", coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "", share_link: "" });
   const [preview, setPreview] = useState<{ name: string; badge: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1521,7 +1521,7 @@ function ClanManagement() {
   useEffect(() => { load(); }, []);
 
   function startAdd() {
-    setForm({ clan_tag: "", coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "" });
+    setForm({ clan_tag: "", coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "", share_link: "" });
     setPreview(null);
     setEditId(null);
     setKeyRevealed(true);
@@ -1531,7 +1531,7 @@ function ClanManagement() {
   async function startEdit(cl: any) {
     setEditId(cl.id);
     setPreview({ name: cl.clan_name, badge: cl.badge_url || "" });
-    setForm({ clan_tag: cl.clan_tag, coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "" });
+    setForm({ clan_tag: cl.clan_tag, coc_api_key: "", zalo_group_link: "", telegram_group_link: "", discord_group_link: "", share_link: "" });
     setKeyRevealed(false);
     setShowForm(true);
     // Danh sách công khai (list_clans) không trả về API key thật (tránh lộ
@@ -1545,6 +1545,7 @@ function ClanManagement() {
         zalo_group_link: full.zalo_group_link || "",
         telegram_group_link: full.telegram_group_link || "",
         discord_group_link: full.discord_group_link || "",
+        share_link: full.share_link || "",
       });
       setKeyRevealed(!full.coc_api_key);
     } catch {
@@ -1584,6 +1585,7 @@ function ClanManagement() {
         zalo_group_link: form.zalo_group_link.trim(),
         telegram_group_link: form.telegram_group_link.trim(),
         discord_group_link: form.discord_group_link.trim(),
+        share_link: form.share_link.trim(),
       };
       if (editId) await api.updateClan(editId, payload);
       else await api.createClan(payload);
@@ -1762,6 +1764,13 @@ function ClanManagement() {
               <input className="input !py-1.5 text-xs flex-1" placeholder="Link mời Discord"
                 value={form.discord_group_link} onChange={e => setForm({ ...form, discord_group_link: e.target.value })}/>
             </div>
+          </div>
+
+          {/* Link chia sẻ hội — mở khi bấm icon 🔗 cạnh cờ clan ở Tổng quan */}
+          <div className="space-y-2 pt-1">
+            <p className="text-[11px] text-gray-500">🔗 Link chia sẻ hội (Facebook, trang giới thiệu... — mở khi bấm icon cạnh cờ clan ở Tổng quan)</p>
+            <input className="input !py-1.5 text-xs w-full" placeholder="https://facebook.com/..."
+              value={form.share_link} onChange={e => setForm({ ...form, share_link: e.target.value })}/>
           </div>
 
           <div className="flex gap-2">
