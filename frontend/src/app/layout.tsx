@@ -8,6 +8,7 @@ import { MusicProvider } from "@/components/ui/MusicContext";
 import { FloatingMusicWidget } from "@/components/ui/FloatingMusicWidget";
 import { ThemeInitScript } from "@/components/ui/ThemeToggle";
 import { NotificationProvider } from "@/components/ui/NotificationContext";
+import { ConfirmProvider } from "@/components/ui/ConfirmDialog";
 import { CustomCursor } from "@/components/ui/CustomCursor";
 import { LeaveStatusBanner } from "@/components/ui/LeaveStatusBanner";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <MusicProvider>
         <NotificationProvider>
+        <ConfirmProvider>
         <div className="min-h-screen bg-gray-950 flex">
           <Sidebar />
           <div className="flex-1 md:ml-60 flex flex-col min-h-screen min-w-0">
@@ -59,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CustomCursor />
           <LeaveStatusBanner />
         </div>
+        </ConfirmProvider>
         </NotificationProvider>
         </MusicProvider>
       </body>

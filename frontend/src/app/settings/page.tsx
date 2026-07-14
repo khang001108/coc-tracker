@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
@@ -23,6 +24,7 @@ function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "suc
 }
 
 function MusicSettings() {
+  const confirm = useConfirm();
   const [tracks, setTracks] = useState<any[]>([]);
   const [config, setConfig] = useState({ enabled: false, mode: "all", selected_id: "" });
   const [uploading, setUploading] = useState(false);
@@ -69,7 +71,7 @@ function MusicSettings() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Xoá bài hát này?")) return;
+    if (!(await confirm({ message: "Xoá bài hát này?", danger: true }))) return;
     await api.deleteTrack(id);
     await load();
   }
@@ -262,6 +264,7 @@ const SECTION_TABS: Record<string, { id: string; label: string }[]> = {
 };
 
 function SettingsPageInner({ embedded, section = "general" }: { embedded?: boolean; section?: "general" | "events" | "members" | "music" }) {
+  const confirm = useConfirm();
   const [subTab, setSubTab] = useState<string>(SECTION_TABS[section][0].id);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -717,7 +720,7 @@ function SettingsPageInner({ embedded, section = "general" }: { embedded?: boole
             className="btn-gold text-sm ml-auto">Lưu</button>
         </div>
         <button onClick={async () => {
-          if (!confirm("Xoá ngay dữ liệu thống kê cũ hơn số ngày đã cấu hình ở trên?")) return;
+          if (!(await confirm({ message: "Xoá ngay dữ liệu thống kê cũ hơn số ngày đã cấu hình ở trên?", danger: true }))) return;
           try { await api.cleanupStatsNow(); showToast("Đã dọn dẹp xong!"); }
           catch (e: any) { showToast(e.message, "error"); }
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
@@ -986,6 +989,7 @@ function EventReportsSettings() {
 }
 
 function MemberAccountsSettings() {
+  const confirm = useConfirm();
   const [roster, setRoster] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyTag, setBusyTag] = useState<string | null>(null);
@@ -1004,7 +1008,7 @@ function MemberAccountsSettings() {
   useEffect(() => { load(); }, []);
 
   async function handleRelease(tag: string, name: string) {
-    if (!confirm(`Gỡ tài khoản đã nhận cho "${name}"? Người này sẽ mất quyền chat Clan cho đến khi có ai nhận lại (có thể chính chủ nhận lại, hoặc người khác nhận nhầm thì người đúng có thể nhận lại).`)) return;
+    if (!(await confirm({ message: `Gỡ tài khoản đã nhận cho "${name}"? Người này sẽ mất quyền chat Clan cho đến khi có ai nhận lại (có thể chính chủ nhận lại, hoặc người khác nhận nhầm thì người đúng có thể nhận lại).`, danger: true }))) return;
     setBusyTag(tag);
     try {
       await api.releaseMember(tag);
@@ -1232,6 +1236,7 @@ function ReputationTierSettings() {
 }
 
 function ReputationAdjustSettings() {
+  const confirm = useConfirm();
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState("");
@@ -1254,7 +1259,7 @@ function ReputationAdjustSettings() {
     const n = parseInt(points, 10);
     if (!m) { flashMsg("Chọn thành viên trước"); return; }
     if (!n) { flashMsg("Nhập số điểm (khác 0, có thể âm)"); return; }
-    if (!confirm(`Xác nhận ${n > 0 ? "cộng" : "trừ"} ${Math.abs(n)} Danh vọng cho "${m.name}"?`)) return;
+    if (!(await confirm(`Xác nhận ${n > 0 ? "cộng" : "trừ"} ${Math.abs(n)} Danh vọng cho "${m.name}"?`))) return;
     setBusy(true);
     try {
       await api.adjustReputation(m.tag, m.name, n, note || undefined);
@@ -1485,6 +1490,7 @@ function JoinGroupLinks() {
 }
 
 function ClanManagement() {
+  const confirm = useConfirm();
   const [clans, setClans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -1591,7 +1597,7 @@ function ClanManagement() {
   }
 
   async function del(id: number, name: string) {
-    if (!confirm(`Xoá clan "${name}"? Dữ liệu sự kiện và chat sẽ bị xoá.`)) return;
+    if (!(await confirm({ message: `Xoá clan "${name}"? Dữ liệu sự kiện và chat sẽ bị xoá.`, danger: true }))) return;
     try { await api.deleteClan(id); flash("ok", "Đã xoá"); load(); }
     catch (e: any) { flash("err", e?.message || "Không thể xoá clan chính"); }
   }

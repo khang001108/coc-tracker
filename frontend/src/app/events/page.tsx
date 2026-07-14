@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { Portal } from "@/components/ui/Portal";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { FireworkField } from "@/components/ui/FireworkField";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
@@ -214,6 +215,7 @@ function EventCard({ event, myTag, onOpen }: { event: any; myTag?: string; onOpe
 
 /* ─── Join Button ─────────────────────────────────────────────────────── */
 function JoinButton({ event, participants, onChanged }: { event: any; participants: any[]; onChanged: () => void }) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const member = getMemberAuth();
 
@@ -240,7 +242,7 @@ function JoinButton({ event, participants, onChanged }: { event: any; participan
     finally { setBusy(false); }
   }
   async function handleLeave() {
-    if (!confirm("Rút khỏi sự kiện? Bạn sẽ không được xét thưởng nữa.")) return;
+    if (!(await confirm("Rút khỏi sự kiện? Bạn sẽ không được xét thưởng nữa."))) return;
     setBusy(true);
     try { await api.leaveEvent(event.id); onChanged(); }
     catch (e: any) { alert(e.message || "Lỗi"); }
@@ -308,6 +310,7 @@ function ParticipantList({ participants }: { participants: any[] }) {
 
 /* ─── Event Detail Modal ──────────────────────────────────────────────── */
 function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any) {
+  const confirm = useConfirm();
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const repRankMap = useReputationRankMap();
   const [claims, setClaims]           = useState<any[]>([]);
@@ -379,7 +382,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
     catch (e: any) { alert(e.message); } finally { setBusy(false); }
   }
   async function handleReject() {
-    if (!confirm("Từ chối và xoá sự kiện này?")) return;
+    if (!(await confirm({ message: "Từ chối và xoá sự kiện này?", danger: true }))) return;
     setBusy(true);
     try { await api.rejectEvent(event.id); onChanged?.(); onClose(); }
     catch (e: any) { alert(e.message); } finally { setBusy(false); }
@@ -395,7 +398,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
     catch (e: any) { alert(e.message); } finally { setBusy(false); }
   }
   async function handleDeleteRequest() {
-    if (!confirm(isAdmin ? `Xoá sự kiện "${event.title}"?` : `Gửi yêu cầu xoá?`)) return;
+    if (!(await confirm({ message: isAdmin ? `Xoá sự kiện "${event.title}"?` : `Gửi yêu cầu xoá?`, danger: isAdmin }))) return;
     setBusy(true);
     try { await api.deleteEvent(event.id); onChanged?.(); onClose(); }
     catch (e: any) { alert(e.message || "Lỗi"); } finally { setBusy(false); }
@@ -1159,6 +1162,7 @@ function CreateQuestForm({ onCreated }: { onCreated: () => void }) {
 }
 
 function QuestCard({ quest, isCreator, onChanged }: { quest: any; isCreator: boolean; onChanged: () => void }) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const member = getMemberAuth();
@@ -1177,7 +1181,7 @@ function QuestCard({ quest, isCreator, onChanged }: { quest: any; isCreator: boo
   }
 
   async function handleDelete() {
-    if (!confirm(`Đóng nhiệm vụ "${quest.title}"?`)) return;
+    if (!(await confirm({ message: `Đóng nhiệm vụ "${quest.title}"?`, danger: true }))) return;
     setBusy(true);
     try { await api.deleteQuest(quest.id); onChanged(); }
     catch (e: any) { setErr(e.message || "Lỗi đóng nhiệm vụ"); setBusy(false); }

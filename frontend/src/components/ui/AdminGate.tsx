@@ -4,8 +4,10 @@ import { api } from "@/lib/api";
 import { getAdminToken, setAdminToken, clearAdminToken } from "@/lib/api";
 import { Lock, LogOut, Settings2 } from "lucide-react";
 import { Portal } from "@/components/ui/Portal";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export function AdminGate({ children }: { children: React.ReactNode }) {
+  const confirm = useConfirm();
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -42,8 +44,8 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     }
   }
 
-  function handleLogout() {
-    if (!confirm("Đăng xuất khỏi khu vực quản trị?")) return;
+  async function handleLogout() {
+    if (!(await confirm("Đăng xuất khỏi khu vực quản trị?"))) return;
     clearAdminToken();
     setAuthed(false);
     setPassword("");

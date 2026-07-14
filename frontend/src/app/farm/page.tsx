@@ -7,6 +7,7 @@ import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { Portal } from "@/components/ui/Portal";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { Fish, X } from "lucide-react";
 
 const DECOR_FRAMES: Record<string, number> = {
@@ -137,6 +138,7 @@ function PlacePickerModal({ catalog, coins, onClose, onPlace, onPlant }: {
 }
 
 export default function FarmPage() {
+  const confirm = useConfirm();
   const bannerSrc = usePageBanner("farm", "/art/skeleton-king.jpg");
   const member = getMemberAuth();
   const [tab, setTab] = useState<"mine" | "visit">("mine");
@@ -185,7 +187,7 @@ export default function FarmPage() {
       catch (e: any) { flash(e.message || "Cây chưa hồi, thử lại sau"); } finally { setBusy(false); }
       return;
     }
-    if (confirm("Dỡ bỏ vật phẩm này? (không được hoàn Coins)")) {
+    if (await confirm({ message: "Dỡ bỏ vật phẩm này? (không được hoàn Coins)", danger: true })) {
       setBusy(true);
       try { await api.farmRemove(index); await loadMine(); } catch (e: any) { flash(e.message || "Lỗi"); } finally { setBusy(false); }
     }

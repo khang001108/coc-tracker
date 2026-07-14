@@ -6,6 +6,7 @@ import { useRoleMap } from "@/lib/useRoleMap";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { Portal } from "@/components/ui/Portal";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const CATEGORY_META: Record<string, { icon: string; label: string }> = {
   war:          { icon: "⚔️", label: "War/CWL giỏi nhất" },
@@ -39,6 +40,7 @@ function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "suc
  *  - Sửa/xoá lịch sử + đổi số mùa khôi phục → CHỈ Admin (mật khẩu web).
  */
 export function MedalRewardBox() {
+  const confirm = useConfirm();
   const [members, setMembers] = useState<any[]>([]);
   const roleMap = useRoleMap();
   const [resetCount, setResetCount] = useState(3);
@@ -115,7 +117,7 @@ export function MedalRewardBox() {
   async function handleSaveSelected() {
     if (selectedTags.size === 0) return;
     const chosen = notAwardedYet.filter(m => m.eligible && selectedTags.has(m.player_tag));
-    if (!confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.\n\n🔒 Sau khi xác nhận, CHỈ ADMIN mới sửa/xoá lại được — bạn (Đồng thủ lĩnh) sẽ không tự sửa lại được nữa.`)) return;
+    if (!(await confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.\n\n🔒 Sau khi xác nhận, CHỈ ADMIN mới sửa/xoá lại được — bạn (Đồng thủ lĩnh) sẽ không tự sửa lại được nữa.`))) return;
     setSavingSelected(true);
     let okCount = 0;
     for (const m of chosen) {
@@ -148,7 +150,7 @@ export function MedalRewardBox() {
   }
 
   async function handleDeleteHistory(id: number, name: string) {
-    if (!confirm(`Xoá lượt trao thưởng của "${name}"? Người này sẽ được xét nhận lại ngay.`)) return;
+    if (!(await confirm({ message: `Xoá lượt trao thưởng của "${name}"? Người này sẽ được xét nhận lại ngay.`, danger: true }))) return;
     try { await api.deleteMedalHistory(id); await load(); }
     catch (e: any) { flashMsg(e.message || "Lỗi xoá (cần đăng nhập Admin)"); }
   }
