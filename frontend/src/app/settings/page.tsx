@@ -1783,8 +1783,6 @@ function PushNotificationSettings() {
   const [notifyEvent, setNotifyEvent] = useState(true);
   const [notifyWar, setNotifyWar] = useState(true);
   const [notifyRaid, setNotifyRaid] = useState(true);
-  const [clans, setClans] = useState<any[]>([]);
-  const [selectedClanIds, setSelectedClanIds] = useState<number[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1811,7 +1809,6 @@ function PushNotificationSettings() {
           setNotifyEvent(saved.notify_event ?? true);
           setNotifyWar(saved.notify_war ?? true);
           setNotifyRaid(saved.notify_raid ?? true);
-          if (saved.clan_ids?.length) setSelectedClanIds(saved.clan_ids);
         }
       } catch {}
     }
@@ -1819,10 +1816,6 @@ function PushNotificationSettings() {
 
   useEffect(() => {
     refresh();
-    api.listClans().then((data: any[]) => {
-      setClans(data);
-      setSelectedClanIds(prev => prev.length ? prev : [getCurrentClanId()]);
-    }).catch(() => {});
   }, []);
 
   async function handleToggle() {
@@ -1835,7 +1828,7 @@ function PushNotificationSettings() {
         flashMsg("Đã tắt thông báo ngoài app", "success");
       } else {
         const { enablePush } = await import("@/lib/push");
-        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid, clan_ids: selectedClanIds });
+        const res = await enablePush({ notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid });
         if (res.ok) {
           setSubscribed(true);
           flashMsg("Đã bật thông báo ngoài app!", "success");
@@ -1857,17 +1850,6 @@ function PushNotificationSettings() {
     setDirty(true);
   }
 
-  function toggleClanSelection(id: number) {
-    setSelectedClanIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-    setDirty(true);
-  }
-
-  function selectAllClans() {
-    const allIds = clans.map(c => c.id);
-    setSelectedClanIds(prev => prev.length === clans.length ? [getCurrentClanId()] : allIds);
-    setDirty(true);
-  }
-
   async function saveAllPrefs() {
     if (!subscribed) return;
     setSaving(true);
@@ -1877,7 +1859,6 @@ function PushNotificationSettings() {
       if (sub) {
         await api.pushPreferences(sub.endpoint, {
           notify_chat: notifyChat, notify_event: notifyEvent, notify_war: notifyWar, notify_raid: notifyRaid,
-          clan_ids: selectedClanIds.length ? selectedClanIds : [getCurrentClanId()],
         });
         setDirty(false);
         flashMsg("Đã lưu và áp dụng!", "success");
@@ -1937,27 +1918,107 @@ function PushNotificationSettings() {
         </label>
       </div>
 
-      {clans.length > 1 && (
-        <div className="space-y-2 pt-1">
-          <p className="text-xs text-gray-500">Nhận thông báo cho clan nào:</p>
-          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--py-card-text)" }}>
-            <input type="checkbox" checked={selectedClanIds.length === clans.length} onChange={selectAllClans} className="w-4 h-4 accent-yellow-500" />
-            <span className="font-semibold">Tất cả clan</span>
-          </label>
-          {clans.map(cl => (
-            <label key={cl.id} className="flex items-center gap-2 text-sm pl-1" style={{ color: "var(--py-card-text)" }}>
-              <input type="checkbox" checked={selectedClanIds.includes(cl.id)} onChange={() => toggleClanSelection(cl.id)} className="w-4 h-4 accent-yellow-500" />
-              {cl.clan_name}
-            </label>
-          ))}
-        </div>
-      )}
-
       {subscribed && (
         <button onClick={saveAllPrefs} disabled={saving || !dirty}
           className="btn-gold w-full flex items-center justify-center gap-2 text-sm disabled:opacity-50">
           {saving ? "Đang lưu..." : dirty ? "💾 Lưu & áp dụng ngay" : "✓ Đã lưu"}
         </button>
+      )}
+
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+// Chỉ Admin cấu hình được: thông báo đẩy trên thiết bị của Admin nhận cho
+// (các) clan nào — thành viên/khách thường không thấy mục này nữa, họ luôn
+// nhận thông báo theo đúng clan đang xem (xử lý mặc định ở backend).
+function PushClanScopeSettings() {
+  const [subscribed, setSubscribed] = useState(false);
+  const [clans, setClans] = useState<any[]>([]);
+  const [selectedClanIds, setSelectedClanIds] = useState<number[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  useEffect(() => {
+    (async () => {
+      const clanList = await api.listClans().catch(() => []);
+      setClans(clanList);
+
+      const { pushSupported, getCurrentSubscription } = await import("@/lib/push");
+      if (!pushSupported()) return;
+      const sub = await getCurrentSubscription();
+      setSubscribed(!!sub);
+      if (!sub) return;
+      const saved = await api.getMySubscription(sub.endpoint).catch(() => null);
+      setSelectedClanIds(saved?.clan_ids?.length ? saved.clan_ids : [getCurrentClanId()]);
+    })();
+  }, []);
+
+  async function persist(ids: number[]) {
+    const { getCurrentSubscription } = await import("@/lib/push");
+    const sub = await getCurrentSubscription();
+    if (!sub) return;
+    setSaving(true);
+    try {
+      await api.pushPreferences(sub.endpoint, { clan_ids: ids });
+      flashMsg("Đã lưu!", "success");
+    } catch (e: any) {
+      flashMsg(e.message || "Lỗi lưu");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleClan(id: number) {
+    const next = selectedClanIds.includes(id) ? selectedClanIds.filter(x => x !== id) : [...selectedClanIds, id];
+    setSelectedClanIds(next);
+    persist(next);
+  }
+
+  function selectAll() {
+    const next = selectedClanIds.length === clans.length ? [getCurrentClanId()] : clans.map(c => c.id);
+    setSelectedClanIds(next);
+    persist(next);
+  }
+
+  if (clans.length <= 1) return null;
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center">
+          <Globe size={16} className="text-purple-400" />
+        </div>
+        <h2 className="font-bold text-white">Thông báo đẩy — nhận cho clan nào</h2>
+      </div>
+      <p className="text-sm text-gray-400">
+        Chọn (các) clan bạn (Admin) muốn nhận thông báo đẩy trên thiết bị này. Thành viên/khách thường không chỉnh được mục này —
+        họ luôn nhận thông báo theo đúng clan đang xem.
+      </p>
+
+      {!subscribed ? (
+        <div className="p-2.5 rounded-xl bg-gray-800 text-xs text-gray-500">
+          Bạn chưa bật "Thông báo ngoài app" trên thiết bị này — vào tab <b>Cài đặt thường</b> để bật trước.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--py-card-text)" }}>
+            <input type="checkbox" checked={selectedClanIds.length === clans.length} onChange={selectAll} disabled={saving} className="w-4 h-4 accent-yellow-500" />
+            <span className="font-semibold">Tất cả clan</span>
+          </label>
+          {clans.map(cl => (
+            <label key={cl.id} className="flex items-center gap-2 text-sm pl-1" style={{ color: "var(--py-card-text)" }}>
+              <input type="checkbox" checked={selectedClanIds.includes(cl.id)} onChange={() => toggleClan(cl.id)} disabled={saving} className="w-4 h-4 accent-yellow-500" />
+              {cl.clan_name}
+            </label>
+          ))}
+        </div>
       )}
 
       {msg && <MiniToast msg={msg.text} type={msg.type} />}
@@ -2009,7 +2070,7 @@ export default function SettingsPage() {
                 active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
             </div>
 
-            {tab === "general" && <SettingsPageInner embedded section="general" />}
+            {tab === "general" && (<><SettingsPageInner embedded section="general" /><PushClanScopeSettings /></>)}
             {tab === "events" && (<><SettingsPageInner embedded section="events" /><EventReportsSettings /><ReputationFormulaSettings /><ReputationTierSettings /><ReputationAdjustSettings /></>)}
             {tab === "music" && <SettingsPageInner embedded section="music" />}
             {tab === "members" && (<><SettingsPageInner embedded section="members" /><MemberAccountsSettings /></>)}
