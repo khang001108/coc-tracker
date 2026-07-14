@@ -50,11 +50,11 @@ CONDITION_LABELS = {
 CREATOR_ROLES = {"leader", "coLeader"}
 
 
-async def resolve_creator(clan_id: int, x_admin_token: str | None, x_member_token: str | None) -> dict:
-    """Xác định ai đang thao tác: admin web, hoặc thành viên Đồng thủ lĩnh+.
-    Trả về {is_admin, creator_name, creator_tag}. Raise lỗi nếu không đủ quyền."""
+async def _require_event_manager(clan_id: int, x_admin_token: str | None, x_member_token: str | None) -> str | None:
+    """Xác nhận người gọi là admin web, hoặc thành viên Đồng thủ lĩnh+.
+    Trả về member_tag (None nếu là admin). Raise lỗi nếu không đủ quyền."""
     if verify_admin_token(x_admin_token):
-        return {"is_admin": True, "creator_name": "Admin", "creator_tag": None}
+        return None
 
     member_tag = verify_member_token(x_member_token)
     if not member_tag:
@@ -64,10 +64,22 @@ async def resolve_creator(clan_id: int, x_admin_token: str | None, x_member_toke
     members = await get_clan_members(tag, clan_id=clan_id) if tag else []
     me = next((m for m in members if m["tag"] == member_tag), None)
     if not me or me.get("role") not in CREATOR_ROLES:
-        raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên mới được tạo/xoá sự kiện")
+        raise HTTPException(403, "Chỉ Đồng thủ lĩnh trở lên mới được thao tác")
+    return member_tag
+
+
+async def resolve_creator(clan_id: int, x_admin_token: str | None, x_member_token: str | None) -> dict:
+    """Xác định ai đang thao tác: admin web, hoặc thành viên Đồng thủ lĩnh+.
+    Trả về {is_admin, creator_name, creator_tag}. Raise lỗi nếu không đủ quyền."""
+    member_tag = await _require_event_manager(clan_id, x_admin_token, x_member_token)
+    if member_tag is None:
+        return {"is_admin": True, "creator_name": "Admin", "creator_tag": None}
 
     sb = get_supabase()
     acc = sb.table("member_accounts").select("player_name").eq("player_tag", member_tag).execute()
+    tag = await get_tag_by_clan_id(clan_id)
+    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    me = next((m for m in members if m["tag"] == member_tag), {})
     name = acc.data[0]["player_name"] if acc.data else me.get("name", "Thành viên")
     return {"is_admin": False, "creator_name": name, "creator_tag": member_tag}
 
@@ -166,7 +178,17 @@ async def list_conditions():
 
 
 @router.post("/upload-image")
-async def upload_image(file: UploadFile = File(...), _: bool = Depends(require_admin)):
+async def upload_image(
+    request: Request,
+    file: UploadFile = File(...),
+    x_admin_token: str | None = Header(default=None),
+    x_member_token: str | None = Header(default=None),
+):
+    # Cho phép admin HOẶC thành viên Đồng thủ lĩnh trở lên tải ảnh — họ cũng
+    # là người được phép tạo/sửa sự kiện nên cần tải được ảnh quà cho chính
+    # sự kiện của mình (trước đây khoá cứng admin-only khiến co-leader tạo
+    # được sự kiện nhưng không đính kèm ảnh được).
+    await _require_event_manager(get_clan_id(request), x_admin_token, x_member_token)
     allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     if file.content_type not in allowed_types:
         raise HTTPException(400, "Chỉ chấp nhận ảnh JPEG, PNG, WEBP hoặc GIF")

@@ -332,12 +332,16 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     title: event.title || "", description: event.description || "",
-    reward_name: event.reward_name || "", reward_coins: event.reward_coins || 0,
+    reward_name: event.reward_name || "", reward_image_url: event.reward_image_url || "",
+    reward_shop_link: event.reward_shop_link || "", reward_coins: event.reward_coins || 0,
+    condition_type: event.condition_type || "total_stars", top_n: event.top_n || 3,
     creator_zalo: event.creator_zalo || "", start_time: toDatetimeLocal(event.start_time),
     end_time: toDatetimeLocal(event.end_time),
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
+  const [editConditions, setEditConditions] = useState<any[]>([]);
+  useEffect(() => { if (showEdit) api.getConditions().then(setEditConditions).catch(() => {}); }, [showEdit]);
 
   async function submitReport() {
     if (!reportReason.trim()) return;
@@ -743,11 +747,33 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
             <h3 className="font-bold text-white flex items-center gap-2"><Edit3 size={16} className="text-blue-400"/> Sửa sự kiện</h3>
             <input className="input" placeholder="Tên sự kiện" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})}/>
             <textarea className="input" rows={2} placeholder="Mô tả" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})}/>
-            <input className="input" placeholder="Tên quà" value={editForm.reward_name} onChange={e => setEditForm({...editForm, reward_name: e.target.value})}/>
-            <div>
-              <label className="text-xs text-gray-500">Thưởng Coins</label>
-              <input type="number" min={0} className="input" value={editForm.reward_coins} onChange={e => setEditForm({...editForm, reward_coins: Number(e.target.value) || 0})}/>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Điều kiện xếp hạng</label>
+                <select className="input text-xs" value={editForm.condition_type} onChange={e => setEditForm({...editForm, condition_type: e.target.value})}>
+                  {editConditions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Top bao nhiêu người</label>
+                <input type="number" min={1} max={50} className="input text-xs" value={editForm.top_n}
+                  onChange={e => setEditForm({...editForm, top_n: Number(e.target.value)})}/>
+              </div>
             </div>
+
+            <div className="pt-1 border-t border-gray-800 space-y-2">
+              <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5"><Gift size={13}/> Phần quà</p>
+              <input className="input" placeholder="Tên quà" value={editForm.reward_name} onChange={e => setEditForm({...editForm, reward_name: e.target.value})}/>
+              <ImageUploadField value={editForm.reward_image_url} onChange={url => setEditForm({...editForm, reward_image_url: url})}/>
+              <input className="input" placeholder="Link quà Shopee / Lazada (tuỳ chọn)"
+                value={editForm.reward_shop_link} onChange={e => setEditForm({...editForm, reward_shop_link: e.target.value})}/>
+              <div>
+                <label className="text-xs text-gray-500">Thưởng Coins</label>
+                <input type="number" min={0} className="input" value={editForm.reward_coins} onChange={e => setEditForm({...editForm, reward_coins: Number(e.target.value) || 0})}/>
+              </div>
+            </div>
+
             <input className="input" placeholder="Số Zalo/nhóm liên hệ" value={editForm.creator_zalo} onChange={e => setEditForm({...editForm, creator_zalo: e.target.value})}/>
             <div className="grid grid-cols-2 gap-2">
               <input type="datetime-local" className="input text-xs" value={editForm.start_time} onChange={e => setEditForm({...editForm, start_time: e.target.value})}/>

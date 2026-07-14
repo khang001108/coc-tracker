@@ -263,11 +263,15 @@ export const api = {
   },
   uploadEventImage: async (file: File) => {
     const token = getAdminToken();
+    const member = getMemberAuth();
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`${API}/api/events/upload-image`, {
       method: "POST",
-      headers: token ? { "X-Admin-Token": token } : {},
+      headers: {
+        ...(token ? { "X-Admin-Token": token } : {}),
+        ...(member ? { "X-Member-Token": member.token } : {}),
+      },
       body: fd,
     });
     if (!res.ok) {
