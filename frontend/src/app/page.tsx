@@ -9,7 +9,7 @@ import { useEmberColor } from "@/lib/useEmberColor";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
-import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check, RefreshCw, ExternalLink } from "lucide-react";
+import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check, RefreshCw } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
@@ -59,7 +59,6 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [tagCopied, setTagCopied] = useState(false);
   const [overviewCfg, setOverviewCfg] = useState<Record<string, string>>({});
-  const [shareLink, setShareLink] = useState("");
   const emberColor = useEmberColor();
   const warBannerSrc = usePageBanner("overview_war", "/art/barbarian-fireball.jpg");
   const cwlBannerSrc = usePageBanner("overview_cwl", "/art/dragon-fire-logo.jpg");
@@ -108,7 +107,6 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
     api.getPublicSettings().then(setOverviewCfg).catch(() => {});
-    api.getCurrentClanLinks().then((l: any) => setShareLink(l?.share_link || "")).catch(() => {});
     // Auto-refresh mỗi 5 phút — CHỈ khi tab đang thật sự hiển thị, để không
     // tốn tải/pin khi tab bị ẩn (chuyển app khác, khoá màn hình...). Khi
     // quay lại tab, tải mới ngay lập tức thay vì đợi tới mốc 5 phút tiếp theo.
@@ -165,17 +163,7 @@ export default function DashboardPage() {
         <ClanSwitcher>
           <div className="flex items-center gap-4">
             {clan?.badgeUrls?.medium && (
-              <div className="relative shrink-0">
-                <img src={clan.badgeUrls.medium} alt="badge" className="w-14 h-14 rounded-xl" />
-                {shareLink && (
-                  <a href={shareLink} target="_blank" rel="noreferrer" title="Xem hội"
-                    onClick={e => e.stopPropagation()}
-                    className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-transform active:scale-90"
-                    style={{ background: "#1A0F2E", border: "1px solid rgba(244,161,48,0.5)" }}>
-                    <ExternalLink size={11} className="text-yellow-400" />
-                  </a>
-                )}
-              </div>
+              <img src={clan.badgeUrls.medium} alt="badge" className="w-14 h-14 rounded-xl" />
             )}
             <div>
               <h1 className="page-title flex items-center gap-2 flex-wrap">

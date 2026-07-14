@@ -63,7 +63,7 @@ async def list_clans():
     GET /{clan_id})."""
     sb = get_supabase()
     try:
-        res = sb.table("clans").select("id, clan_tag, clan_name, created_at, public_editable").order("id").execute()
+        res = sb.table("clans").select("id, clan_tag, clan_name, created_at, public_editable, share_link").order("id").execute()
     except Exception:
         res = sb.table("clans").select("id, clan_tag, clan_name, created_at").order("id").execute()
     clans = res.data or []
