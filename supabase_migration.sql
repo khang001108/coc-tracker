@@ -1141,3 +1141,16 @@ ALTER TABLE clan_rule_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "service_all" ON clan_rule_history;
 CREATE POLICY "service_all" ON clan_rule_history FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rule_history TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 38 (Lịch sử Pháp Điển: hệ thống TỰ ghi mỗi khi Admin sửa
+-- nội quy/điều kiện, không chỉ khi Admin tự tay xác nhận thăng/hạ/loại)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clan_rule_history ALTER COLUMN player_tag DROP NOT NULL;
+ALTER TABLE clan_rule_history ALTER COLUMN player_name DROP NOT NULL;
+ALTER TABLE clan_rule_history ADD COLUMN IF NOT EXISTS detail TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE clan_rule_history DROP CONSTRAINT IF EXISTS clan_rule_history_action_check;
+ALTER TABLE clan_rule_history ADD CONSTRAINT clan_rule_history_action_check
+  CHECK (action IN ('promote_elder', 'promote_co_leader', 'demote_co_leader', 'demote_elder', 'expel',
+                     'rule_updated', 'condition_added', 'condition_updated', 'condition_removed'));

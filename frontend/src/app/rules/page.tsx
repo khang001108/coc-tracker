@@ -7,14 +7,15 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { roleLabel, roleClass, thColor } from "@/lib/utils";
 import {
-  RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition, HISTORY_ACTION_LABELS,
-  type RuleTarget,
+  RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition,
+  HISTORY_ACTION_LABELS, isSystemHistoryAction, type RuleTarget,
 } from "@/lib/ruleConstants";
-import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, ChevronRight, Trash2, Loader2 } from "lucide-react";
+import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, ChevronRight, ChevronLeft, Trash2, Loader2, ScrollText } from "lucide-react";
 
 type ListKey = RuleTarget;
 type EvalResult = Record<ListKey, any[]> & { all_members: any[] };
-type TopTab = "lookup" | "merit" | "sanction" | "expulsion" | "history";
+type TopTab = "info" | "review" | "history";
+type ReviewTab = "merit" | "sanction" | "expulsion";
 
 const LIST_META: Record<ListKey, { label: string; icon: any; color: string; empty: string; historyAction: string }> = {
   elder:             { label: "Đủ điều kiện lên Huynh trưởng",           icon: Star,          color: "text-blue-400",   empty: "Chưa có ai đủ điều kiện.",     historyAction: "promote_elder" },
@@ -24,9 +25,8 @@ const LIST_META: Record<ListKey, { label: string; icon: any; color: string; empt
   violation:         { label: "Có nguy cơ bị loại khỏi clan",            icon: AlertTriangle, color: "text-red-400",    empty: "Không có ai vi phạm nội quy.", historyAction: "expel" },
 };
 
-// 3 pill-tab gộp — mỗi tab gồm 1-2 nhóm điều kiện con để bố cục gọn hơn
-// (trước đây mỗi nhóm 1 tab riêng, quá nhiều tab).
-const TOP_TAB_META: Record<Exclude<TopTab, "lookup" | "history">, { label: string; keys: ListKey[] }> = {
+// 3 pill-tab con trong "Xét duyệt" — mỗi tab gồm 1-2 nhóm điều kiện.
+const REVIEW_TAB_META: Record<ReviewTab, { label: string; keys: ListKey[] }> = {
   merit:     { label: "🏅 Công trạng", keys: ["elder", "co_leader"] },
   sanction:  { label: "⚖️ Chế tài",    keys: ["demote_co_leader", "demote_elder"] },
   expulsion: { label: "🚫 Khai trừ",   keys: ["violation"] },
@@ -41,6 +41,129 @@ function statLine(m: any): string {
     `Cúp ${m.cup}`,
   ];
   return parts.join(" · ");
+}
+
+/** Nội dung đối chiếu điều kiện của 1 thành viên — dùng chung giữa popup Tra
+ * cứu (chọn từ danh sách) và có thể tái dùng nếu cần nơi khác sau này. */
+function MemberConditionCheck({ member, conditions }: { member: any; conditions: any[] }) {
+  const byTarget: Record<string, any[]> = {};
+  conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
+  const targets = Object.keys(RULE_TARGET_LABELS) as RuleTarget[];
+
+  return (
+    <div className="space-y-3">
+      {targets.every(t => !byTarget[t]?.length) && (
+        <p className="text-sm text-gray-500">Chưa cấu hình điều kiện nào để đối chiếu.</p>
+      )}
+      {targets.map(t => {
+        const list = byTarget[t];
+        if (!list?.length) return null;
+        const results = list.map(c => ({ cond: c, pass: checkCondition(c, member) }));
+        const overall = RULE_TARGET_IS_AND[t] ? results.every(r => r.pass) : results.some(r => r.pass);
+        return (
+          <div key={t} className="space-y-1.5 pt-2 border-t border-gray-800">
+            <p className={`text-xs font-semibold flex items-center gap-1.5 ${overall ? "text-green-400" : "text-gray-500"}`}>
+              {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
+            </p>
+            <ul className="space-y-1 pl-1">
+              {results.map(({ cond, pass }) => (
+                <li key={cond.id} className="text-sm flex items-center gap-2">
+                  {pass ? <Check size={13} className="text-green-400 shrink-0" /> : <X size={13} className="text-red-400 shrink-0" />}
+                  <span style={{ color: "var(--py-card-text)" }}>
+                    {conditionSentence(cond)}
+                    <span className="text-gray-500"> — hiện tại: {member[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Popup Tra cứu — danh sách thành viên (kiểu giống trang Thành viên) + tìm
+ * kiếm; bấm 1 người chuyển sang xem đối chiếu điều kiện của người đó, có nút
+ * quay lại danh sách. */
+function LookupModal({ members, conditions, onClose }: { members: any[]; conditions: any[]; onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<any>(null);
+
+  const q = query.trim().toLowerCase();
+  const filtered = (q ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q)) : members)
+    .slice().sort((a, b) => (b.cup || 0) - (a.cup || 0));
+
+  return (
+    <Portal>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white flex items-center gap-2">
+                {selected && (
+                  <button onClick={() => setSelected(null)} className="p-1 -ml-1 rounded-lg hover:bg-gray-800 text-gray-400">
+                    <ChevronLeft size={18} />
+                  </button>
+                )}
+                <Search size={16} className="text-yellow-400" /> Tra cứu
+              </h3>
+              <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={18} /></button>
+            </div>
+
+            {!selected ? (
+              <>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input className="input !pl-9 text-sm" placeholder="Tìm theo tên hoặc tag..."
+                    value={query} onChange={e => setQuery(e.target.value)} autoFocus />
+                </div>
+                <div className="divide-y divide-gray-800 max-h-[26rem] overflow-y-auto rounded-xl"
+                  style={{ border: "1px solid var(--py-card-border)" }}>
+                  {filtered.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-6">Không tìm thấy thành viên nào.</p>
+                  ) : filtered.map((m, i) => (
+                    <button key={m.tag} onClick={() => setSelected(m)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800/50 transition-colors text-left">
+                      <span className="text-gray-600 text-xs w-5 shrink-0 text-right">{i + 1}</span>
+                      <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
+                        {m.townHallLevel ?? "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                        <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
+                      </div>
+                      <div className="text-right shrink-0 space-y-0.5">
+                        <p className="text-sm font-bold text-yellow-400">🏆 {m.cup}</p>
+                        <p className="text-xs text-gray-500">Donate {m.donate}</p>
+                      </div>
+                      <ChevronRight size={16} className="text-gray-600 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="th-badge" style={{ color: thColor(selected.townHallLevel), background: thColor(selected.townHallLevel) + "22", borderColor: thColor(selected.townHallLevel) + "44" }}>
+                    {selected.townHallLevel ?? "?"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-white truncate">{selected.name}</p>
+                    <p className={`text-xs ${roleClass(selected.role)}`}>{roleLabel(selected.role)} · #{selected.tag.replace("#", "")}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">{statLine(selected)}</p>
+                <div className="max-h-[24rem] overflow-y-auto pr-1">
+                  <MemberConditionCheck member={selected} conditions={conditions} />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
 }
 
 function MemberActionRow({ m, isAdmin, historyAction, onLogged }: { m: any; isAdmin: boolean; historyAction: string; onLogged: () => void }) {
@@ -75,8 +198,6 @@ function MemberActionRow({ m, isAdmin, historyAction, onLogged }: { m: any; isAd
   );
 }
 
-/** Danh sách thành viên cho 1 nhóm điều kiện (elder/co_leader/...) — dùng lại
- * trong cả tab "Công trạng"/"Chế tài"/"Khai trừ" (mỗi tab có 1-2 nhóm con). */
 function ListGroup({ listKey, members, isAdmin, onLogged }: { listKey: ListKey; members: any[]; isAdmin: boolean; onLogged: () => void }) {
   const meta = LIST_META[listKey];
   const Icon = meta.icon;
@@ -96,7 +217,7 @@ function ListGroup({ listKey, members, isAdmin, onLogged }: { listKey: ListKey; 
   );
 }
 
-/** Điều kiện chi tiết — nút mở popup nổi thay vì chiếm chỗ ngay trên trang. */
+/** Điều kiện chi tiết — popup nổi (bấm mở mới hiện). */
 function RuleArticlesButton({ conditions }: { conditions: any[] }) {
   const [open, setOpen] = useState(false);
   const byTarget: Record<string, any[]> = {};
@@ -158,6 +279,7 @@ function RuleArticlesButton({ conditions }: { conditions: any[] }) {
 
 function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdmin: boolean; onChanged: () => void }) {
   const confirm = useConfirm();
+  const [query, setQuery] = useState("");
 
   async function del(id: number) {
     if (!(await confirm({ message: "Xoá dòng lịch sử này?", danger: true }))) return;
@@ -165,138 +287,57 @@ function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdm
     onChanged();
   }
 
-  if (history.length === 0) {
-    return <p className="text-sm text-gray-500 text-center py-6">Chưa có lịch sử xử lý nào.</p>;
-  }
-
-  return (
-    <div className="space-y-1.5">
-      {history.map(h => {
-        const meta = HISTORY_ACTION_LABELS[h.action] || { label: h.action, color: "text-gray-400" };
-        return (
-          <div key={h.id} className="flex items-center justify-between gap-2 text-xs p-2.5 rounded-lg"
-            style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
-            <div className="min-w-0">
-              <p className="font-semibold truncate" style={{ color: "var(--py-card-text)" }}>
-                {h.player_name} <span className="text-gray-500 font-normal">#{(h.player_tag || "").replace("#", "")}</span>
-              </p>
-              <p className={`mt-0.5 font-medium ${meta.color}`}>
-                {meta.label} · {new Date(h.created_at).toLocaleDateString("vi-VN")}
-                {h.note && <span className="text-gray-500 font-normal"> — {h.note}</span>}
-              </p>
-            </div>
-            {isAdmin && (
-              <button onClick={() => del(h.id)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 size={13} /></button>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Popup nổi khi bấm 1 thành viên trong Tra cứu — đối chiếu ngay với TẤT CẢ
- * điều kiện đã cấu hình (kể cả nhóm không áp dụng vai trò hiện tại của họ,
- * để tiện xem trước cần đạt gì nếu muốn lên/giữ chức). */
-function MemberRuleModal({ member, conditions, onClose }: { member: any; conditions: any[]; onClose: () => void }) {
-  const byTarget: Record<string, any[]> = {};
-  conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
-  const targets = Object.keys(RULE_TARGET_LABELS) as RuleTarget[];
-
-  return (
-    <Portal>
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
-          <div className="p-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="th-badge" style={{ color: thColor(member.townHallLevel), background: thColor(member.townHallLevel) + "22", borderColor: thColor(member.townHallLevel) + "44" }}>
-                {member.townHallLevel ?? "?"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-white truncate">{member.name}</h3>
-                <p className={`text-xs ${roleClass(member.role)}`}>{roleLabel(member.role)} · #{(member.tag || "").replace("#", "")}</p>
-              </div>
-              <button onClick={onClose} className="text-gray-500 hover:text-white shrink-0"><X size={18} /></button>
-            </div>
-            <p className="text-xs text-gray-500">{statLine(member)}</p>
-
-            <div className="space-y-3 max-h-[55vh] overflow-y-auto pt-1">
-              {targets.every(t => !byTarget[t]?.length) && (
-                <p className="text-sm text-gray-500">Chưa cấu hình điều kiện nào để đối chiếu.</p>
-              )}
-              {targets.map(t => {
-                const list = byTarget[t];
-                if (!list?.length) return null;
-                const results = list.map(c => ({ cond: c, pass: checkCondition(c, member) }));
-                const overall = RULE_TARGET_IS_AND[t] ? results.every(r => r.pass) : results.some(r => r.pass);
-                return (
-                  <div key={t} className="space-y-1.5 pt-2 border-t border-gray-800">
-                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${overall ? "text-green-400" : "text-gray-500"}`}>
-                      {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
-                    </p>
-                    <ul className="space-y-1 pl-1">
-                      {results.map(({ cond, pass }) => (
-                        <li key={cond.id} className="text-sm flex items-center gap-2">
-                          {pass ? <Check size={13} className="text-green-400 shrink-0" /> : <X size={13} className="text-red-400 shrink-0" />}
-                          <span style={{ color: "var(--py-card-text)" }}>
-                            {conditionSentence(cond)}
-                            <span className="text-gray-500"> — hiện tại: {member[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Portal>
-  );
-}
-
-/** Tra cứu — danh sách thành viên kiểu giống trang Thành viên (Danh sách):
- * xếp theo Cúp, có ô tìm kiếm lọc ngay trong danh sách. Bấm 1 người mở popup
- * nổi đối chiếu điều kiện. */
-function LookupSection({ members, onSelect }: { members: any[]; onSelect: (m: any) => void }) {
-  const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-  const filtered = (q ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q)) : members)
-    .slice().sort((a, b) => (b.cup || 0) - (a.cup || 0));
+  const filtered = q
+    ? history.filter(h => {
+        const meta = HISTORY_ACTION_LABELS[h.action] || { label: h.action };
+        return (h.player_name || "").toLowerCase().includes(q)
+          || (h.player_tag || "").toLowerCase().includes(q)
+          || (h.detail || "").toLowerCase().includes(q)
+          || meta.label.toLowerCase().includes(q);
+      })
+    : history;
 
   return (
     <div className="space-y-3">
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-        <input className="input !pl-9 text-sm" placeholder="Tìm theo tên hoặc tag..."
+        <input className="input !pl-9 text-sm" placeholder="Tra cứu lịch sử theo tên, tag hoặc nội dung..."
           value={query} onChange={e => setQuery(e.target.value)} />
       </div>
 
-      <div className="card !p-0 overflow-hidden">
-        <div className="divide-y divide-gray-800 max-h-[28rem] overflow-y-auto">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-6">Không tìm thấy thành viên nào.</p>
-          ) : filtered.map((m, i) => (
-            <button key={m.tag} onClick={() => onSelect(m)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800/50 transition-colors text-left">
-              <span className="text-gray-600 text-xs w-5 shrink-0 text-right">{i + 1}</span>
-              <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
-                {m.townHallLevel ?? "?"}
+      {filtered.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-6">
+          {history.length === 0 ? "Chưa có lịch sử nào." : "Không tìm thấy dòng lịch sử phù hợp."}
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {filtered.map(h => {
+            const meta = HISTORY_ACTION_LABELS[h.action] || { label: h.action, color: "text-gray-400" };
+            const isSystem = isSystemHistoryAction(h.action);
+            return (
+              <div key={h.id} className="flex items-center justify-between gap-2 text-xs p-2.5 rounded-lg"
+                style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
+                <div className="min-w-0">
+                  {!isSystem && (
+                    <p className="font-semibold truncate" style={{ color: "var(--py-card-text)" }}>
+                      {h.player_name} <span className="text-gray-500 font-normal">#{(h.player_tag || "").replace("#", "")}</span>
+                    </p>
+                  )}
+                  <p className={`mt-0.5 font-medium ${meta.color}`}>
+                    {meta.label} · {new Date(h.created_at).toLocaleDateString("vi-VN")}
+                    {h.detail && <span className="text-gray-500 font-normal"> — {h.detail}</span>}
+                    {h.note && <span className="text-gray-500 font-normal"> — {h.note}</span>}
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button onClick={() => del(h.id)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 size={13} /></button>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{m.name}</p>
-                <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
-              </div>
-              <div className="text-right shrink-0 space-y-0.5">
-                <p className="text-sm font-bold text-yellow-400">🏆 {m.cup}</p>
-                <p className="text-xs text-gray-500">Donate {m.donate}</p>
-              </div>
-              <ChevronRight size={16} className="text-gray-600 shrink-0" />
-            </button>
-          ))}
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -307,11 +348,12 @@ export default function RulesPage() {
   const [rulesText, setRulesText] = useState("");
   const [conditions, setConditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TopTab>("lookup");
+  const [topTab, setTopTab] = useState<TopTab>("info");
+  const [reviewTab, setReviewTab] = useState<ReviewTab>("merit");
   const [evaluation, setEvaluation] = useState<EvalResult | null>(null);
   const [loadingEval, setLoadingEval] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
-  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [lookupOpen, setLookupOpen] = useState(false);
 
   useEffect(() => {
     api.getClan().then((c: any) => setClanDescription(c?.description || "")).catch(() => {});
@@ -340,6 +382,8 @@ export default function RulesPage() {
   }
   useEffect(() => { loadHistory(); }, []);
 
+  const hasAnything = rulesText || conditions.length > 0;
+
   return (
     <div className="space-y-6 max-w-3xl animate-fade-up">
       <div>
@@ -347,79 +391,87 @@ export default function RulesPage() {
         <p className="page-subtitle">Nội quy clan — luật chơi, điều kiện thăng/hạ cấp và loại khỏi clan</p>
       </div>
 
-      {clanDescription && (
-        <OrnateFrame>
-          <div className="relative rounded-2xl overflow-hidden"
-            style={{ padding: "2px", background: "linear-gradient(135deg, #F4A130 0%, #B87320 40%, #FFD700 60%, #B87320 80%, #F4A130 100%)" }}>
-            <div className="relative rounded-[14px] px-5 py-3.5"
-              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
-              <div className="absolute inset-0 rounded-[14px] pointer-events-none"
-                style={{ backgroundImage: "repeating-linear-gradient(135deg,rgba(244,161,48,0.04) 0,rgba(244,161,48,0.04) 1px,transparent 0,transparent 50%)", backgroundSize: "10px 10px" }} />
-              <span className="absolute left-2 top-1 text-2xl leading-none font-serif opacity-20 select-none" style={{ color: "#F4A130" }}>"</span>
-              <span className="absolute right-2 bottom-1 text-2xl leading-none font-serif opacity-20 select-none" style={{ color: "#F4A130" }}>"</span>
-              <p className="relative text-sm font-medium italic leading-relaxed px-3" style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clanDescription}"</p>
-            </div>
-          </div>
-        </OrnateFrame>
-      )}
-
       {loading ? (
         <div className="card flex justify-center py-8"><Loader2 size={20} className="animate-spin text-yellow-400" /></div>
-      ) : !rulesText && conditions.length === 0 ? (
+      ) : !hasAnything ? (
         <div className="card text-center py-10">
           <Scale size={32} className="mx-auto mb-2 text-gray-700" />
           <p className="text-gray-400">Clan chưa cấu hình nội quy.</p>
           {isAdmin && <p className="text-sm text-gray-600 mt-1">Vào Cài đặt → Quản trị viên → tab Nội quy để viết.</p>}
         </div>
       ) : (
-        <>
-          {rulesText && (
-            <div className="card space-y-2">
-              <h2 className="font-bold text-white flex items-center gap-2">📜 Nội quy</h2>
-              <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: "var(--py-card-text)" }}>{rulesText}</p>
+        <div className="space-y-3">
+          <div className="overflow-x-auto -mx-1 px-1 pb-1">
+            <SlidingTabs
+              tabs={[
+                { id: "info", label: "📜 Nội quy" },
+                { id: "review", label: "⚖️ Xét duyệt" },
+                { id: "history", label: "📋 Lịch sử" },
+              ]}
+              active={topTab} onChange={(id) => setTopTab(id as TopTab)} className="w-max" />
+          </div>
+
+          {topTab === "info" && (
+            <div className="space-y-3">
+              {clanDescription && (
+                <OrnateFrame>
+                  <div className="relative rounded-2xl overflow-hidden"
+                    style={{ padding: "2px", background: "linear-gradient(135deg, #F4A130 0%, #B87320 40%, #FFD700 60%, #B87320 80%, #F4A130 100%)" }}>
+                    <div className="relative rounded-[14px] px-5 py-3.5"
+                      style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
+                      <div className="absolute inset-0 rounded-[14px] pointer-events-none"
+                        style={{ backgroundImage: "repeating-linear-gradient(135deg,rgba(244,161,48,0.04) 0,rgba(244,161,48,0.04) 1px,transparent 0,transparent 50%)", backgroundSize: "10px 10px" }} />
+                      <span className="absolute left-2 top-1 text-2xl leading-none font-serif opacity-20 select-none" style={{ color: "#F4A130" }}>"</span>
+                      <span className="absolute right-2 bottom-1 text-2xl leading-none font-serif opacity-20 select-none" style={{ color: "#F4A130" }}>"</span>
+                      <p className="relative text-sm font-medium italic leading-relaxed px-3" style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clanDescription}"</p>
+                    </div>
+                  </div>
+                </OrnateFrame>
+              )}
+              {rulesText && (
+                <div className="card space-y-2">
+                  <h2 className="font-bold text-white flex items-center gap-2"><ScrollText size={16} className="text-yellow-400" /> Nội quy</h2>
+                  <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: "var(--py-card-text)" }}>{rulesText}</p>
+                </div>
+              )}
+              <RuleArticlesButton conditions={conditions} />
             </div>
           )}
 
-          <RuleArticlesButton conditions={conditions} />
+          {topTab === "review" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="overflow-x-auto -mx-1 px-1">
+                  <SlidingTabs
+                    tabs={(Object.keys(REVIEW_TAB_META) as ReviewTab[]).map(k => ({ id: k, label: REVIEW_TAB_META[k].label }))}
+                    active={reviewTab} onChange={(id) => setReviewTab(id as ReviewTab)} className="w-max" />
+                </div>
+                <button onClick={() => setLookupOpen(true)}
+                  className="btn-secondary text-xs flex items-center gap-1.5 shrink-0">
+                  <Search size={13} /> Tra cứu
+                </button>
+              </div>
 
-          <div className="space-y-3">
-            <div className="overflow-x-auto -mx-1 px-1 pb-1">
-              <SlidingTabs
-                tabs={[
-                  { id: "lookup", label: "🔍 Tra cứu" },
-                  { id: "merit", label: TOP_TAB_META.merit.label },
-                  { id: "sanction", label: TOP_TAB_META.sanction.label },
-                  { id: "expulsion", label: TOP_TAB_META.expulsion.label },
-                  { id: "history", label: "Lịch sử" },
-                ]}
-                active={tab} onChange={(id) => setTab(id as TopTab)} className="w-max" />
-            </div>
-
-            {tab === "lookup" ? (
-              loadingEval ? (
-                <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>
-              ) : (
-                <LookupSection members={evaluation?.all_members || []} onSelect={setSelectedMember} />
-              )
-            ) : tab === "history" ? (
-              <HistorySection history={history} isAdmin={isAdmin} onChanged={loadHistory} />
-            ) : (
-              loadingEval ? (
+              {loadingEval ? (
                 <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>
               ) : (
                 <div className="space-y-4">
-                  {TOP_TAB_META[tab].keys.map(k => (
+                  {REVIEW_TAB_META[reviewTab].keys.map(k => (
                     <ListGroup key={k} listKey={k} members={evaluation?.[k] || []} isAdmin={isAdmin} onLogged={loadHistory} />
                   ))}
                 </div>
-              )
-            )}
-          </div>
-        </>
+              )}
+            </div>
+          )}
+
+          {topTab === "history" && (
+            <HistorySection history={history} isAdmin={isAdmin} onChanged={loadHistory} />
+          )}
+        </div>
       )}
 
-      {selectedMember && (
-        <MemberRuleModal member={selectedMember} conditions={conditions} onClose={() => setSelectedMember(null)} />
+      {lookupOpen && (
+        <LookupModal members={evaluation?.all_members || []} conditions={conditions} onClose={() => setLookupOpen(false)} />
       )}
     </div>
   );

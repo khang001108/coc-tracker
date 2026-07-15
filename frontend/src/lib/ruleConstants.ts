@@ -41,9 +41,19 @@ export function checkCondition(c: { metric: string; op: string; value: number },
 }
 
 export const HISTORY_ACTION_LABELS: Record<string, { label: string; color: string }> = {
-  promote_elder:     { label: "Lên Huynh trưởng",  color: "text-blue-400" },
-  promote_co_leader: { label: "Lên Đồng thủ lĩnh", color: "text-purple-400" },
-  demote_co_leader:  { label: "Hạ về Huynh trưởng", color: "text-orange-400" },
-  demote_elder:      { label: "Hạ về Thành viên",   color: "text-orange-400" },
-  expel:             { label: "Loại khỏi clan",     color: "text-red-400" },
+  promote_elder:      { label: "Lên Huynh trưởng",   color: "text-blue-400" },
+  promote_co_leader:  { label: "Lên Đồng thủ lĩnh",  color: "text-purple-400" },
+  demote_co_leader:   { label: "Hạ về Huynh trưởng", color: "text-orange-400" },
+  demote_elder:       { label: "Hạ về Thành viên",   color: "text-orange-400" },
+  expel:              { label: "Loại khỏi clan",     color: "text-red-400" },
+  rule_updated:       { label: "Cập nhật nội quy",    color: "text-gray-400" },
+  condition_added:    { label: "Thêm điều kiện",      color: "text-green-400" },
+  condition_updated:  { label: "Sửa điều kiện",       color: "text-yellow-400" },
+  condition_removed:  { label: "Xoá điều kiện",       color: "text-gray-500" },
 };
+
+/** true nếu là log hệ thống tự ghi (sửa nội quy/điều kiện) — không gắn với 1
+ * thành viên cụ thể, khác với promote/demote/expel (Admin tự tay xác nhận). */
+export function isSystemHistoryAction(action: string): boolean {
+  return action === "rule_updated" || action.startsWith("condition_");
+}

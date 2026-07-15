@@ -38,7 +38,40 @@ TARGETS = {"elder", "co_leader", "demote_co_leader", "demote_elder", "violation"
 # lại chỉ cần dính 1 (OR) — hạ cấp/vi phạm, không giữ được 1 tiêu chuẩn nào
 # đó là đủ để bị gắn cờ.
 OPS = {"gte", "lte"}
+# 5 action đầu = Admin tự tay xác nhận đã xử lý 1 người ngoài đời thật. 3 action
+# sau = hệ thống TỰ ghi khi Admin sửa nội quy/điều kiện (không cần xác nhận).
 ACTIONS = {"promote_elder", "promote_co_leader", "demote_co_leader", "demote_elder", "expel"}
+SYSTEM_ACTIONS = {"rule_updated", "condition_added", "condition_updated", "condition_removed"}
+
+_METRIC_LABELS_VI = {
+    "donate": "Donate (mùa hiện tại)",
+    "war_attendance": "Tỷ lệ tham chiến War (%)",
+    "reputation": "Danh vọng (tổng)",
+    "capital": "Capital Gold (mùa hiện tại)",
+    "cup": "Cúp (hiện tại)",
+}
+_TARGET_LABELS_VI = {
+    "elder": "Lên Huynh trưởng",
+    "co_leader": "Lên Đồng thủ lĩnh",
+    "demote_co_leader": "Hạ Đồng thủ lĩnh → Huynh trưởng",
+    "demote_elder": "Hạ Huynh trưởng → Thành viên",
+    "violation": "Vi phạm / có nguy cơ bị loại",
+}
+
+
+def _condition_sentence(c: dict) -> str:
+    label = _METRIC_LABELS_VI.get(c["metric"], c["metric"])
+    op = "≥" if c["op"] == "gte" else "≤"
+    return f"{label} {op} {c['value']}"
+
+
+def _log_system_history(sb, clan_id: int, action: str, detail: str):
+    try:
+        sb.table("clan_rule_history").insert({
+            "clan_id": clan_id, "action": action, "detail": detail,
+        }).execute()
+    except Exception:
+        pass  # chưa chạy migration PART 38 (thiếu cột detail/player_tag nullable) — bỏ qua, không chặn thao tác chính
 
 # Vai trò đã ở mức đó hoặc cao hơn — không cần hiện lại trong danh sách "đủ
 # điều kiện lên X" (đã lên rồi thì thôi), và Leader không nằm trong diện xét
@@ -73,6 +106,7 @@ async def update_rules(request: Request, _: bool = Depends(require_admin)):
     }
     sb = get_supabase()
     sb.table("clan_rules").upsert(row, on_conflict="clan_id").execute()
+    _log_system_history(sb, clan_id, "rule_updated", "Cập nhật nội quy / số tuần tính War")
     return row
 
 
@@ -103,7 +137,10 @@ async def add_condition(request: Request, _: bool = Depends(require_admin)):
         "value": value, "note": (body.get("note") or "").strip(), "position": next_pos,
     }
     res = sb.table("clan_rule_conditions").insert(row).execute()
-    return res.data[0]
+    created = res.data[0]
+    _log_system_history(sb, clan_id, "condition_added",
+                         f"{_TARGET_LABELS_VI.get(target, target)}: {_condition_sentence(created)}")
+    return created
 
 
 @router.put("/conditions/{condition_id}")
@@ -122,14 +159,22 @@ async def update_condition(condition_id: int, request: Request, _: bool = Depend
     res = sb.table("clan_rule_conditions").update(update).eq("id", condition_id).eq("clan_id", clan_id).execute()
     if not res.data:
         raise HTTPException(404, "Không tìm thấy điều kiện")
-    return res.data[0]
+    updated = res.data[0]
+    _log_system_history(sb, clan_id, "condition_updated",
+                         f"{_TARGET_LABELS_VI.get(updated['target'], updated['target'])}: {_condition_sentence(updated)}")
+    return updated
 
 
 @router.delete("/conditions/{condition_id}")
 async def delete_condition(condition_id: int, request: Request, _: bool = Depends(require_admin)):
     clan_id = get_clan_id(request)
     sb = get_supabase()
+    existing = sb.table("clan_rule_conditions").select("*").eq("id", condition_id).eq("clan_id", clan_id).execute()
     sb.table("clan_rule_conditions").delete().eq("id", condition_id).eq("clan_id", clan_id).execute()
+    if existing.data:
+        c = existing.data[0]
+        _log_system_history(sb, clan_id, "condition_removed",
+                             f"{_TARGET_LABELS_VI.get(c['target'], c['target'])}: {_condition_sentence(c)}")
     return {"ok": True}
 
 
