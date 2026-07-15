@@ -1081,3 +1081,38 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.trophy_season_log TO service_role
 -- cạnh cờ clan ở Tổng quan sẽ mở link này, VD Facebook page/group của hội)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE clans ADD COLUMN IF NOT EXISTS share_link TEXT DEFAULT '';
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 36 (Nội quy clan: text tự do + điều kiện lên Huynh
+-- trưởng/Đồng thủ lĩnh/diện bị loại, đối chiếu với donate/war/danh vọng/
+-- capital/cúp thật của từng thành viên)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS clan_rules (
+  clan_id     INTEGER PRIMARY KEY REFERENCES clans(id) ON DELETE CASCADE,
+  rules_text  TEXT NOT NULL DEFAULT '',
+  war_weeks   INTEGER NOT NULL DEFAULT 4,
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS clan_rule_conditions (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+  target      TEXT NOT NULL CHECK (target IN ('elder', 'co_leader', 'violation')),
+  metric      TEXT NOT NULL CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup')),
+  op          TEXT NOT NULL CHECK (op IN ('gte', 'lte')),
+  value       NUMERIC NOT NULL,
+  note        TEXT NOT NULL DEFAULT '',
+  position    INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_clan_rule_conditions_clan ON clan_rule_conditions(clan_id, target);
+
+ALTER TABLE clan_rules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON clan_rules;
+CREATE POLICY "service_all" ON clan_rules FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rules TO service_role;
+
+ALTER TABLE clan_rule_conditions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON clan_rule_conditions;
+CREATE POLICY "service_all" ON clan_rule_conditions FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rule_conditions TO service_role;

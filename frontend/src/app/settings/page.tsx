@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check } from "lucide-react";
+import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check, ScrollText, Crown, Star, AlertTriangle } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { MarqueeText } from "@/components/ui/MarqueeText";
@@ -10,6 +10,7 @@ import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons";
 import { getCurrentClanId, getCurrentClanInfo } from "@/lib/clanContext";
+import { getRulesPopupEnabled, setRulesPopupEnabled } from "@/lib/clanRulesPref";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -1408,6 +1409,147 @@ function ShopPricingSettings() {
 }
 
 
+// ── Nội quy clan ────────────────────────────────────────────────────────────
+
+const RULE_METRIC_LABELS: Record<string, string> = {
+  donate: "Donate (mùa hiện tại)",
+  war_attendance: "Tỷ lệ tham chiến War (%)",
+  reputation: "Danh vọng (tổng)",
+  capital: "Capital Gold (mùa hiện tại)",
+  cup: "Cúp (hiện tại)",
+};
+const RULE_TARGET_META: Record<string, { label: string; icon: any; color: string; hint: string }> = {
+  elder: { label: "Điều kiện lên Huynh trưởng", icon: Star, color: "text-blue-400", hint: "Phải đạt HẾT các điều kiện dưới đây mới được tính là đủ điều kiện" },
+  co_leader: { label: "Điều kiện lên Đồng thủ lĩnh", icon: Crown, color: "text-purple-400", hint: "Phải đạt HẾT các điều kiện dưới đây mới được tính là đủ điều kiện" },
+  violation: { label: "Điều kiện vi phạm / bị loại", icon: AlertTriangle, color: "text-red-400", hint: "Chỉ cần dính 1 trong các điều kiện dưới đây là bị đưa vào danh sách cảnh báo" },
+};
+
+function RuleConditionGroup({ target, conditions, onChanged }: { target: "elder" | "co_leader" | "violation"; conditions: any[]; onChanged: () => void }) {
+  const confirm = useConfirm();
+  const meta = RULE_TARGET_META[target];
+  const Icon = meta.icon;
+  const list = conditions.filter(c => c.target === target);
+  const [metric, setMetric] = useState("donate");
+  const [op, setOp] = useState("gte");
+  const [value, setValue] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function add() {
+    if (!value.trim() || isNaN(Number(value))) return;
+    setSaving(true);
+    try {
+      await api.addRuleCondition({ target, metric, op, value: Number(value), note: note.trim() });
+      setValue(""); setNote("");
+      onChanged();
+    } finally { setSaving(false); }
+  }
+  async function del(id: number) {
+    if (!(await confirm({ message: "Xoá điều kiện này?", danger: true }))) return;
+    await api.deleteRuleCondition(id);
+    onChanged();
+  }
+
+  return (
+    <div className="space-y-2 pt-3 border-t border-gray-800">
+      <p className={`text-xs font-semibold flex items-center gap-1.5 ${meta.color}`}><Icon size={13} /> {meta.label}</p>
+      <p className="text-[10px] text-gray-600">{meta.hint}</p>
+      {list.length > 0 && (
+        <div className="space-y-1.5">
+          {list.map(c => (
+            <div key={c.id} className="flex items-center gap-2 text-xs p-2 rounded-lg" style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
+              <span className="flex-1" style={{ color: "var(--py-card-text)" }}>
+                {RULE_METRIC_LABELS[c.metric]} {c.op === "gte" ? "≥" : "≤"} <b>{c.value}</b>
+                {c.note && <span className="text-gray-500"> — {c.note}</span>}
+              </span>
+              <button onClick={() => del(c.id)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <select className="input !py-1.5 text-xs !w-auto" value={metric} onChange={e => setMetric(e.target.value)}>
+          {Object.entries(RULE_METRIC_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <select className="input !py-1.5 text-xs !w-auto" value={op} onChange={e => setOp(e.target.value)}>
+          <option value="gte">≥ tối thiểu</option>
+          <option value="lte">≤ tối đa</option>
+        </select>
+        <input type="number" className="input !py-1.5 text-xs !w-24" placeholder="Giá trị" value={value} onChange={e => setValue(e.target.value)} />
+        <input className="input !py-1.5 text-xs flex-1 min-w-[100px]" placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={e => setNote(e.target.value)} />
+        <button onClick={add} disabled={saving || !value.trim()} className="btn-secondary !py-1.5 text-xs flex items-center gap-1 shrink-0"><Plus size={12} /> Thêm</button>
+      </div>
+    </div>
+  );
+}
+
+function ClanRulesSettings() {
+  const [rulesText, setRulesText] = useState("");
+  const [warWeeks, setWarWeeks] = useState(4);
+  const [conditions, setConditions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+
+  function flashMsg(text: string, type: "error" | "success" = "error") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await api.getClanRules();
+      setRulesText(data.rules_text || "");
+      setWarWeeks(data.war_weeks || 4);
+      setConditions(data.conditions || []);
+    } catch {} finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function saveText() {
+    setSaving(true);
+    try {
+      await api.updateClanRules(rulesText, warWeeks);
+      flashMsg("Đã lưu nội quy!", "success");
+    } catch (e: any) { flashMsg(e.message || "Lỗi lưu"); }
+    finally { setSaving(false); }
+  }
+
+  if (loading) return <div className="card flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>;
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+          <ScrollText size={16} className="text-yellow-400" />
+        </div>
+        <div>
+          <h2 className="font-bold text-white">Nội quy clan</h2>
+          <p className="text-xs text-gray-500">Hiện popup cho mọi người khi mở web Tổng quan (bật/tắt ở Cài đặt thường)</p>
+        </div>
+      </div>
+
+      <textarea className="input" rows={6} placeholder="Viết nội quy clan: luật chơi, cách lên chức, điều kiện bị loại..."
+        value={rulesText} onChange={e => setRulesText(e.target.value)} />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs text-gray-500 shrink-0">Tính tỷ lệ tham chiến War trong</label>
+        <input type="number" min={1} max={52} className="input !py-1.5 !w-20 text-xs" value={warWeeks}
+          onChange={e => setWarWeeks(Number(e.target.value) || 4)} />
+        <label className="text-xs text-gray-500 shrink-0">tuần gần nhất</label>
+        <button onClick={saveText} disabled={saving} className="btn-gold text-xs ml-auto">{saving ? "Đang lưu..." : "💾 Lưu"}</button>
+      </div>
+
+      {msg && <MiniToast msg={msg.text} type={msg.type} />}
+
+      <RuleConditionGroup target="elder" conditions={conditions} onChanged={load} />
+      <RuleConditionGroup target="co_leader" conditions={conditions} onChanged={load} />
+      <RuleConditionGroup target="violation" conditions={conditions} onChanged={load} />
+    </div>
+  );
+}
+
 // ── Clan Management ────────────────────────────────────────────────────────
 
 /** Hiện link nhóm Zalo/Telegram/Discord của clan ĐANG CHỌN — ai cũng thấy
@@ -1790,6 +1932,34 @@ function ClanManagement() {
 }
 
 
+/** Bật/tắt popup nội quy clan (hiện ở Tổng quan mỗi lần mở web) — lưu riêng
+ * theo từng trình duyệt/thiết bị, không cần đăng nhập admin hay thành viên. */
+function ClanRulesPopupToggle() {
+  const [enabled, setEnabled] = useState(true);
+  useEffect(() => { setEnabled(getRulesPopupEnabled()); }, []);
+
+  function toggle() {
+    const next = !enabled;
+    setEnabled(next);
+    setRulesPopupEnabled(next);
+  }
+
+  return (
+    <div className="card flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
+          <ScrollText size={16} className="text-yellow-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "var(--py-card-text)" }}>Popup nội quy clan</p>
+          <p className="text-xs text-gray-500">Hiện lại nội quy mỗi lần mở web ở trang Tổng quan</p>
+        </div>
+      </div>
+      <ToggleSwitch checked={enabled} onChange={toggle} />
+    </div>
+  );
+}
+
 function PushNotificationSettings() {
   const [supported, setSupported] = useState(true);
   const [permission, setPermission] = useState<string>("default");
@@ -2043,7 +2213,7 @@ function PushClanScopeSettings() {
 
 export default function SettingsPage() {
   const [outerTab, setOuterTab] = useState<"general" | "admin">("general");
-  const [tab, setTab] = useState<"general" | "events" | "music" | "members" | "shop">("general");
+  const [tab, setTab] = useState<"general" | "events" | "music" | "members" | "shop" | "rules">("general");
   return (
     <div className="space-y-6 max-w-7xl animate-fade-up">
       <div>
@@ -2066,6 +2236,7 @@ export default function SettingsPage() {
           <InstallAppButton />
           <ShareWebsite />
           <JoinGroupLinks />
+          <ClanRulesPopupToggle />
           <PushNotificationSettings />
         </>
       )}
@@ -2081,6 +2252,7 @@ export default function SettingsPage() {
                   { id: "music",   label: "Bố cục" },
                   { id: "members", label: "Thành viên" },
                   { id: "shop",    label: "Cửa hàng" },
+                  { id: "rules",   label: "Nội quy" },
                 ]}
                 active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
             </div>
@@ -2090,6 +2262,7 @@ export default function SettingsPage() {
             {tab === "music" && <SettingsPageInner embedded section="music" />}
             {tab === "members" && (<><SettingsPageInner embedded section="members" /><MemberAccountsSettings /></>)}
             {tab === "shop" && <ShopPricingSettings />}
+            {tab === "rules" && <ClanRulesSettings />}
           </div>
         </AdminGate>
       )}

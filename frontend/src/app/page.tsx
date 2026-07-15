@@ -17,6 +17,7 @@ import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { useRoleMap } from "@/lib/useRoleMap";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { ClanRulesPopup } from "@/components/ui/ClanRulesPopup";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -158,6 +159,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
+      <ClanRulesPopup />
       {/* Header — bấm vào huy hiệu/tên hội để đổi clan (nếu có quyền) */}
       <div className="flex items-start justify-between gap-4">
         <ClanSwitcher>

@@ -510,4 +510,15 @@ export const api = {
     apiFetch(`/api/shop/items/${itemId}/price`, { method: "PUT", body: JSON.stringify({ price_coins }) }),
   updateShopItemUnlockReputation: (itemId: number, unlock_reputation: number) =>
     apiFetch(`/api/shop/items/${itemId}/unlock-reputation`, { method: "PUT", body: JSON.stringify({ unlock_reputation }) }),
+
+  // Nội quy clan
+  getClanRules: () => apiFetch("/api/rules/"),
+  updateClanRules: (rules_text: string, war_weeks: number) =>
+    apiFetch("/api/rules/", { method: "PUT", body: JSON.stringify({ rules_text, war_weeks }) }),
+  addRuleCondition: (data: { target: string; metric: string; op: string; value: number; note?: string }) =>
+    apiFetch("/api/rules/conditions", { method: "POST", body: JSON.stringify(data) }),
+  updateRuleCondition: (id: number, data: { metric?: string; op?: string; value?: number; note?: string }) =>
+    apiFetch(`/api/rules/conditions/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteRuleCondition: (id: number) => apiFetch(`/api/rules/conditions/${id}`, { method: "DELETE" }),
+  getRuleEvaluation: () => apiFetch("/api/rules/evaluate"),
 };
