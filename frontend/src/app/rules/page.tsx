@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, getAdminToken } from "@/lib/api";
+import { Portal } from "@/components/ui/Portal";
+import { OrnateFrame } from "@/components/ui/OrnateFrame";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { roleLabel, roleClass, thColor } from "@/lib/utils";
 import {
   RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition, HISTORY_ACTION_LABELS,
   type RuleTarget,
 } from "@/lib/ruleConstants";
-import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, Trash2, Loader2 } from "lucide-react";
+import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, ChevronRight, Trash2, Loader2 } from "lucide-react";
 
 type ListKey = RuleTarget;
 type EvalResult = Record<ListKey, any[]> & { all_members: any[] };
@@ -93,8 +96,9 @@ function ListGroup({ listKey, members, isAdmin, onLogged }: { listKey: ListKey; 
   );
 }
 
-/** Điều kiện chi tiết — thu gọn mặc định (bấm mở mới hiện đầy đủ từng câu). */
-function RuleArticles({ conditions }: { conditions: any[] }) {
+/** Điều kiện chi tiết — nút mở popup nổi thay vì chiếm chỗ ngay trên trang. */
+function RuleArticlesButton({ conditions }: { conditions: any[] }) {
+  const [open, setOpen] = useState(false);
   const byTarget: Record<string, any[]> = {};
   conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
   const targets = Object.keys(RULE_TARGET_LABELS) as RuleTarget[];
@@ -102,35 +106,53 @@ function RuleArticles({ conditions }: { conditions: any[] }) {
   if (conditions.length === 0) return null;
 
   return (
-    <details className="card !p-0 group">
-      <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
+    <>
+      <button onClick={() => setOpen(true)}
+        className="card w-full flex items-center justify-between !py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
         <span className="font-bold text-white flex items-center gap-2">
           <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
         </span>
-        <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
-      </summary>
-      <div className="px-4 pb-4 space-y-3">
-        {targets.map(t => {
-          const list = byTarget[t];
-          if (!list?.length) return null;
-          return (
-            <div key={t} className="space-y-1.5">
-              <p className="text-xs font-semibold text-gray-400">
-                {RULE_TARGET_LABELS[t]} — {RULE_TARGET_IS_AND[t] ? "phải đạt HẾT các điều kiện sau" : "chỉ cần dính 1 điều kiện sau"}
-              </p>
-              <ul className="space-y-1 pl-1">
-                {list.map(c => (
-                  <li key={c.id} className="text-sm flex gap-2" style={{ color: "var(--py-card-text)" }}>
-                    <span className="text-yellow-500">–</span>
-                    <span>{conditionSentence(c)}{c.note && <span className="text-gray-500"> — {c.note}</span>}</span>
-                  </li>
-                ))}
-              </ul>
+        <ChevronRight size={16} className="text-gray-500" />
+      </button>
+
+      {open && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setOpen(false)}>
+            <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
+              <div className="p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
+                  </h3>
+                  <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white"><X size={18} /></button>
+                </div>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                  {targets.map(t => {
+                    const list = byTarget[t];
+                    if (!list?.length) return null;
+                    return (
+                      <div key={t} className="space-y-1.5">
+                        <p className="text-xs font-semibold text-gray-400">
+                          {RULE_TARGET_LABELS[t]} — {RULE_TARGET_IS_AND[t] ? "phải đạt HẾT các điều kiện sau" : "chỉ cần dính 1 điều kiện sau"}
+                        </p>
+                        <ul className="space-y-1 pl-1">
+                          {list.map(c => (
+                            <li key={c.id} className="text-sm flex gap-2" style={{ color: "var(--py-card-text)" }}>
+                              <span className="text-yellow-500">–</span>
+                              <span>{conditionSentence(c)}{c.note && <span className="text-gray-500"> — {c.note}</span>}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          );
-        })}
-      </div>
-    </details>
+          </div>
+        </Portal>
+      )}
+    </>
   );
 }
 
@@ -173,22 +195,75 @@ function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdm
   );
 }
 
-/** Tra cứu — hiện sẵn danh sách thành viên để bấm chọn, hoặc gõ tìm ở thanh
- * tìm kiếm để lọc nhanh trong chính danh sách đó. Chọn xong đối chiếu ngay
- * với TẤT CẢ điều kiện đã cấu hình (kể cả nhóm không áp dụng vai trò hiện
- * tại, để tiện xem trước cần đạt gì nếu muốn lên/giữ chức). */
-function LookupSection({ members, conditions }: { members: any[]; conditions: any[] }) {
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<any>(null);
-
-  const q = query.trim().toLowerCase();
-  const filtered = q
-    ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q))
-    : members;
-
+/** Popup nổi khi bấm 1 thành viên trong Tra cứu — đối chiếu ngay với TẤT CẢ
+ * điều kiện đã cấu hình (kể cả nhóm không áp dụng vai trò hiện tại của họ,
+ * để tiện xem trước cần đạt gì nếu muốn lên/giữ chức). */
+function MemberRuleModal({ member, conditions, onClose }: { member: any; conditions: any[]; onClose: () => void }) {
   const byTarget: Record<string, any[]> = {};
   conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
   const targets = Object.keys(RULE_TARGET_LABELS) as RuleTarget[];
+
+  return (
+    <Portal>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="th-badge" style={{ color: thColor(member.townHallLevel), background: thColor(member.townHallLevel) + "22", borderColor: thColor(member.townHallLevel) + "44" }}>
+                {member.townHallLevel ?? "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-white truncate">{member.name}</h3>
+                <p className={`text-xs ${roleClass(member.role)}`}>{roleLabel(member.role)} · #{(member.tag || "").replace("#", "")}</p>
+              </div>
+              <button onClick={onClose} className="text-gray-500 hover:text-white shrink-0"><X size={18} /></button>
+            </div>
+            <p className="text-xs text-gray-500">{statLine(member)}</p>
+
+            <div className="space-y-3 max-h-[55vh] overflow-y-auto pt-1">
+              {targets.every(t => !byTarget[t]?.length) && (
+                <p className="text-sm text-gray-500">Chưa cấu hình điều kiện nào để đối chiếu.</p>
+              )}
+              {targets.map(t => {
+                const list = byTarget[t];
+                if (!list?.length) return null;
+                const results = list.map(c => ({ cond: c, pass: checkCondition(c, member) }));
+                const overall = RULE_TARGET_IS_AND[t] ? results.every(r => r.pass) : results.some(r => r.pass);
+                return (
+                  <div key={t} className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${overall ? "text-green-400" : "text-gray-500"}`}>
+                      {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
+                    </p>
+                    <ul className="space-y-1 pl-1">
+                      {results.map(({ cond, pass }) => (
+                        <li key={cond.id} className="text-sm flex items-center gap-2">
+                          {pass ? <Check size={13} className="text-green-400 shrink-0" /> : <X size={13} className="text-red-400 shrink-0" />}
+                          <span style={{ color: "var(--py-card-text)" }}>
+                            {conditionSentence(cond)}
+                            <span className="text-gray-500"> — hiện tại: {member[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
+}
+
+/** Tra cứu — danh sách thành viên kiểu giống trang Thành viên (Danh sách):
+ * xếp theo Cúp, có ô tìm kiếm lọc ngay trong danh sách. Bấm 1 người mở popup
+ * nổi đối chiếu điều kiện. */
+function LookupSection({ members, onSelect }: { members: any[]; onSelect: (m: any) => void }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const filtered = (q ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q)) : members)
+    .slice().sort((a, b) => (b.cup || 0) - (a.cup || 0));
 
   return (
     <div className="space-y-3">
@@ -198,68 +273,37 @@ function LookupSection({ members, conditions }: { members: any[]; conditions: an
           value={query} onChange={e => setQuery(e.target.value)} />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
-        {filtered.length === 0 ? (
-          <p className="col-span-full text-sm text-gray-500 text-center py-4">Không tìm thấy thành viên nào.</p>
-        ) : filtered.map(m => {
-          const isSelected = selected?.tag === m.tag;
-          return (
-            <button key={m.tag} onClick={() => setSelected(m)}
-              className="text-left px-2.5 py-2 rounded-lg text-xs transition-colors border"
-              style={{
-                background: isSelected ? "rgba(244,161,48,0.15)" : "var(--py-card-bg)",
-                borderColor: isSelected ? "rgba(244,161,48,0.5)" : "var(--py-card-border)",
-              }}>
-              <p className="font-semibold truncate" style={{ color: isSelected ? "#F4A130" : "var(--py-card-text)" }}>{m.name}</p>
-              <p className="text-gray-500 truncate">#{m.tag.replace("#", "")}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      {selected && (
-        <div className="card space-y-3">
-          <div>
-            <p className="font-bold text-white">
-              {selected.name} <span className="text-gray-500 text-sm font-normal">#{selected.tag.replace("#", "")}</span>
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">{statLine(selected)}</p>
-          </div>
-          {targets.every(t => !byTarget[t]?.length) && (
-            <p className="text-sm text-gray-500">Chưa cấu hình điều kiện nào để đối chiếu.</p>
-          )}
-          {targets.map(t => {
-            const list = byTarget[t];
-            if (!list?.length) return null;
-            const results = list.map(c => ({ cond: c, pass: checkCondition(c, selected) }));
-            const overall = RULE_TARGET_IS_AND[t] ? results.every(r => r.pass) : results.some(r => r.pass);
-            return (
-              <div key={t} className="space-y-1.5 pt-2 border-t border-gray-800">
-                <p className={`text-xs font-semibold flex items-center gap-1.5 ${overall ? "text-green-400" : "text-gray-500"}`}>
-                  {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
-                </p>
-                <ul className="space-y-1 pl-1">
-                  {results.map(({ cond, pass }) => (
-                    <li key={cond.id} className="text-sm flex items-center gap-2">
-                      {pass ? <Check size={13} className="text-green-400 shrink-0" /> : <X size={13} className="text-red-400 shrink-0" />}
-                      <span style={{ color: "var(--py-card-text)" }}>
-                        {conditionSentence(cond)}
-                        <span className="text-gray-500"> — hiện tại: {selected[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+      <div className="card !p-0 overflow-hidden">
+        <div className="divide-y divide-gray-800 max-h-[28rem] overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">Không tìm thấy thành viên nào.</p>
+          ) : filtered.map((m, i) => (
+            <button key={m.tag} onClick={() => onSelect(m)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800/50 transition-colors text-left">
+              <span className="text-gray-600 text-xs w-5 shrink-0 text-right">{i + 1}</span>
+              <div className="th-badge" style={{ color: thColor(m.townHallLevel), background: thColor(m.townHallLevel) + "22", borderColor: thColor(m.townHallLevel) + "44" }}>
+                {m.townHallLevel ?? "?"}
               </div>
-            );
-          })}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
+              </div>
+              <div className="text-right shrink-0 space-y-0.5">
+                <p className="text-sm font-bold text-yellow-400">🏆 {m.cup}</p>
+                <p className="text-xs text-gray-500">Donate {m.donate}</p>
+              </div>
+              <ChevronRight size={16} className="text-gray-600 shrink-0" />
+            </button>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 export default function RulesPage() {
   const isAdmin = !!getAdminToken();
+  const [clanDescription, setClanDescription] = useState("");
   const [rulesText, setRulesText] = useState("");
   const [conditions, setConditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,6 +311,11 @@ export default function RulesPage() {
   const [evaluation, setEvaluation] = useState<EvalResult | null>(null);
   const [loadingEval, setLoadingEval] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+
+  useEffect(() => {
+    api.getClan().then((c: any) => setClanDescription(c?.description || "")).catch(() => {});
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -298,6 +347,22 @@ export default function RulesPage() {
         <p className="page-subtitle">Nội quy clan — luật chơi, điều kiện thăng/hạ cấp và loại khỏi clan</p>
       </div>
 
+      {clanDescription && (
+        <OrnateFrame>
+          <div className="relative rounded-2xl overflow-hidden"
+            style={{ padding: "2px", background: "linear-gradient(135deg, #F4A130 0%, #B87320 40%, #FFD700 60%, #B87320 80%, #F4A130 100%)" }}>
+            <div className="relative rounded-[14px] px-5 py-3.5"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
+              <div className="absolute inset-0 rounded-[14px] pointer-events-none"
+                style={{ backgroundImage: "repeating-linear-gradient(135deg,rgba(244,161,48,0.04) 0,rgba(244,161,48,0.04) 1px,transparent 0,transparent 50%)", backgroundSize: "10px 10px" }} />
+              <span className="absolute left-2 top-1 text-2xl leading-none font-serif opacity-20 select-none" style={{ color: "#F4A130" }}>"</span>
+              <span className="absolute right-2 bottom-1 text-2xl leading-none font-serif opacity-20 select-none" style={{ color: "#F4A130" }}>"</span>
+              <p className="relative text-sm font-medium italic leading-relaxed px-3" style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clanDescription}"</p>
+            </div>
+          </div>
+        </OrnateFrame>
+      )}
+
       {loading ? (
         <div className="card flex justify-center py-8"><Loader2 size={20} className="animate-spin text-yellow-400" /></div>
       ) : !rulesText && conditions.length === 0 ? (
@@ -315,7 +380,7 @@ export default function RulesPage() {
             </div>
           )}
 
-          <RuleArticles conditions={conditions} />
+          <RuleArticlesButton conditions={conditions} />
 
           <div className="space-y-3">
             <div className="overflow-x-auto -mx-1 px-1 pb-1">
@@ -334,7 +399,7 @@ export default function RulesPage() {
               loadingEval ? (
                 <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>
               ) : (
-                <LookupSection members={evaluation?.all_members || []} conditions={conditions} />
+                <LookupSection members={evaluation?.all_members || []} onSelect={setSelectedMember} />
               )
             ) : tab === "history" ? (
               <HistorySection history={history} isAdmin={isAdmin} onChanged={loadHistory} />
@@ -351,6 +416,10 @@ export default function RulesPage() {
             )}
           </div>
         </>
+      )}
+
+      {selectedMember && (
+        <MemberRuleModal member={selectedMember} conditions={conditions} onClose={() => setSelectedMember(null)} />
       )}
     </div>
   );

@@ -204,6 +204,7 @@ async def evaluate(request: Request):
     def snapshot(m: dict) -> dict:
         return {
             "tag": m["tag"], "name": m["name"], "role": m.get("role", "member"),
+            "townHallLevel": m.get("townHallLevel"),
             "donate": m.get("donations") or 0, "cup": m.get("trophies") or 0,
             "reputation": rep_totals.get(m["tag"], {}).get("total", 0),
             "capital": capital_loot.get(m["tag"], 0),

@@ -201,8 +201,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Clan description — viền hoa văn */}
-      {clan?.description && (
+      {/* Clan description — viền hoa văn, kèm link Pháp điển ngay trong ô */}
+      {clan?.description ? (
         <OrnateFrame>
         <div className="relative rounded-2xl overflow-hidden"
           style={{ padding: "2px", background: "linear-gradient(135deg, #F4A130 0%, #B87320 40%, #FFD700 60%, #B87320 80%, #F4A130 100%)" }}>
@@ -219,17 +219,21 @@ export default function DashboardPage() {
               style={{ color: "#F4A130" }}>"</span>
             <p className="relative text-sm font-medium italic leading-relaxed px-3"
               style={{ color: "var(--py-card-text, #e5e7eb)" }}>"{clan.description}"</p>
+            <Link href="/rules"
+              className="relative mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors w-fit"
+              style={{ background: "rgba(244,161,48,0.1)", border: "1px solid rgba(244,161,48,0.35)", color: "#F4A130" }}>
+              <Scale size={13} /> Xem Pháp điển
+            </Link>
           </div>
         </div>
         </OrnateFrame>
+      ) : (
+        <Link href="/rules"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors w-fit"
+          style={{ background: "rgba(244,161,48,0.08)", border: "1px solid rgba(244,161,48,0.3)", color: "#F4A130" }}>
+          <Scale size={13} /> Xem Pháp điển
+        </Link>
       )}
-
-      {/* Pháp điển — nội quy clan, ai cũng bấm xem được */}
-      <Link href="/rules"
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors w-fit"
-        style={{ background: "rgba(244,161,48,0.08)", border: "1px solid rgba(244,161,48,0.3)", color: "#F4A130" }}>
-        <Scale size={13} /> Xem Pháp điển
-      </Link>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
