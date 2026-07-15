@@ -717,12 +717,28 @@ function SettingsPageInner({ embedded, section = "general" }: { embedded?: boole
             value={settings.stats_retention_days ?? "0"}
             onChange={e => set("stats_retention_days", e.target.value)} />
           <span className="text-sm text-gray-400">ngày</span>
-          <button onClick={() => api.saveSetting("stats_retention_days", settings.stats_retention_days || "0")}
-            className="btn-gold text-sm ml-auto">Lưu</button>
+          <button onClick={async () => {
+            const days = parseInt(settings.stats_retention_days || "0", 10) || 0;
+            if (days > 0 && !(await confirm({
+              message: `Đặt ${days} ngày nghĩa là dữ liệu tích luỹ cũ hơn ${days} ngày sẽ TỰ ĐỘNG bị xoá vĩnh viễn mỗi 12 tiếng (không khôi phục được). Chắc chắn muốn bật xoá tự động?`,
+              danger: true,
+            }))) return;
+            await api.saveSetting("stats_retention_days", String(days));
+            showToast("Đã lưu!");
+          }} className="btn-gold text-sm ml-auto">Lưu</button>
         </div>
+        {!!settings.stats_last_cleanup_at && (
+          <p className="text-[11px] text-gray-600">
+            Lần dọn gần nhất: {new Date(settings.stats_last_cleanup_at).toLocaleString("vi-VN")}
+            {" — đã xoá "}{settings.stats_last_cleanup_deleted ?? "0"} dòng.
+          </p>
+        )}
         <button onClick={async () => {
-          if (!(await confirm({ message: "Xoá ngay dữ liệu thống kê cũ hơn số ngày đã cấu hình ở trên?", danger: true }))) return;
-          try { await api.cleanupStatsNow(); showToast("Đã dọn dẹp xong!"); }
+          if (!(await confirm({ message: "Xoá ngay dữ liệu thống kê cũ hơn số ngày đã cấu hình ở trên (nếu để 0 thì sẽ không xoá gì)?", danger: true }))) return;
+          try {
+            const res: any = await api.cleanupStatsNow();
+            showToast(res?.deleted ? `Đã xoá ${res.deleted} dòng dữ liệu cũ.` : "Không có gì để xoá (đang để 0 ngày = giữ vĩnh viễn).");
+          }
           catch (e: any) { showToast(e.message, "error"); }
         }} className="btn-secondary text-sm w-full">🗑️ Xoá ngay</button>
       </div>

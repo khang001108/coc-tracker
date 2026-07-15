@@ -62,8 +62,8 @@ async def cleanup_stats_now(_: bool = Depends(require_admin)):
     donate) theo số ngày cấu hình ở stats_retention_days — dùng khi admin
     bấm nút 'Xoá ngay' thay vì đợi job chạy tự động."""
     from schedulers.poller import poll_stats_cleanup
-    await poll_stats_cleanup()
-    return {"ok": True}
+    result = await poll_stats_cleanup()
+    return {"ok": True, "deleted": (result or {}).get("deleted", 0)}
 
 @router.get("/public")
 async def get_public_settings():

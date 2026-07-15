@@ -834,23 +834,47 @@ async def poll_leave_reputation_penalty():
 async def poll_stats_cleanup():
     """Xoá dữ liệu thống kê tích luỹ (lượt tham chiến war, lịch sử donate) cũ
     hơn N ngày (cấu hình trong Cài đặt → 'stats_retention_days'). Để trống/0 =
-    giữ vĩnh viễn, không tự xoá."""
+    giữ vĩnh viễn, không tự xoá.
+
+    Mỗi lần THẬT SỰ xoá (dù tự động mỗi 12h hay admin bấm 'Xoá ngay') đều ghi
+    lại thời điểm + số dòng đã xoá vào settings (stats_last_cleanup_at/_deleted)
+    — hiển thị lại trong Cài đặt để admin luôn biết job này có đang âm thầm xoá
+    dữ liệu hay không, tránh trường hợp dữ liệu 'biến mất' mà không rõ vì sao."""
     try:
         sb = get_supabase()
         cfg = sb.table("settings").select("value").eq("key", "stats_retention_days").execute()
         days = int(cfg.data[0]["value"]) if cfg.data and cfg.data[0]["value"].isdigit() else 0
         if days <= 0:
-            return
+            return {"deleted": 0}
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+        def _count(table: str, date_col: str) -> int:
+            try:
+                res = sb.table(table).select("id").lt(date_col, cutoff).execute()
+                return len(res.data or [])
+            except Exception:
+                return 0
+
+        war_count = _count("war_participation_log", "created_at")
+        donate_count = _count("donation_snapshot_log", "snapshot_at")
+        history_count = _count("war_history_log", "created_at")
+
         sb.table("war_participation_log").delete().lt("created_at", cutoff).execute()
         sb.table("donation_snapshot_log").delete().lt("snapshot_at", cutoff).execute()
         try:
             sb.table("war_history_log").delete().lt("created_at", cutoff).execute()
         except Exception:
-            pass  # chưa chạy migration PART 7 — bỏ qua bảng này
-        log.info(f"Stats cleanup: removed records older than {days} days")
+            history_count = 0  # chưa chạy migration PART 7 — bỏ qua bảng này
+
+        total = war_count + donate_count + history_count
+        sb.table("settings").upsert({"key": "stats_last_cleanup_at", "value": datetime.utcnow().isoformat()}).execute()
+        sb.table("settings").upsert({"key": "stats_last_cleanup_deleted", "value": str(total)}).execute()
+
+        log.info(f"Stats cleanup: removed {total} records older than {days} days (war={war_count}, donate={donate_count}, history={history_count})")
+        return {"deleted": total}
     except Exception as e:
         log.error(f"poll_stats_cleanup error: {e}")
+        return {"deleted": 0}
 
 
 async def poll_reward_history_cleanup():
