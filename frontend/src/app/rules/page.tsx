@@ -4,20 +4,29 @@ import { api, getAdminToken } from "@/lib/api";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
-  RULE_METRIC_LABELS, RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition, HISTORY_ACTION_LABELS,
+  RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition, HISTORY_ACTION_LABELS,
   type RuleTarget,
 } from "@/lib/ruleConstants";
-import { Scale, Star, Crown, TrendingDown, AlertTriangle, History as HistoryIcon, Check, X, Search, Trash2, Loader2 } from "lucide-react";
+import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, Trash2, Loader2 } from "lucide-react";
 
 type ListKey = RuleTarget;
 type EvalResult = Record<ListKey, any[]> & { all_members: any[] };
+type TopTab = "lookup" | "merit" | "sanction" | "expulsion" | "history";
 
-const LIST_META: Record<ListKey, { label: string; tabLabel: string; icon: any; color: string; empty: string; historyAction: string }> = {
-  elder:             { label: "Đủ điều kiện lên Huynh trưởng",              tabLabel: "Huynh trưởng",   icon: Star,          color: "text-blue-400",   empty: "Chưa có ai đủ điều kiện.",     historyAction: "promote_elder" },
-  co_leader:         { label: "Đủ điều kiện lên Đồng thủ lĩnh",             tabLabel: "Đồng thủ lĩnh",  icon: Crown,         color: "text-purple-400", empty: "Chưa có ai đủ điều kiện.",     historyAction: "promote_co_leader" },
-  demote_co_leader:  { label: "Đề xuất hạ Đồng thủ lĩnh → Huynh trưởng",    tabLabel: "Hạ ĐTL",         icon: TrendingDown,  color: "text-orange-400", empty: "Không có ai trong diện này.",  historyAction: "demote_co_leader" },
-  demote_elder:      { label: "Đề xuất hạ Huynh trưởng → Thành viên",       tabLabel: "Hạ Huynh trưởng", icon: TrendingDown,  color: "text-orange-400", empty: "Không có ai trong diện này.",  historyAction: "demote_elder" },
-  violation:         { label: "Có nguy cơ bị loại khỏi clan",               tabLabel: "Vi phạm",        icon: AlertTriangle, color: "text-red-400",    empty: "Không có ai vi phạm nội quy.", historyAction: "expel" },
+const LIST_META: Record<ListKey, { label: string; icon: any; color: string; empty: string; historyAction: string }> = {
+  elder:             { label: "Đủ điều kiện lên Huynh trưởng",           icon: Star,          color: "text-blue-400",   empty: "Chưa có ai đủ điều kiện.",     historyAction: "promote_elder" },
+  co_leader:         { label: "Đủ điều kiện lên Đồng thủ lĩnh",          icon: Crown,         color: "text-purple-400", empty: "Chưa có ai đủ điều kiện.",     historyAction: "promote_co_leader" },
+  demote_co_leader:  { label: "Đề xuất hạ Đồng thủ lĩnh → Huynh trưởng", icon: TrendingDown,  color: "text-orange-400", empty: "Không có ai trong diện này.",  historyAction: "demote_co_leader" },
+  demote_elder:      { label: "Đề xuất hạ Huynh trưởng → Thành viên",    icon: TrendingDown,  color: "text-orange-400", empty: "Không có ai trong diện này.",  historyAction: "demote_elder" },
+  violation:         { label: "Có nguy cơ bị loại khỏi clan",            icon: AlertTriangle, color: "text-red-400",    empty: "Không có ai vi phạm nội quy.", historyAction: "expel" },
+};
+
+// 3 pill-tab gộp — mỗi tab gồm 1-2 nhóm điều kiện con để bố cục gọn hơn
+// (trước đây mỗi nhóm 1 tab riêng, quá nhiều tab).
+const TOP_TAB_META: Record<Exclude<TopTab, "lookup" | "history">, { label: string; keys: ListKey[] }> = {
+  merit:     { label: "🏅 Công trạng", keys: ["elder", "co_leader"] },
+  sanction:  { label: "⚖️ Chế tài",    keys: ["demote_co_leader", "demote_elder"] },
+  expulsion: { label: "🚫 Khai trừ",   keys: ["violation"] },
 };
 
 function statLine(m: any): string {
@@ -63,6 +72,28 @@ function MemberActionRow({ m, isAdmin, historyAction, onLogged }: { m: any; isAd
   );
 }
 
+/** Danh sách thành viên cho 1 nhóm điều kiện (elder/co_leader/...) — dùng lại
+ * trong cả tab "Công trạng"/"Chế tài"/"Khai trừ" (mỗi tab có 1-2 nhóm con). */
+function ListGroup({ listKey, members, isAdmin, onLogged }: { listKey: ListKey; members: any[]; isAdmin: boolean; onLogged: () => void }) {
+  const meta = LIST_META[listKey];
+  const Icon = meta.icon;
+  return (
+    <div className="space-y-1.5">
+      <p className={`text-xs font-semibold flex items-center gap-1.5 ${meta.color}`}><Icon size={13} /> {meta.label}</p>
+      {members.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-4">{meta.empty}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {members.map(m => (
+            <MemberActionRow key={m.tag} m={m} isAdmin={isAdmin} historyAction={meta.historyAction} onLogged={onLogged} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Điều kiện chi tiết — thu gọn mặc định (bấm mở mới hiện đầy đủ từng câu). */
 function RuleArticles({ conditions }: { conditions: any[] }) {
   const byTarget: Record<string, any[]> = {};
   conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
@@ -71,28 +102,35 @@ function RuleArticles({ conditions }: { conditions: any[] }) {
   if (conditions.length === 0) return null;
 
   return (
-    <div className="card space-y-3">
-      <h2 className="font-bold text-white flex items-center gap-2"><Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết</h2>
-      {targets.map(t => {
-        const list = byTarget[t];
-        if (!list?.length) return null;
-        return (
-          <div key={t} className="space-y-1.5">
-            <p className="text-xs font-semibold text-gray-400">
-              {RULE_TARGET_LABELS[t]} — {RULE_TARGET_IS_AND[t] ? "phải đạt HẾT các điều kiện sau" : "chỉ cần dính 1 điều kiện sau"}
-            </p>
-            <ul className="space-y-1 pl-1">
-              {list.map(c => (
-                <li key={c.id} className="text-sm flex gap-2" style={{ color: "var(--py-card-text)" }}>
-                  <span className="text-yellow-500">–</span>
-                  <span>{conditionSentence(c)}{c.note && <span className="text-gray-500"> — {c.note}</span>}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
-    </div>
+    <details className="card !p-0 group">
+      <summary className="cursor-pointer list-none flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors">
+        <span className="font-bold text-white flex items-center gap-2">
+          <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
+        </span>
+        <span className="text-xs text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div className="px-4 pb-4 space-y-3">
+        {targets.map(t => {
+          const list = byTarget[t];
+          if (!list?.length) return null;
+          return (
+            <div key={t} className="space-y-1.5">
+              <p className="text-xs font-semibold text-gray-400">
+                {RULE_TARGET_LABELS[t]} — {RULE_TARGET_IS_AND[t] ? "phải đạt HẾT các điều kiện sau" : "chỉ cần dính 1 điều kiện sau"}
+              </p>
+              <ul className="space-y-1 pl-1">
+                {list.map(c => (
+                  <li key={c.id} className="text-sm flex gap-2" style={{ color: "var(--py-card-text)" }}>
+                    <span className="text-yellow-500">–</span>
+                    <span>{conditionSentence(c)}{c.note && <span className="text-gray-500"> — {c.note}</span>}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 
@@ -135,17 +173,18 @@ function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdm
   );
 }
 
-/** Tra cứu — chọn 1 thành viên bất kỳ, đối chiếu ngay với TẤT CẢ điều kiện đã
- * cấu hình (kể cả nhóm không áp dụng cho vai trò hiện tại của họ, để tiện
- * xem trước điều kiện cần đạt nếu muốn lên/giữ chức). */
+/** Tra cứu — hiện sẵn danh sách thành viên để bấm chọn, hoặc gõ tìm ở thanh
+ * tìm kiếm để lọc nhanh trong chính danh sách đó. Chọn xong đối chiếu ngay
+ * với TẤT CẢ điều kiện đã cấu hình (kể cả nhóm không áp dụng vai trò hiện
+ * tại, để tiện xem trước cần đạt gì nếu muốn lên/giữ chức). */
 function LookupSection({ members, conditions }: { members: any[]; conditions: any[] }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<any>(null);
 
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q)).slice(0, 20)
-    : [];
+    ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q))
+    : members;
 
   const byTarget: Record<string, any[]> = {};
   conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
@@ -154,25 +193,28 @@ function LookupSection({ members, conditions }: { members: any[]; conditions: an
   return (
     <div className="space-y-3">
       <div className="relative">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input className="input !pl-9 text-sm" placeholder="Tìm theo tên hoặc tag..."
-            value={query} onChange={e => { setQuery(e.target.value); setSelected(null); }} />
-        </div>
-        {q && !selected && (
-          <div className="absolute z-10 mt-1 w-full rounded-xl overflow-hidden shadow-xl max-h-56 overflow-y-auto"
-            style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
-            {filtered.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-3">Không tìm thấy thành viên nào.</p>
-            ) : filtered.map(m => (
-              <button key={m.tag} onClick={() => { setSelected(m); setQuery(m.name); }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-yellow-400/10 transition-colors"
-                style={{ color: "var(--py-card-text)" }}>
-                {m.name} <span className="text-gray-500 text-xs">#{m.tag.replace("#", "")}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <input className="input !pl-9 text-sm" placeholder="Tìm theo tên hoặc tag..."
+          value={query} onChange={e => setQuery(e.target.value)} />
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+        {filtered.length === 0 ? (
+          <p className="col-span-full text-sm text-gray-500 text-center py-4">Không tìm thấy thành viên nào.</p>
+        ) : filtered.map(m => {
+          const isSelected = selected?.tag === m.tag;
+          return (
+            <button key={m.tag} onClick={() => setSelected(m)}
+              className="text-left px-2.5 py-2 rounded-lg text-xs transition-colors border"
+              style={{
+                background: isSelected ? "rgba(244,161,48,0.15)" : "var(--py-card-bg)",
+                borderColor: isSelected ? "rgba(244,161,48,0.5)" : "var(--py-card-border)",
+              }}>
+              <p className="font-semibold truncate" style={{ color: isSelected ? "#F4A130" : "var(--py-card-text)" }}>{m.name}</p>
+              <p className="text-gray-500 truncate">#{m.tag.replace("#", "")}</p>
+            </button>
+          );
+        })}
       </div>
 
       {selected && (
@@ -221,7 +263,7 @@ export default function RulesPage() {
   const [rulesText, setRulesText] = useState("");
   const [conditions, setConditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<ListKey | "history" | "lookup">("lookup");
+  const [tab, setTab] = useState<TopTab>("lookup");
   const [evaluation, setEvaluation] = useState<EvalResult | null>(null);
   const [loadingEval, setLoadingEval] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -248,8 +290,6 @@ export default function RulesPage() {
     api.getRuleHistory().then(setHistory).catch(() => {});
   }
   useEffect(() => { loadHistory(); }, []);
-
-  const listTabs = (Object.keys(LIST_META) as ListKey[]).map(k => ({ id: k, label: LIST_META[k].tabLabel }));
 
   return (
     <div className="space-y-6 max-w-3xl animate-fade-up">
@@ -280,8 +320,14 @@ export default function RulesPage() {
           <div className="space-y-3">
             <div className="overflow-x-auto -mx-1 px-1 pb-1">
               <SlidingTabs
-                tabs={[{ id: "lookup", label: "🔍 Tra cứu" }, ...listTabs, { id: "history", label: "Lịch sử" }]}
-                active={tab} onChange={(id) => setTab(id as any)} className="w-max" />
+                tabs={[
+                  { id: "lookup", label: "🔍 Tra cứu" },
+                  { id: "merit", label: TOP_TAB_META.merit.label },
+                  { id: "sanction", label: TOP_TAB_META.sanction.label },
+                  { id: "expulsion", label: TOP_TAB_META.expulsion.label },
+                  { id: "history", label: "Lịch sử" },
+                ]}
+                active={tab} onChange={(id) => setTab(id as TopTab)} className="w-max" />
             </div>
 
             {tab === "lookup" ? (
@@ -296,14 +342,10 @@ export default function RulesPage() {
               loadingEval ? (
                 <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>
               ) : (
-                <div className="space-y-1.5">
-                  {(evaluation?.[tab] || []).length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-6">{LIST_META[tab].empty}</p>
-                  ) : (
-                    evaluation![tab].map((m: any) => (
-                      <MemberActionRow key={m.tag} m={m} isAdmin={isAdmin} historyAction={LIST_META[tab].historyAction} onLogged={loadHistory} />
-                    ))
-                  )}
+                <div className="space-y-4">
+                  {TOP_TAB_META[tab].keys.map(k => (
+                    <ListGroup key={k} listKey={k} members={evaluation?.[k] || []} isAdmin={isAdmin} onLogged={loadHistory} />
+                  ))}
                 </div>
               )
             )}
