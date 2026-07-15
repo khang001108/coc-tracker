@@ -521,4 +521,8 @@ export const api = {
     apiFetch(`/api/rules/conditions/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteRuleCondition: (id: number) => apiFetch(`/api/rules/conditions/${id}`, { method: "DELETE" }),
   getRuleEvaluation: () => apiFetch("/api/rules/evaluate"),
+  getRuleHistory: () => apiFetch("/api/rules/history"),
+  addRuleHistory: (data: { action: string; player_tag: string; player_name: string; note?: string }) =>
+    apiFetch("/api/rules/history", { method: "POST", body: JSON.stringify(data) }),
+  deleteRuleHistory: (id: number) => apiFetch(`/api/rules/history/${id}`, { method: "DELETE" }),
 };

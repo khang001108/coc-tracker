@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Swords, Castle, Gamepad2,
+  LayoutDashboard, Swords, Castle, Scale,
   Heart, Users, BarChart3, Settings, Shield, PartyPopper, UserCheck, MessageCircle, UserCircle2, Store, RotateCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ const NAV = [
   { href: "/",          label: "Tổng quan",    icon: LayoutDashboard },
   { href: "/war",       label: "War & CWL",    icon: Swords },
   { href: "/capital",   label: "Clan Capital", icon: Castle },
-  { href: "/games",     label: "Clan Games",   icon: Gamepad2 },
+  { href: "/rules",     label: "Pháp điển",    icon: Scale },
   { href: "/donate",    label: "Donate",       icon: Heart },
   { href: "/members",   label: "Thành viên",   icon: Users },
   { href: "/events",    label: "Sự kiện",      icon: PartyPopper },

@@ -1116,3 +1116,28 @@ ALTER TABLE clan_rule_conditions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "service_all" ON clan_rule_conditions;
 CREATE POLICY "service_all" ON clan_rule_conditions FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rule_conditions TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 37 (Thêm hạ cấp Đồng thủ lĩnh→Huynh trưởng và Huynh
+-- trưởng→Thành viên vào Nội quy, + lịch sử Admin đã xử lý thăng/hạ/loại
+-- thật ngoài đời — trang "Pháp điển")
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_target_check;
+ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_target_check
+  CHECK (target IN ('elder', 'co_leader', 'demote_co_leader', 'demote_elder', 'violation'));
+
+CREATE TABLE IF NOT EXISTS clan_rule_history (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+  action      TEXT NOT NULL CHECK (action IN ('promote_elder', 'promote_co_leader', 'demote_co_leader', 'demote_elder', 'expel')),
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  note        TEXT NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_clan_rule_history_clan ON clan_rule_history(clan_id, created_at DESC);
+
+ALTER TABLE clan_rule_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON clan_rule_history;
+CREATE POLICY "service_all" ON clan_rule_history FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rule_history TO service_role;

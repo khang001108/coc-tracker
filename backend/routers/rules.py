@@ -3,6 +3,8 @@ Nội quy clan — nội dung tự do (rules_text) do Admin viết, kèm các đ
 đối chiếu với dữ liệu THẬT của từng thành viên để tự tính:
   - Ai đủ điều kiện lên Huynh trưởng / Đồng thủ lĩnh (PHẢI đạt HẾT các điều
     kiện trong nhóm — AND).
+  - Ai không giữ được tiêu chuẩn Đồng thủ lĩnh / Huynh trưởng, nên bị hạ cấp
+    (chỉ cần dính 1 điều kiện — OR, giống tinh thần "vi phạm").
   - Ai đang vi phạm, có nguy cơ bị loại khỏi clan (chỉ cần dính 1 điều kiện
     trong nhóm "violation" — OR).
 
@@ -14,7 +16,11 @@ Chỉ số hỗ trợ (metric): donate, war_attendance, reputation, capital, cup
   - war_attendance: % lượt tấn công đã dùng / tổng lượt được phép trong N tuần
                     gần nhất (N cấu hình ở war_weeks), từ war_participation_log
 
-Xem được công khai (mọi người, kể cả khách) — chỉ SỬA mới cần Admin.
+Xem được công khai (mọi người, kể cả khách) — chỉ SỬA/ghi lịch sử mới cần Admin.
+
+Lịch sử (clan_rule_history) là Admin TỰ TAY xác nhận đã xử lý (thăng/hạ/loại)
+1 người ngoài đời thật — web không tự thay đổi role qua CoC API (không có
+quyền đó), chỉ ghi lại làm nhật ký để xem lại sau này.
 """
 from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime, timedelta
@@ -27,12 +33,16 @@ from services.reputation import get_all_totals
 router = APIRouter()
 
 METRICS = {"donate", "war_attendance", "reputation", "capital", "cup"}
-TARGETS = {"elder", "co_leader", "violation"}
+TARGETS = {"elder", "co_leader", "demote_co_leader", "demote_elder", "violation"}
+# elder/co_leader PHẢI đạt HẾT điều kiện (AND) — thăng chức. Các target còn
+# lại chỉ cần dính 1 (OR) — hạ cấp/vi phạm, không giữ được 1 tiêu chuẩn nào
+# đó là đủ để bị gắn cờ.
 OPS = {"gte", "lte"}
+ACTIONS = {"promote_elder", "promote_co_leader", "demote_co_leader", "demote_elder", "expel"}
 
 # Vai trò đã ở mức đó hoặc cao hơn — không cần hiện lại trong danh sách "đủ
 # điều kiện lên X" (đã lên rồi thì thôi), và Leader không nằm trong diện xét
-# bị loại (chủ hội, không tự loại chính mình qua nội quy).
+# bị loại/hạ cấp (chủ hội).
 _ALREADY_ELDER_UP = {"admin", "coLeader", "leader"}
 _ALREADY_COLEADER_UP = {"coLeader", "leader"}
 
@@ -125,16 +135,18 @@ async def delete_condition(condition_id: int, request: Request, _: bool = Depend
 
 @router.get("/evaluate")
 async def evaluate(request: Request):
-    """Đối chiếu điều kiện đã cấu hình với dữ liệu thật — trả về 3 danh sách:
-    elder (đủ lên Huynh trưởng), co_leader (đủ lên Đồng thủ lĩnh), violation
-    (vi phạm, có nguy cơ bị loại). Công khai — ai xem cũng được."""
+    """Đối chiếu điều kiện đã cấu hình với dữ liệu thật — trả về 5 danh sách:
+    elder/co_leader (đủ điều kiện thăng), demote_co_leader/demote_elder (không
+    giữ được tiêu chuẩn, nên hạ cấp), violation (vi phạm, nguy cơ bị loại).
+    Công khai — ai xem cũng được."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
 
     conds_res = sb.table("clan_rule_conditions").select("*").eq("clan_id", clan_id).execute()
     conditions = conds_res.data or []
+    empty = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": []}
     if not conditions:
-        return {"elder": [], "co_leader": [], "violation": []}
+        return empty
 
     cfg_res = sb.table("clan_rules").select("war_weeks").eq("clan_id", clan_id).execute()
     war_weeks = (cfg_res.data[0]["war_weeks"] if cfg_res.data else None) or 4
@@ -196,9 +208,10 @@ async def evaluate(request: Request):
             "war_attendance": war_attendance.get(m["tag"]),
         }
 
-    result = {"elder": [], "co_leader": [], "violation": []}
+    result = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": []}
     for m in members:
         role = m.get("role", "member")
+
         elder_conds = by_target.get("elder", [])
         if elder_conds and role not in _ALREADY_ELDER_UP and all(check(c, m) for c in elder_conds):
             result["elder"].append(snapshot(m))
@@ -207,8 +220,55 @@ async def evaluate(request: Request):
         if co_conds and role not in _ALREADY_COLEADER_UP and all(check(c, m) for c in co_conds):
             result["co_leader"].append(snapshot(m))
 
+        # Hạ cấp: chỉ xét đúng người ĐANG ở cấp đó, chỉ cần dính 1 điều kiện là bị gắn cờ.
+        demote_co_conds = by_target.get("demote_co_leader", [])
+        if demote_co_conds and role == "coLeader" and any(check(c, m) for c in demote_co_conds):
+            result["demote_co_leader"].append(snapshot(m))
+
+        demote_elder_conds = by_target.get("demote_elder", [])
+        if demote_elder_conds and role == "admin" and any(check(c, m) for c in demote_elder_conds):
+            result["demote_elder"].append(snapshot(m))
+
         vio_conds = by_target.get("violation", [])
         if vio_conds and role != "leader" and any(check(c, m) for c in vio_conds):
             result["violation"].append(snapshot(m))
 
     return result
+
+
+@router.get("/history")
+async def list_history(request: Request):
+    """Lịch sử Admin đã xác nhận xử lý (thăng/hạ/loại) — công khai xem được."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    res = (sb.table("clan_rule_history").select("*").eq("clan_id", clan_id)
+           .order("created_at", desc=True).limit(200).execute())
+    return res.data or []
+
+
+@router.post("/history")
+async def add_history(request: Request, _: bool = Depends(require_admin)):
+    clan_id = get_clan_id(request)
+    body = await request.json()
+    action = body.get("action")
+    if action not in ACTIONS:
+        raise HTTPException(400, "action không hợp lệ")
+    player_tag = (body.get("player_tag") or "").strip()
+    player_name = (body.get("player_name") or "").strip()
+    if not player_tag or not player_name:
+        raise HTTPException(400, "Cần tag và tên người chơi")
+    row = {
+        "clan_id": clan_id, "action": action, "player_tag": player_tag,
+        "player_name": player_name, "note": (body.get("note") or "").strip(),
+    }
+    sb = get_supabase()
+    res = sb.table("clan_rule_history").insert(row).execute()
+    return res.data[0]
+
+
+@router.delete("/history/{entry_id}")
+async def delete_history(entry_id: int, request: Request, _: bool = Depends(require_admin)):
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    sb.table("clan_rule_history").delete().eq("id", entry_id).eq("clan_id", clan_id).execute()
+    return {"ok": True}

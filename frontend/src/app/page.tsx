@@ -9,7 +9,7 @@ import { useEmberColor } from "@/lib/useEmberColor";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
-import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check, RefreshCw } from "lucide-react";
+import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check, RefreshCw, Scale } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
@@ -17,7 +17,6 @@ import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { useRoleMap } from "@/lib/useRoleMap";
 import { MarqueeText } from "@/components/ui/MarqueeText";
-import { ClanRulesPopup } from "@/components/ui/ClanRulesPopup";
 
 function StatCard({ label, value, sub, icon: Icon, color = "text-yellow-400" }: any) {
   return (
@@ -159,7 +158,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <ClanRulesPopup />
       {/* Header — bấm vào huy hiệu/tên hội để đổi clan (nếu có quyền) */}
       <div className="flex items-start justify-between gap-4">
         <ClanSwitcher>
@@ -225,6 +223,13 @@ export default function DashboardPage() {
         </div>
         </OrnateFrame>
       )}
+
+      {/* Pháp điển — nội quy clan, ai cũng bấm xem được */}
+      <Link href="/rules"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors w-fit"
+        style={{ background: "rgba(244,161,48,0.08)", border: "1px solid rgba(244,161,48,0.3)", color: "#F4A130" }}>
+        <Scale size={13} /> Xem Pháp điển
+      </Link>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

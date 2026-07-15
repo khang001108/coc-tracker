@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Swords, Users, Settings, MoreHorizontal,
-  Castle, Gamepad2, Heart, BarChart3, PartyPopper, X, Shield,
+  Castle, Scale, Heart, BarChart3, PartyPopper, X, Shield,
   MessageCircle, UserCheck, UserCircle2, Store, RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ const MORE = [
   { href: "/login",    label: "Đăng nhập",    icon: UserCheck },
   { href: "/shop",     label: "Cửa hàng",     icon: Store },
   { href: "/capital",  label: "Clan Capital", icon: Castle },
-  { href: "/games",    label: "Clan Games",   icon: Gamepad2 },
+  { href: "/rules",    label: "Pháp điển",    icon: Scale },
   { href: "/donate",   label: "Donate",       icon: Heart },
   { href: "/stats",    label: "Thống kê",     icon: BarChart3 },
   { href: "/settings", label: "Cài đặt",      icon: Settings },

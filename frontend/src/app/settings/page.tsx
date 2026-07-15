@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check, ScrollText, Crown, Star, AlertTriangle } from "lucide-react";
+import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check, ScrollText, Crown, Star, AlertTriangle, TrendingDown } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { MarqueeText } from "@/components/ui/MarqueeText";
@@ -10,7 +10,7 @@ import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons";
 import { getCurrentClanId, getCurrentClanInfo } from "@/lib/clanContext";
-import { getRulesPopupEnabled, setRulesPopupEnabled } from "@/lib/clanRulesPref";
+import { RULE_METRIC_LABELS } from "@/lib/ruleConstants";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -1411,20 +1411,15 @@ function ShopPricingSettings() {
 
 // ── Nội quy clan ────────────────────────────────────────────────────────────
 
-const RULE_METRIC_LABELS: Record<string, string> = {
-  donate: "Donate (mùa hiện tại)",
-  war_attendance: "Tỷ lệ tham chiến War (%)",
-  reputation: "Danh vọng (tổng)",
-  capital: "Capital Gold (mùa hiện tại)",
-  cup: "Cúp (hiện tại)",
-};
 const RULE_TARGET_META: Record<string, { label: string; icon: any; color: string; hint: string }> = {
   elder: { label: "Điều kiện lên Huynh trưởng", icon: Star, color: "text-blue-400", hint: "Phải đạt HẾT các điều kiện dưới đây mới được tính là đủ điều kiện" },
   co_leader: { label: "Điều kiện lên Đồng thủ lĩnh", icon: Crown, color: "text-purple-400", hint: "Phải đạt HẾT các điều kiện dưới đây mới được tính là đủ điều kiện" },
+  demote_co_leader: { label: "Điều kiện hạ Đồng thủ lĩnh → Huynh trưởng", icon: TrendingDown, color: "text-orange-400", hint: "Chỉ cần dính 1 trong các điều kiện dưới đây là bị đưa vào danh sách đề xuất hạ cấp" },
+  demote_elder: { label: "Điều kiện hạ Huynh trưởng → Thành viên", icon: TrendingDown, color: "text-orange-400", hint: "Chỉ cần dính 1 trong các điều kiện dưới đây là bị đưa vào danh sách đề xuất hạ cấp" },
   violation: { label: "Điều kiện vi phạm / bị loại", icon: AlertTriangle, color: "text-red-400", hint: "Chỉ cần dính 1 trong các điều kiện dưới đây là bị đưa vào danh sách cảnh báo" },
 };
 
-function RuleConditionGroup({ target, conditions, onChanged }: { target: "elder" | "co_leader" | "violation"; conditions: any[]; onChanged: () => void }) {
+function RuleConditionGroup({ target, conditions, onChanged }: { target: "elder" | "co_leader" | "demote_co_leader" | "demote_elder" | "violation"; conditions: any[]; onChanged: () => void }) {
   const confirm = useConfirm();
   const meta = RULE_TARGET_META[target];
   const Icon = meta.icon;
@@ -1545,6 +1540,8 @@ function ClanRulesSettings() {
 
       <RuleConditionGroup target="elder" conditions={conditions} onChanged={load} />
       <RuleConditionGroup target="co_leader" conditions={conditions} onChanged={load} />
+      <RuleConditionGroup target="demote_co_leader" conditions={conditions} onChanged={load} />
+      <RuleConditionGroup target="demote_elder" conditions={conditions} onChanged={load} />
       <RuleConditionGroup target="violation" conditions={conditions} onChanged={load} />
     </div>
   );
@@ -1932,34 +1929,6 @@ function ClanManagement() {
 }
 
 
-/** Bật/tắt popup nội quy clan (hiện ở Tổng quan mỗi lần mở web) — lưu riêng
- * theo từng trình duyệt/thiết bị, không cần đăng nhập admin hay thành viên. */
-function ClanRulesPopupToggle() {
-  const [enabled, setEnabled] = useState(true);
-  useEffect(() => { setEnabled(getRulesPopupEnabled()); }, []);
-
-  function toggle() {
-    const next = !enabled;
-    setEnabled(next);
-    setRulesPopupEnabled(next);
-  }
-
-  return (
-    <div className="card flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
-          <ScrollText size={16} className="text-yellow-400" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--py-card-text)" }}>Popup nội quy clan</p>
-          <p className="text-xs text-gray-500">Hiện lại nội quy mỗi lần mở web ở trang Tổng quan</p>
-        </div>
-      </div>
-      <ToggleSwitch checked={enabled} onChange={toggle} />
-    </div>
-  );
-}
-
 function PushNotificationSettings() {
   const [supported, setSupported] = useState(true);
   const [permission, setPermission] = useState<string>("default");
@@ -2236,7 +2205,6 @@ export default function SettingsPage() {
           <InstallAppButton />
           <ShareWebsite />
           <JoinGroupLinks />
-          <ClanRulesPopupToggle />
           <PushNotificationSettings />
         </>
       )}
