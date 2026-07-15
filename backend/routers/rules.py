@@ -138,13 +138,15 @@ async def evaluate(request: Request):
     """Đối chiếu điều kiện đã cấu hình với dữ liệu thật — trả về 5 danh sách:
     elder/co_leader (đủ điều kiện thăng), demote_co_leader/demote_elder (không
     giữ được tiêu chuẩn, nên hạ cấp), violation (vi phạm, nguy cơ bị loại).
+    Kèm `all_members` — snapshot chỉ số của TẤT CẢ thành viên (kể cả người
+    chưa rơi vào danh sách nào) để FE tự đối chiếu khi tra cứu 1 người cụ thể.
     Công khai — ai xem cũng được."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
 
     conds_res = sb.table("clan_rule_conditions").select("*").eq("clan_id", clan_id).execute()
     conditions = conds_res.data or []
-    empty = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": []}
+    empty = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": [], "all_members": []}
     if not conditions:
         return empty
 
@@ -208,9 +210,10 @@ async def evaluate(request: Request):
             "war_attendance": war_attendance.get(m["tag"]),
         }
 
-    result = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": []}
+    result = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": [], "all_members": []}
     for m in members:
         role = m.get("role", "member")
+        result["all_members"].append(snapshot(m))
 
         elder_conds = by_target.get("elder", [])
         if elder_conds and role not in _ALREADY_ELDER_UP and all(check(c, m) for c in elder_conds):

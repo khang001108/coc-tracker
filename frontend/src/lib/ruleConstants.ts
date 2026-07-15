@@ -31,6 +31,15 @@ export function conditionSentence(c: { metric: string; op: string; value: number
   return `${label} ${opText} ${c.value}`;
 }
 
+/** So 1 điều kiện với snapshot chỉ số của 1 thành viên (donate/war_attendance/
+ * reputation/capital/cup) — null nếu thiếu dữ liệu (vd chưa có war nào trong
+ * N tuần gần nhất). */
+export function checkCondition(c: { metric: string; op: string; value: number }, member: Record<string, any>): boolean | null {
+  const v = member[c.metric];
+  if (v === null || v === undefined) return null;
+  return c.op === "gte" ? v >= c.value : v <= c.value;
+}
+
 export const HISTORY_ACTION_LABELS: Record<string, { label: string; color: string }> = {
   promote_elder:     { label: "Lên Huynh trưởng",  color: "text-blue-400" },
   promote_co_leader: { label: "Lên Đồng thủ lĩnh", color: "text-purple-400" },

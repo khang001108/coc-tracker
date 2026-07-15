@@ -4,13 +4,13 @@ import { api, getAdminToken } from "@/lib/api";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
-  RULE_METRIC_LABELS, RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, HISTORY_ACTION_LABELS,
+  RULE_METRIC_LABELS, RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition, HISTORY_ACTION_LABELS,
   type RuleTarget,
 } from "@/lib/ruleConstants";
-import { Scale, Star, Crown, TrendingDown, AlertTriangle, History as HistoryIcon, Check, Trash2, Loader2 } from "lucide-react";
+import { Scale, Star, Crown, TrendingDown, AlertTriangle, History as HistoryIcon, Check, X, Search, Trash2, Loader2 } from "lucide-react";
 
 type ListKey = RuleTarget;
-type EvalResult = Record<ListKey, any[]>;
+type EvalResult = Record<ListKey, any[]> & { all_members: any[] };
 
 const LIST_META: Record<ListKey, { label: string; tabLabel: string; icon: any; color: string; empty: string; historyAction: string }> = {
   elder:             { label: "Đủ điều kiện lên Huynh trưởng",              tabLabel: "Huynh trưởng",   icon: Star,          color: "text-blue-400",   empty: "Chưa có ai đủ điều kiện.",     historyAction: "promote_elder" },
@@ -135,12 +135,93 @@ function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdm
   );
 }
 
+/** Tra cứu — chọn 1 thành viên bất kỳ, đối chiếu ngay với TẤT CẢ điều kiện đã
+ * cấu hình (kể cả nhóm không áp dụng cho vai trò hiện tại của họ, để tiện
+ * xem trước điều kiện cần đạt nếu muốn lên/giữ chức). */
+function LookupSection({ members, conditions }: { members: any[]; conditions: any[] }) {
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<any>(null);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q)).slice(0, 20)
+    : [];
+
+  const byTarget: Record<string, any[]> = {};
+  conditions.forEach(c => { (byTarget[c.target] ||= []).push(c); });
+  const targets = Object.keys(RULE_TARGET_LABELS) as RuleTarget[];
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input className="input !pl-9 text-sm" placeholder="Tìm theo tên hoặc tag..."
+            value={query} onChange={e => { setQuery(e.target.value); setSelected(null); }} />
+        </div>
+        {q && !selected && (
+          <div className="absolute z-10 mt-1 w-full rounded-xl overflow-hidden shadow-xl max-h-56 overflow-y-auto"
+            style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
+            {filtered.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-3">Không tìm thấy thành viên nào.</p>
+            ) : filtered.map(m => (
+              <button key={m.tag} onClick={() => { setSelected(m); setQuery(m.name); }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-yellow-400/10 transition-colors"
+                style={{ color: "var(--py-card-text)" }}>
+                {m.name} <span className="text-gray-500 text-xs">#{m.tag.replace("#", "")}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selected && (
+        <div className="card space-y-3">
+          <div>
+            <p className="font-bold text-white">
+              {selected.name} <span className="text-gray-500 text-sm font-normal">#{selected.tag.replace("#", "")}</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">{statLine(selected)}</p>
+          </div>
+          {targets.every(t => !byTarget[t]?.length) && (
+            <p className="text-sm text-gray-500">Chưa cấu hình điều kiện nào để đối chiếu.</p>
+          )}
+          {targets.map(t => {
+            const list = byTarget[t];
+            if (!list?.length) return null;
+            const results = list.map(c => ({ cond: c, pass: checkCondition(c, selected) }));
+            const overall = RULE_TARGET_IS_AND[t] ? results.every(r => r.pass) : results.some(r => r.pass);
+            return (
+              <div key={t} className="space-y-1.5 pt-2 border-t border-gray-800">
+                <p className={`text-xs font-semibold flex items-center gap-1.5 ${overall ? "text-green-400" : "text-gray-500"}`}>
+                  {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
+                </p>
+                <ul className="space-y-1 pl-1">
+                  {results.map(({ cond, pass }) => (
+                    <li key={cond.id} className="text-sm flex items-center gap-2">
+                      {pass ? <Check size={13} className="text-green-400 shrink-0" /> : <X size={13} className="text-red-400 shrink-0" />}
+                      <span style={{ color: "var(--py-card-text)" }}>
+                        {conditionSentence(cond)}
+                        <span className="text-gray-500"> — hiện tại: {selected[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RulesPage() {
   const isAdmin = !!getAdminToken();
   const [rulesText, setRulesText] = useState("");
   const [conditions, setConditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<ListKey | "history">("elder");
+  const [tab, setTab] = useState<ListKey | "history" | "lookup">("lookup");
   const [evaluation, setEvaluation] = useState<EvalResult | null>(null);
   const [loadingEval, setLoadingEval] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -158,7 +239,7 @@ export default function RulesPage() {
   async function loadEval() {
     setLoadingEval(true);
     try { setEvaluation(await api.getRuleEvaluation()); }
-    catch { setEvaluation({ elder: [], co_leader: [], demote_co_leader: [], demote_elder: [], violation: [] }); }
+    catch { setEvaluation({ elder: [], co_leader: [], demote_co_leader: [], demote_elder: [], violation: [], all_members: [] }); }
     finally { setLoadingEval(false); }
   }
   useEffect(() => { loadEval(); }, []);
@@ -199,11 +280,19 @@ export default function RulesPage() {
           <div className="space-y-3">
             <div className="overflow-x-auto -mx-1 px-1 pb-1">
               <SlidingTabs
-                tabs={[...listTabs, { id: "history", label: "Lịch sử" }]}
+                tabs={[{ id: "lookup", label: "🔍 Tra cứu" }, ...listTabs, { id: "history", label: "Lịch sử" }]}
                 active={tab} onChange={(id) => setTab(id as any)} className="w-max" />
             </div>
 
-            {tab !== "history" ? (
+            {tab === "lookup" ? (
+              loadingEval ? (
+                <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>
+              ) : (
+                <LookupSection members={evaluation?.all_members || []} conditions={conditions} />
+              )
+            ) : tab === "history" ? (
+              <HistorySection history={history} isAdmin={isAdmin} onChanged={loadHistory} />
+            ) : (
               loadingEval ? (
                 <div className="flex justify-center py-6"><Loader2 size={18} className="animate-spin text-yellow-400" /></div>
               ) : (
@@ -217,8 +306,6 @@ export default function RulesPage() {
                   )}
                 </div>
               )
-            ) : (
-              <HistorySection history={history} isAdmin={isAdmin} onChanged={loadHistory} />
             )}
           </div>
         </>
