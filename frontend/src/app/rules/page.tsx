@@ -28,7 +28,7 @@ const LIST_META: Record<ListKey, { label: string; icon: any; color: string; empt
 // 3 pill-tab con trong "Xét duyệt" — mỗi tab gồm 1-2 nhóm điều kiện.
 const REVIEW_TAB_META: Record<ReviewTab, { label: string; keys: ListKey[] }> = {
   merit:     { label: "🏅 Công trạng", keys: ["elder", "co_leader"] },
-  sanction:  { label: "⚖️ Chế tài",    keys: ["demote_co_leader", "demote_elder"] },
+  sanction:  { label: "📉 Chế tài",    keys: ["demote_co_leader", "demote_elder"] },
   expulsion: { label: "🚫 Khai trừ",   keys: ["violation"] },
 };
 
@@ -86,7 +86,7 @@ function MemberConditionCheck({ member, conditions }: { member: any; conditions:
 /** Popup Tra cứu — danh sách thành viên (kiểu giống trang Thành viên) + tìm
  * kiếm; bấm 1 người chuyển sang xem đối chiếu điều kiện của người đó, có nút
  * quay lại danh sách. */
-function LookupModal({ members, conditions, onClose }: { members: any[]; conditions: any[]; onClose: () => void }) {
+function LookupModal({ members, conditions, scopeLabel, onClose }: { members: any[]; conditions: any[]; scopeLabel: string; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<any>(null);
 
@@ -106,7 +106,7 @@ function LookupModal({ members, conditions, onClose }: { members: any[]; conditi
                     <ChevronLeft size={18} />
                   </button>
                 )}
-                <Search size={16} className="text-yellow-400" /> Tra cứu
+                <Search size={16} className="text-yellow-400" /> Tra cứu <span className="text-gray-500 font-normal text-sm">— {scopeLabel}</span>
               </h3>
               <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={18} /></button>
             </div>
@@ -353,7 +353,7 @@ export default function RulesPage() {
   const [evaluation, setEvaluation] = useState<EvalResult | null>(null);
   const [loadingEval, setLoadingEval] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
-  const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupTab, setLookupTab] = useState<ReviewTab | null>(null);
 
   useEffect(() => {
     api.getClan().then((c: any) => setClanDescription(c?.description || "")).catch(() => {});
@@ -446,9 +446,9 @@ export default function RulesPage() {
                     tabs={(Object.keys(REVIEW_TAB_META) as ReviewTab[]).map(k => ({ id: k, label: REVIEW_TAB_META[k].label }))}
                     active={reviewTab} onChange={(id) => setReviewTab(id as ReviewTab)} className="w-max" />
                 </div>
-                <button onClick={() => setLookupOpen(true)}
-                  className="btn-secondary text-xs flex items-center gap-1.5 shrink-0">
-                  <Search size={13} /> Tra cứu
+                <button onClick={() => setLookupTab(reviewTab)} title="Tra cứu"
+                  className="btn-secondary !p-2 shrink-0">
+                  <Search size={15} />
                 </button>
               </div>
 
@@ -470,8 +470,13 @@ export default function RulesPage() {
         </div>
       )}
 
-      {lookupOpen && (
-        <LookupModal members={evaluation?.all_members || []} conditions={conditions} onClose={() => setLookupOpen(false)} />
+      {lookupTab && (
+        <LookupModal
+          members={evaluation?.all_members || []}
+          conditions={conditions.filter(c => REVIEW_TAB_META[lookupTab].keys.includes(c.target))}
+          scopeLabel={REVIEW_TAB_META[lookupTab].label}
+          onClose={() => setLookupTab(null)}
+        />
       )}
     </div>
   );
