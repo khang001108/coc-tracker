@@ -25,7 +25,7 @@ from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin, verify_admin_token
 from member_auth import verify_member_token
-from services.coc_api import get_current_war, get_war_log, get_clan_members, get_cwl_group, get_cwl_war, get_raid_seasons, get_cwl_season_rounds
+from services.coc_api import get_current_war, get_war_log, get_clan_members, get_clan_members_resilient, get_cwl_group, get_cwl_war, get_raid_seasons, get_cwl_season_rounds
 from services.push_service import send_push_to_clan
 import uuid
 import datetime
@@ -682,7 +682,7 @@ async def _donation_members_for_clan(clan_id: int) -> list:
     tag = await get_tag_by_clan_id(clan_id)
     if not tag:
         return []
-    return await get_clan_members(tag, clan_id=clan_id)
+    return await get_clan_members_resilient(tag, clan_id=clan_id)
 
 
 async def _capital_members_for_clan(clan_id: int) -> list:

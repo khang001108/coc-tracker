@@ -32,7 +32,7 @@ from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import verify_admin_token, require_admin
 from member_auth import verify_member_token
-from services.coc_api import get_clan_members
+from services.coc_api import get_clan_members_resilient
 
 router = APIRouter()
 
@@ -57,7 +57,7 @@ def _current_season_number(sb, clan_id: int) -> int:
 
 async def _get_member_role(clan_id: int, member_tag: str) -> str | None:
     tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    members = await get_clan_members_resilient(tag, clan_id=clan_id) if tag else []
     me = next((m for m in members if m["tag"] == member_tag), None)
     return me.get("role") if me else None
 
@@ -98,7 +98,7 @@ async def get_eligibility(request: Request):
     clan_id = get_clan_id(request)
     sb = get_supabase()
     tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    members = await get_clan_members_resilient(tag, clan_id=clan_id) if tag else []
     reset_count = _reset_count(sb)
     current_season_number = _current_season_number(sb, clan_id)
 

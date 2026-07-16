@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Header, Depends
 from supabase_client import get_supabase
 from member_auth import hash_pin, create_member_token, verify_member_token
-from services.coc_api import get_clan_members
+from services.coc_api import get_clan_members_resilient
 from clan_context import get_tag_for_request, get_clan_id
 from auth import require_admin
 import os
@@ -46,7 +46,7 @@ async def roster(request: Request):
     phải của riêng 1 clan (trước đây lọc theo clan_id khiến ai đó đổi từ clan A
     sang clan B trong cùng hệ thống bị hiện lại "chưa xác minh" dù đã đăng ký)."""
     clan_id, tag = await get_tag_for_request(request)
-    members = await get_clan_members(tag, clan_id=clan_id)
+    members = await get_clan_members_resilient(tag, clan_id=clan_id)
     sb = get_supabase()
     try:
         res = sb.table("member_accounts").select(

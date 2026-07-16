@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin
-from services.coc_api import get_clan_members, get_raid_seasons
+from services.coc_api import get_clan_members_resilient, get_raid_seasons
 from services.reputation import get_all_totals
 
 router = APIRouter()
@@ -199,7 +199,7 @@ async def evaluate(request: Request):
     war_weeks = (cfg_res.data[0]["war_weeks"] if cfg_res.data else None) or 4
 
     tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    members = await get_clan_members_resilient(tag, clan_id=clan_id) if tag else []
 
     rep_totals = get_all_totals(sb, clan_id)
 

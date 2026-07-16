@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends, Query
 from supabase_client import get_supabase
 from clan_context import get_clan_id, get_tag_by_clan_id
 from auth import require_admin
-from services.coc_api import get_clan_members
+from services.coc_api import get_clan_members_resilient
 from services.reputation import get_all_totals, get_tier, get_tiers, add_reputation, REASON_LABELS, get_points, DEFAULT_POINTS, SETTINGS_KEY_PREFIX
 import json
 
@@ -129,7 +129,7 @@ async def get_leaderboard(request: Request, limit: int = Query(50, le=200), scop
 
     clan_id = get_clan_id(request)
     tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members(tag, clan_id=clan_id) if tag else []
+    members = await get_clan_members_resilient(tag, clan_id=clan_id) if tag else []
     totals = get_all_totals(sb, clan_id)
 
     rows = []

@@ -47,6 +47,25 @@ async def get_clan_members(tag: str, clan_id: int = 1) -> list:
     data = await coc_get(f"/clans/{encode_tag(tag)}/members", clan_id=clan_id)
     return data.get("items", [])
 
+async def get_clan_members_resilient(tag: str, clan_id: int = 1) -> list:
+    """Như get_clan_members(), nhưng khi CoC API/proxy trung gian lỗi (vd
+    cocproxy.royaleapi.dev sập tạm thời — đã xảy ra thực tế, làm trắng xoá
+    hàng loạt trang) thì fallback về memberList trong snapshot_clan cache gần
+    nhất (poller cập nhật mỗi 15 phút cho MỌI clan) thay vì crash 500. Dùng
+    cho các trang xếp hạng/hiển thị (Danh vọng, Huy chương CWL, Top Cúp...)
+    nơi dữ liệu hơi cũ vẫn tốt hơn nhiều so với trắng trang."""
+    try:
+        return await get_clan_members(tag, clan_id=clan_id)
+    except httpx.HTTPError:
+        # Bắt luôn cả lỗi status (500/503...) lẫn lỗi kết nối/timeout — mọi
+        # kiểu sự cố phía CoC API/proxy đều nên fallback về cache thay vì crash.
+        import json
+        sb = get_supabase()
+        res = sb.table("snapshot_clan").select("data").eq("clan_id", clan_id).order("id", desc=True).limit(1).execute()
+        if res.data:
+            return json.loads(res.data[0]["data"]).get("memberList", [])
+        raise
+
 # ── War ───────────────────────────────────────────────────────────────────────
 async def get_current_war(tag: str, clan_id: int = 1) -> dict:
     return await coc_get(f"/clans/{encode_tag(tag)}/currentwar", clan_id=clan_id)

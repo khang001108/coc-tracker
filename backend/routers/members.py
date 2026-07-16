@@ -1,26 +1,14 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from supabase_client import get_supabase
 from clan_context import get_tag_for_request, get_clan_id
-from services.coc_api import get_clan_members, get_player
-import json
+from services.coc_api import get_clan_members_resilient, get_player
 
 router = APIRouter()
 
 @router.get("/")
 async def members_list(request: Request):
     clan_id, tag = await get_tag_for_request(request)
-
-    # Clan chính (id=1): dùng snapshot cache cho nhanh — đồng thời sống sót
-    # qua lúc CoC API/proxy trung gian bị sập tạm thời (xem games.py cho lý
-    # do tương tự). memberList trong snapshot_clan cùng cấu trúc với /members.
-    if clan_id == 1:
-        sb = get_supabase()
-        res = sb.table("snapshot_clan").select("data").eq("clan_id", 1).order("id", desc=True).limit(1).execute()
-        if res.data:
-            items = json.loads(res.data[0]["data"]).get("memberList", [])
-            return {"items": items, "count": len(items)}
-
-    items = await get_clan_members(tag, clan_id=clan_id)
+    items = await get_clan_members_resilient(tag, clan_id=clan_id)
     return {"items": items, "count": len(items)}
 
 @router.get("/log")

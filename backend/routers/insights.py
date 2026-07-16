@@ -147,9 +147,9 @@ async def top_trophies(request: Request, limit: int = Query(10, le=50), scope: s
         return {"top": rows[:limit]}
 
     from clan_context import get_tag_for_request
-    from services.coc_api import get_clan_members
+    from services.coc_api import get_clan_members_resilient
     _, tag = await get_tag_for_request(request)
-    members = await get_clan_members(tag, clan_id=get_clan_id(request)) if tag else []
+    members = await get_clan_members_resilient(tag, clan_id=get_clan_id(request)) if tag else []
     ranked = sorted(members, key=lambda m: -(m.get("trophies") or 0))
     return {"top": [{"tag": m["tag"], "name": m["name"], "trophies": m.get("trophies") or 0} for m in ranked[:limit]]}
 
