@@ -11,6 +11,7 @@ import {
   HISTORY_ACTION_LABELS, isSystemHistoryAction, type RuleTarget,
 } from "@/lib/ruleConstants";
 import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, ChevronRight, ChevronLeft, Trash2, Loader2, ScrollText } from "lucide-react";
+import { ScrollIcon, ScaleIcon, MedalIcon, GateIcon, BrokenColumnIcon, TabletStylusIcon } from "@/components/ui/GrecoIcons";
 
 type ListKey = RuleTarget;
 type EvalResult = Record<ListKey, any[]> & { all_members: any[] };
@@ -26,10 +27,10 @@ const LIST_META: Record<ListKey, { label: string; icon: any; color: string; empt
 };
 
 // 3 pill-tab con trong "Xét duyệt" — mỗi tab gồm 1-2 nhóm điều kiện.
-const REVIEW_TAB_META: Record<ReviewTab, { label: string; keys: ListKey[] }> = {
-  merit:     { label: "🏅 Công trạng", keys: ["elder", "co_leader"] },
-  sanction:  { label: "📉 Chế tài",    keys: ["demote_co_leader", "demote_elder"] },
-  expulsion: { label: "🚫 Khai trừ",   keys: ["violation"] },
+const REVIEW_TAB_META: Record<ReviewTab, { label: string; icon: JSX.Element; keys: ListKey[] }> = {
+  merit:     { label: "Công trạng", icon: <MedalIcon/>,        keys: ["elder", "co_leader"] },
+  sanction:  { label: "Chế tài",    icon: <BrokenColumnIcon/>, keys: ["demote_co_leader", "demote_elder"] },
+  expulsion: { label: "Khai trừ",   icon: <GateIcon/>,         keys: ["violation"] },
 };
 
 function statLine(m: any): string {
@@ -404,9 +405,9 @@ export default function RulesPage() {
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
             <SlidingTabs
               tabs={[
-                { id: "info", label: "📜 Nội quy" },
-                { id: "review", label: "⚖️ Xét duyệt" },
-                { id: "history", label: "📋 Lịch sử" },
+                { id: "info", label: "Nội quy", icon: <ScrollIcon/> },
+                { id: "review", label: "Xét duyệt", icon: <ScaleIcon/> },
+                { id: "history", label: "Lịch sử", icon: <TabletStylusIcon/> },
               ]}
               active={topTab} onChange={(id) => setTopTab(id as TopTab)} className="w-max" />
           </div>
@@ -443,7 +444,7 @@ export default function RulesPage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="overflow-x-auto -mx-1 px-1">
                   <SlidingTabs
-                    tabs={(Object.keys(REVIEW_TAB_META) as ReviewTab[]).map(k => ({ id: k, label: REVIEW_TAB_META[k].label }))}
+                    tabs={(Object.keys(REVIEW_TAB_META) as ReviewTab[]).map(k => ({ id: k, label: REVIEW_TAB_META[k].label, icon: REVIEW_TAB_META[k].icon }))}
                     active={reviewTab} onChange={(id) => setReviewTab(id as ReviewTab)} className="w-max" />
                 </div>
                 <button onClick={() => setLookupTab(reviewTab)} title="Tra cứu"

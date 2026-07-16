@@ -10,6 +10,7 @@ import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { AmphoraIcon, TorchIcon } from "@/components/ui/GrecoIcons";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 
@@ -85,7 +86,10 @@ export default function DonatePage() {
 
       {/* Tabs */}
       <SlidingTabs
-        tabs={[{id:"donate",label:"❤️ Donate"},{id:"games",label:"🎮 Clan Games"}]}
+        tabs={[
+          {id:"donate",label:"Donate",icon:<AmphoraIcon/>},
+          {id:"games",label:"Clan Games",icon:<TorchIcon/>},
+        ]}
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (

@@ -15,6 +15,7 @@ import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SortToggle } from "@/components/ui/SortToggle";
 import { Portal } from "@/components/ui/Portal";
 import { useRoleMap } from "@/lib/useRoleMap";
+import { LaurelIcon, ScrollIcon, ColumnIcon, AmphoraIcon, MedalIcon, ZigguratIcon, ShieldIcon } from "@/components/ui/GrecoIcons";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -619,8 +620,8 @@ function StatsPageInner() {
       <div className="overflow-x-auto -mx-1 px-1 pb-1">
         <SlidingTabs
           tabs={[
-            {id:"overview",label:"Tổng quan"},
-            {id:"weekly",label:"Báo cáo tuần"},
+            {id:"overview",label:"Tổng quan",icon:<LaurelIcon/>},
+            {id:"weekly",label:"Báo cáo tuần",icon:<ScrollIcon/>},
           ]}
           active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
       </div>
@@ -632,11 +633,11 @@ function StatsPageInner() {
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
             <SlidingTabs
               tabs={[
-                {id:"general",label:"Chung"},
-                {id:"cumulative",label:"Tích luỹ"},
-                {id:"medals",label:"Huy chương CWL"},
-                {id:"trophies",label:"Top Cúp"},
-                {id:"reputation",label:"Danh vọng"},
+                {id:"general",label:"Chung",icon:<ColumnIcon/>},
+                {id:"cumulative",label:"Tích luỹ",icon:<AmphoraIcon/>},
+                {id:"medals",label:"Huy chương CWL",icon:<MedalIcon/>},
+                {id:"trophies",label:"Top Cúp",icon:<ZigguratIcon/>},
+                {id:"reputation",label:"Danh vọng",icon:<ShieldIcon/>},
               ]}
               active={overviewSubTab} onChange={(id) => setOverviewSubTab(id as any)} className="w-max"/>
           </div>

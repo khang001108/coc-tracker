@@ -9,6 +9,7 @@ import { Portal } from "@/components/ui/Portal";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { FireworkField } from "@/components/ui/FireworkField";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
+import { TorchIcon, CompassIcon, ScrollIcon } from "@/components/ui/GrecoIcons";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
@@ -1489,7 +1490,11 @@ export default function EventsPage() {
       </div>
 
       <SlidingTabs
-        tabs={[{id:"active",label:"Sự kiện"},{id:"quests",label:"Nhiệm vụ"},{id:"history",label:"Lịch sử"}]}
+        tabs={[
+          {id:"active",label:"Sự kiện",icon:<TorchIcon/>},
+          {id:"quests",label:"Nhiệm vụ",icon:<CompassIcon/>},
+          {id:"history",label:"Lịch sử",icon:<ScrollIcon/>},
+        ]}
         active={evTab} onChange={(id) => setEvTab(id as any)} />
 
       {evTab === "history" ? (

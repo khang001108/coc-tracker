@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music2, Upload, Trash2, Play, Pause, UserX, ShieldCheck, Plus, Globe, Edit3, Copy, Share2, Check, ScrollText, Crown, Star, AlertTriangle, TrendingDown } from "lucide-react";
 import { AdminGate } from "@/components/ui/AdminGate";
@@ -11,6 +11,11 @@ import { roleLabel, roleClass } from "@/lib/utils";
 import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons";
 import { getCurrentClanId, getCurrentClanInfo } from "@/lib/clanContext";
 import { RULE_METRIC_LABELS } from "@/lib/ruleConstants";
+import {
+  LaurelIcon, ColumnIcon, ScrollIcon, TabletIcon, HeraldIcon, UrnPourIcon, MosaicIcon,
+  LyreIcon, BannerIcon, TorchIcon, AmphoraIcon, DoveIcon, MessengerIcon,
+  ShieldIcon, CitizensIcon,
+} from "@/components/ui/GrecoIcons";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
   if (!msg) return null;
@@ -241,26 +246,26 @@ function UploadFromDeviceButton({ onUploaded }: { onUploaded: (url: string) => v
   );
 }
 
-const SECTION_TABS: Record<string, { id: string; label: string }[]> = {
+const SECTION_TABS: Record<string, { id: string; label: string; icon: ReactNode }[]> = {
   general: [
-    { id: "clan", label: "Quản lý Clan" },
-    { id: "discord", label: "Discord" },
-    { id: "telegram", label: "Telegram" },
-    { id: "notify_data", label: "Thông báo & Dữ liệu" },
-    { id: "manual_notify", label: "Thông báo thủ công" },
+    { id: "clan", label: "Quản lý Clan", icon: <ColumnIcon/> },
+    { id: "discord", label: "Discord", icon: <HeraldIcon/> },
+    { id: "telegram", label: "Telegram", icon: <DoveIcon/> },
+    { id: "notify_data", label: "Thông báo & Dữ liệu", icon: <TabletIcon/> },
+    { id: "manual_notify", label: "Thông báo thủ công", icon: <MessengerIcon/> },
   ],
   events: [
-    { id: "reward_log", label: "Lịch sử trao thưởng" },
+    { id: "reward_log", label: "Lịch sử trao thưởng", icon: <ScrollIcon/> },
   ],
   members: [
-    { id: "cleanup", label: "Dọn dẹp tài sản" },
+    { id: "cleanup", label: "Dọn dẹp tài sản", icon: <UrnPourIcon/> },
   ],
   music: [
-    { id: "chat_bg", label: "Ảnh nền Chat" },
-    { id: "overview_cards", label: "Thẻ Tổng quan" },
-    { id: "ember", label: "Màu tia lửa" },
-    { id: "banners", label: "Ảnh nền từng mục" },
-    { id: "music_player", label: "Nhạc nền" },
+    { id: "chat_bg", label: "Ảnh nền Chat", icon: <MosaicIcon/> },
+    { id: "overview_cards", label: "Thẻ Tổng quan", icon: <LaurelIcon/> },
+    { id: "ember", label: "Màu tia lửa", icon: <TorchIcon/> },
+    { id: "banners", label: "Ảnh nền từng mục", icon: <BannerIcon/> },
+    { id: "music_player", label: "Nhạc nền", icon: <LyreIcon/> },
   ],
 };
 
@@ -2210,7 +2215,10 @@ export default function SettingsPage() {
 
       <div className="overflow-x-auto -mx-1 px-1 pb-1">
         <SlidingTabs
-          tabs={[{ id: "general", label: "Cài đặt thường" }, { id: "admin", label: "Quản trị viên" }]}
+          tabs={[
+            { id: "general", label: "Cài đặt thường", icon: <LaurelIcon/> },
+            { id: "admin", label: "Quản trị viên", icon: <ShieldIcon/> },
+          ]}
           active={outerTab} onChange={(id) => setOuterTab(id as any)} className="w-max"/>
       </div>
 
@@ -2231,12 +2239,12 @@ export default function SettingsPage() {
             <div className="overflow-x-auto -mx-1 px-1 pb-1">
               <SlidingTabs
                 tabs={[
-                  { id: "general", label: "Chung" },
-                  { id: "events",  label: "Sự kiện" },
-                  { id: "music",   label: "Bố cục" },
-                  { id: "members", label: "Thành viên" },
-                  { id: "shop",    label: "Cửa hàng" },
-                  { id: "rules",   label: "Nội quy" },
+                  { id: "general", label: "Chung", icon: <ColumnIcon/> },
+                  { id: "events",  label: "Sự kiện", icon: <TorchIcon/> },
+                  { id: "music",   label: "Bố cục", icon: <MosaicIcon/> },
+                  { id: "members", label: "Thành viên", icon: <CitizensIcon/> },
+                  { id: "shop",    label: "Cửa hàng", icon: <AmphoraIcon/> },
+                  { id: "rules",   label: "Nội quy", icon: <ScrollIcon/> },
                 ]}
                 active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
             </div>

@@ -9,6 +9,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { Portal } from "@/components/ui/Portal";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { Fish, X } from "lucide-react";
+import { OliveTreeIcon, SproutIcon, VillaIcon, CompassIcon } from "@/components/ui/GrecoIcons";
 
 const DECOR_FRAMES: Record<string, number> = {
   tree1: 4, tree2: 4, cow: 4, pig: 4, sheep: 4, chicken: 4, duck: 4,
@@ -111,8 +112,10 @@ function PlacePickerModal({ catalog, coins, onClose, onPlace, onPlant }: {
             <h3 className="font-bold text-white">Đặt gì vào ô này?</h3>
             <button onClick={onClose} className="text-gray-400"><X size={18} /></button>
           </div>
-          <SlidingTabs tabs={[{ id: "decor", label: "Cây / Vật nuôi" }, { id: "crop", label: "Trồng trọt" }]}
-            active={tab} onChange={id => setTab(id as any)} />
+          <SlidingTabs tabs={[
+            { id: "decor", label: "Cây / Vật nuôi", icon: <OliveTreeIcon/> },
+            { id: "crop", label: "Trồng trọt", icon: <SproutIcon/> },
+          ]} active={tab} onChange={id => setTab(id as any)} />
           <div className="grid grid-cols-2 gap-2">
             {tab === "decor" ? (catalog?.decor || []).map((d: any) => (
               <button key={d.key} onClick={() => onPlace(d.key)} disabled={coins < d.price}
@@ -227,8 +230,10 @@ export default function FarmPage() {
       </div>
 
       <div className="overflow-x-auto -mx-1 px-1">
-        <SlidingTabs tabs={[{ id: "mine", label: "Farm của tôi" }, { id: "visit", label: "Ghé thăm" }]}
-          active={tab} onChange={id => setTab(id as any)} className="w-max" />
+        <SlidingTabs tabs={[
+          { id: "mine", label: "Farm của tôi", icon: <VillaIcon/> },
+          { id: "visit", label: "Ghé thăm", icon: <CompassIcon/> },
+        ]} active={tab} onChange={id => setTab(id as any)} className="w-max" />
       </div>
 
       {msg && (

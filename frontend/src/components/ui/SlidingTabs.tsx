@@ -3,7 +3,7 @@
  * SlidingTabs — tab-pill-group với hiệu ứng viên vàng trượt mượt
  * khi chuyển tab, thay thế pattern tab-pill / tab-pill-active.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -11,6 +11,8 @@ const useIsomorphicLayoutEffect =
 interface TabDef {
   id: string;
   label: string;
+  /** Icon SVG La Mã/Hy Lạp (xem @/components/ui/GrecoIcons) — hiện trong huy hiệu vàng trước label */
+  icon?: ReactNode;
 }
 
 interface Props {
@@ -62,14 +64,14 @@ export function SlidingTabs({ tabs, active, onChange, className = "" }: Props) {
         />
       )}
 
-      {tabs.map(({ id, label }) => {
+      {tabs.map(({ id, label, icon }) => {
         const isActive = active === id;
         return (
           <button
             key={id}
             data-tab={id}
             onClick={() => onChange(id)}
-            className="relative z-10 px-4 py-2 text-sm rounded-xl transition-colors duration-150 whitespace-nowrap"
+            className="relative z-10 px-4 py-2 text-sm rounded-xl transition-colors duration-150 whitespace-nowrap inline-flex items-center gap-1.5"
             style={{
               fontWeight:  isActive ? 700 : 600,
               color:       isActive ? "#1A0F05" : undefined,
@@ -77,6 +79,7 @@ export function SlidingTabs({ tabs, active, onChange, className = "" }: Props) {
               // nhưng cần reset khi active để text đen nổi trên nền vàng
             }}
           >
+            {icon && <span className="tab-icon-medallion">{icon}</span>}
             {label}
           </button>
         );

@@ -12,6 +12,7 @@ import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { ZigguratIcon, CitizensIcon, TabletStylusIcon } from "@/components/ui/GrecoIcons";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SortToggle } from "@/components/ui/SortToggle";
 
@@ -197,7 +198,11 @@ export default function MembersPage() {
 
       {/* Tabs */}
       <SlidingTabs
-        tabs={[{id:"pyramid",label:"🔺 Sơ đồ"},{id:"list",label:"👥 Danh sách"},{id:"log",label:"📋 Nhật ký"}]}
+        tabs={[
+          {id:"pyramid",label:"Sơ đồ",icon:<ZigguratIcon/>},
+          {id:"list",label:"Danh sách",icon:<CitizensIcon/>},
+          {id:"log",label:"Nhật ký",icon:<TabletStylusIcon/>},
+        ]}
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (

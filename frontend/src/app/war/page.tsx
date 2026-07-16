@@ -12,6 +12,7 @@ import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, C
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { ShieldIcon, SwordsIcon, ScrollIcon } from "@/components/ui/GrecoIcons";
 import { getCurrentClanInfo } from "@/lib/clanContext";
 
 /** Top 3 đòn đánh hay nhất của 1 war cụ thể — sao cao nhất → % phá huỷ cao
@@ -298,7 +299,11 @@ export default function WarPage() {
 
       {/* Tabs */}
       <SlidingTabs
-        tabs={[{id:"current",label:"War hiện tại"},{id:"cwl",label:"CWL"},{id:"log",label:"Lịch sử"}]}
+        tabs={[
+          {id:"current",label:"War hiện tại",icon:<ShieldIcon/>},
+          {id:"cwl",label:"CWL",icon:<SwordsIcon/>},
+          {id:"log",label:"Lịch sử",icon:<ScrollIcon/>},
+        ]}
         active={tab} onChange={(id) => setTab(id as any)} />
 
       {loading ? (
@@ -493,7 +498,10 @@ export default function WarPage() {
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h3 className="font-bold text-white">Lịch sử War</h3>
             <SlidingTabs
-              tabs={[{ id: "random", label: "War thường" }, { id: "cwl", label: "CWL" }]}
+              tabs={[
+                { id: "random", label: "War thường", icon: <ShieldIcon/> },
+                { id: "cwl", label: "CWL", icon: <SwordsIcon/> },
+              ]}
               active={logSubTab} onChange={(id) => setLogSubTab(id as any)} />
           </div>
 

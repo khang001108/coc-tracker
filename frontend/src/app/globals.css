@@ -136,6 +136,16 @@
     box-shadow: 0 2px 0 #8B5A1E, 0 3px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
   }
 
+  /* ── Huy hiệu vàng cho icon SVG trong pill tab (phong cách La Mã/Hy Lạp) ── */
+  .tab-icon-medallion {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 19px; height: 19px; border-radius: 9999px; flex-shrink: 0;
+    background: radial-gradient(circle at 35% 28%, #4a3216, #1c1006 75%);
+    border: 1.4px solid #F4A130;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.45), inset 0 1px 1px rgba(255,214,120,0.3);
+  }
+  .tab-icon-medallion svg { width: 12px; height: 12px; color: #FFD27A; }
+
   /* ── Input ── */
   .input {
     @apply w-full rounded-xl px-4 py-2.5 text-sm border
