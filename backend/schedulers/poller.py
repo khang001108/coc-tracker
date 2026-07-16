@@ -54,6 +54,10 @@ async def start_scheduler():
     # tháng) chạy vào 0h ngày 1 hàng tháng.
     scheduler.add_job(poll_monthly_reputation, CronTrigger(day=1, hour=0, minute=30), id="poll_monthly_reputation", replace_existing=True)
     scheduler.add_job(poll_trophy_season_snapshot, CronTrigger(day=1, hour=0, minute=45), id="poll_trophy_season_snapshot", replace_existing=True)
+    # Pháp Điển — đối chiếu ai từng bị gắn cờ đủ điều kiện thăng/hạ/vi phạm
+    # với dữ liệu CoC API mới nhất, tự ghi Lịch sử khi điều đó ĐÃ THẬT SỰ xảy
+    # ra trong game (không cần Admin bấm tay xác nhận nữa).
+    scheduler.add_job(poll_rule_auto_history, IntervalTrigger(minutes=20), id="poll_rule_auto_history", replace_existing=True)
     # Job "canh" cấu hình — cho phép đổi chu kỳ quét Donate/Thành viên trong Cài
     # đặt có hiệu lực NGAY, không cần khởi động lại server.
     scheduler.add_job(poll_check_intervals, IntervalTrigger(minutes=2), id="poll_check_intervals", replace_existing=True)
@@ -950,3 +954,19 @@ async def poll_trophy_season_snapshot():
                 sb.table("trophy_season_log").upsert(rows, on_conflict="clan_id,season,player_tag").execute()
         except Exception as e:
             log.error(f"poll_trophy_season_snapshot error (clan_id={clan_id}): {e}")
+
+
+async def poll_rule_auto_history():
+    """Pháp Điển: đối chiếu ai từng bị gắn cờ đủ điều kiện thăng/hạ/vi phạm
+    (clan_rule_flags) với dữ liệu CoC API mới nhất — nếu điều đó ĐÃ THẬT SỰ
+    xảy ra trong game (role đổi đúng hướng, hoặc rời/bị loại khỏi clan), tự
+    ghi 1 dòng vào clan_rule_history mà không cần Admin bấm tay xác nhận.
+    Xem services/rule_engine.py::sync_rule_auto_history cho logic chi tiết."""
+    from services.rule_engine import sync_rule_auto_history
+    sb = get_supabase()
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            await sync_rule_auto_history(sb, c["id"])
+        except Exception as e:
+            log.error(f"poll_rule_auto_history error (clan_id={c.get('id')}): {e}")

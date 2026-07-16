@@ -18,17 +18,21 @@ Chỉ số hỗ trợ (metric): donate, war_attendance, reputation, capital, cup
 
 Xem được công khai (mọi người, kể cả khách) — chỉ SỬA/ghi lịch sử mới cần Admin.
 
-Lịch sử (clan_rule_history) là Admin TỰ TAY xác nhận đã xử lý (thăng/hạ/loại)
-1 người ngoài đời thật — web không tự thay đổi role qua CoC API (không có
-quyền đó), chỉ ghi lại làm nhật ký để xem lại sau này.
+Lịch sử (clan_rule_history) có 2 nguồn ghi:
+  - Admin TỰ TAY xác nhận đã xử lý (nút "Đánh dấu đã xử lý" — POST /history).
+  - TỰ ĐỘNG: job nền poll_rule_auto_history (schedulers/poller.py) đối chiếu
+    ai từng bị gắn cờ đủ điều kiện thăng/hạ/vi phạm với dữ liệu CoC API mới
+    nhất — nếu điều đó ĐÃ THẬT SỰ xảy ra trong game (role đổi đúng hướng, hoặc
+    rời/bị loại khỏi clan) thì tự ghi, không cần Admin xác nhận tay. Web vẫn
+    KHÔNG tự đổi role qua CoC API (không có quyền đó) — chỉ tự phát hiện và
+    ghi lại khi thấy Admin/leader đã tự làm điều đó trong game. Xem
+    services/rule_engine.py::sync_rule_auto_history.
 """
 from fastapi import APIRouter, HTTPException, Request, Depends
-from datetime import datetime, timedelta
 from supabase_client import get_supabase
-from clan_context import get_clan_id, get_tag_by_clan_id
+from clan_context import get_clan_id
 from auth import require_admin
-from services.coc_api import get_clan_members_resilient, get_raid_seasons
-from services.reputation import get_all_totals
+from services.rule_engine import evaluate_rules
 
 router = APIRouter()
 
@@ -72,13 +76,6 @@ def _log_system_history(sb, clan_id: int, action: str, detail: str):
         }).execute()
     except Exception:
         pass  # chưa chạy migration PART 38 (thiếu cột detail/player_tag nullable) — bỏ qua, không chặn thao tác chính
-
-# Vai trò đã ở mức đó hoặc cao hơn — không cần hiện lại trong danh sách "đủ
-# điều kiện lên X" (đã lên rồi thì thôi), và Leader không nằm trong diện xét
-# bị loại/hạ cấp (chủ hội).
-_ALREADY_ELDER_UP = {"admin", "coLeader", "leader"}
-_ALREADY_COLEADER_UP = {"coLeader", "leader"}
-
 
 @router.get("/")
 async def get_rules(request: Request):
@@ -185,104 +182,13 @@ async def evaluate(request: Request):
     giữ được tiêu chuẩn, nên hạ cấp), violation (vi phạm, nguy cơ bị loại).
     Kèm `all_members` — snapshot chỉ số của TẤT CẢ thành viên (kể cả người
     chưa rơi vào danh sách nào) để FE tự đối chiếu khi tra cứu 1 người cụ thể.
-    Công khai — ai xem cũng được."""
+    Công khai — ai xem cũng được. Ngoài phần này, job nền `poll_rule_auto_history`
+    (schedulers/poller.py) còn tự đối chiếu 5 danh sách này với dữ liệu CoC API
+    mới nhất để tự ghi lịch sử khi 1 người ĐÃ THẬT SỰ được thăng/hạ/loại khỏi
+    clan trong game — xem services/rule_engine.py::sync_rule_auto_history."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
-
-    conds_res = sb.table("clan_rule_conditions").select("*").eq("clan_id", clan_id).execute()
-    conditions = conds_res.data or []
-    empty = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": [], "all_members": []}
-    if not conditions:
-        return empty
-
-    cfg_res = sb.table("clan_rules").select("war_weeks").eq("clan_id", clan_id).execute()
-    war_weeks = (cfg_res.data[0]["war_weeks"] if cfg_res.data else None) or 4
-
-    tag = await get_tag_by_clan_id(clan_id)
-    members = await get_clan_members_resilient(tag, clan_id=clan_id) if tag else []
-
-    rep_totals = get_all_totals(sb, clan_id)
-
-    cutoff = (datetime.utcnow() - timedelta(weeks=war_weeks)).isoformat()
-    war_rows = (sb.table("war_participation_log").select("player_tag,attacks_used,attacks_allowed")
-                .eq("clan_id", clan_id).gte("created_at", cutoff).execute().data or [])
-    war_agg: dict[str, list[int]] = {}
-    for r in war_rows:
-        acc = war_agg.setdefault(r["player_tag"], [0, 0])
-        acc[0] += r["attacks_used"] or 0
-        acc[1] += r["attacks_allowed"] or 0
-    war_attendance = {t: (round(used / allowed * 100, 1) if allowed > 0 else None)
-                       for t, (used, allowed) in war_agg.items()}
-
-    capital_loot: dict[str, int] = {}
-    try:
-        seasons = await get_raid_seasons(tag, clan_id=clan_id) if tag else []
-        if seasons:
-            for m in seasons[0].get("members", []):
-                capital_loot[m["tag"]] = m.get("capitalResourcesLooted", 0)
-    except Exception:
-        pass
-
-    def metric_value(metric: str, m: dict):
-        if metric == "donate":
-            return m.get("donations") or 0
-        if metric == "cup":
-            return m.get("trophies") or 0
-        if metric == "reputation":
-            return rep_totals.get(m["tag"], {}).get("total", 0)
-        if metric == "capital":
-            return capital_loot.get(m["tag"], 0)
-        if metric == "war_attendance":
-            return war_attendance.get(m["tag"])
-        return None
-
-    def check(cond: dict, m: dict) -> bool:
-        v = metric_value(cond["metric"], m)
-        if v is None:
-            return False
-        return v >= cond["value"] if cond["op"] == "gte" else v <= cond["value"]
-
-    by_target: dict[str, list] = {}
-    for c in conditions:
-        by_target.setdefault(c["target"], []).append(c)
-
-    def snapshot(m: dict) -> dict:
-        return {
-            "tag": m["tag"], "name": m["name"], "role": m.get("role", "member"),
-            "townHallLevel": m.get("townHallLevel"),
-            "donate": m.get("donations") or 0, "cup": m.get("trophies") or 0,
-            "reputation": rep_totals.get(m["tag"], {}).get("total", 0),
-            "capital": capital_loot.get(m["tag"], 0),
-            "war_attendance": war_attendance.get(m["tag"]),
-        }
-
-    result = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": [], "all_members": []}
-    for m in members:
-        role = m.get("role", "member")
-        result["all_members"].append(snapshot(m))
-
-        elder_conds = by_target.get("elder", [])
-        if elder_conds and role not in _ALREADY_ELDER_UP and all(check(c, m) for c in elder_conds):
-            result["elder"].append(snapshot(m))
-
-        co_conds = by_target.get("co_leader", [])
-        if co_conds and role not in _ALREADY_COLEADER_UP and all(check(c, m) for c in co_conds):
-            result["co_leader"].append(snapshot(m))
-
-        # Hạ cấp: chỉ xét đúng người ĐANG ở cấp đó, chỉ cần dính 1 điều kiện là bị gắn cờ.
-        demote_co_conds = by_target.get("demote_co_leader", [])
-        if demote_co_conds and role == "coLeader" and any(check(c, m) for c in demote_co_conds):
-            result["demote_co_leader"].append(snapshot(m))
-
-        demote_elder_conds = by_target.get("demote_elder", [])
-        if demote_elder_conds and role == "admin" and any(check(c, m) for c in demote_elder_conds):
-            result["demote_elder"].append(snapshot(m))
-
-        vio_conds = by_target.get("violation", [])
-        if vio_conds and role != "leader" and any(check(c, m) for c in vio_conds):
-            result["violation"].append(snapshot(m))
-
-    return result
+    return await evaluate_rules(sb, clan_id)
 
 
 @router.get("/history")

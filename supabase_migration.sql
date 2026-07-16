@@ -1154,3 +1154,27 @@ ALTER TABLE clan_rule_history DROP CONSTRAINT IF EXISTS clan_rule_history_action
 ALTER TABLE clan_rule_history ADD CONSTRAINT clan_rule_history_action_check
   CHECK (action IN ('promote_elder', 'promote_co_leader', 'demote_co_leader', 'demote_elder', 'expel',
                      'rule_updated', 'condition_added', 'condition_updated', 'condition_removed'));
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 39 (Tự động ghi Lịch sử Pháp Điển khi 1 người ĐÃ THẬT SỰ
+-- được thăng/hạ/loại khỏi clan trong game, đối chiếu với dữ liệu CoC API —
+-- xem services/rule_engine.py::sync_rule_auto_history, chạy định kỳ trong
+-- schedulers/poller.py. clan_rule_flags lưu "ai đang bị gắn cờ" ở lần quét
+-- gần nhất, để lần quét sau so sánh phát hiện ai vừa rớt khỏi danh sách.)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS clan_rule_flags (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+  target      TEXT NOT NULL CHECK (target IN ('elder', 'co_leader', 'demote_co_leader', 'demote_elder', 'violation')),
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  flagged_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (clan_id, target, player_tag)
+);
+CREATE INDEX IF NOT EXISTS idx_clan_rule_flags_clan ON clan_rule_flags(clan_id);
+
+ALTER TABLE clan_rule_flags ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON clan_rule_flags;
+CREATE POLICY "service_all" ON clan_rule_flags FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rule_flags TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
