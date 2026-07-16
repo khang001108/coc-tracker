@@ -90,12 +90,32 @@ async def top_coins(request: Request, limit: int = Query(10, le=50), scope: str 
     return {"top": [{"tag": r["player_tag"], "name": r["player_name"], "coins": r.get("coins") or 0} for r in rows]}
 
 
-def _period_cutoff(period: str) -> str | None:
+def _period_cutoff(period: str):
     if period == "week":
-        return (datetime.utcnow() - timedelta(days=7)).isoformat()
+        return datetime.utcnow() - timedelta(days=7)
     if period == "month":
-        return (datetime.utcnow() - timedelta(days=30)).isoformat()
+        return datetime.utcnow() - timedelta(days=30)
     return None  # "all" — từ ngày thành lập web, không giới hạn
+
+
+def _parse_coc_dt(s: str):
+    """war_end_time lưu dạng chuỗi CoC API gốc (vd '20260714T182300.000Z') —
+    parse ra datetime thật để lọc/so sánh, KHÔNG dùng created_at (thời điểm
+    DB ghi dòng) vì nếu poller từng bị trễ (lỗi CoC API/proxy vài ngày —
+    xem services/coc_api.py) thì created_at của cả loạt dữ liệu bị dồn vào
+    đúng lúc poller chạy lại, làm sai lệch hẳn khoảng thời gian hiển thị."""
+    if not s:
+        return None
+    try:
+        return datetime.strptime(s, "%Y%m%dT%H%M%S.%fZ")
+    except Exception:
+        return None
+
+
+def _coc_dt_str(dt) -> str:
+    """Ngược lại _parse_coc_dt — định dạng 1 datetime về đúng kiểu chuỗi CoC
+    API để so sánh (>=) với cột war_end_time (TEXT, chưa phải TIMESTAMPTZ)."""
+    return dt.strftime("%Y%m%dT%H%M%S.000Z")
 
 
 @router.get("/trophy-seasons")
@@ -159,14 +179,19 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
     clan_id = get_clan_id(request)
     sb = get_supabase()
     cutoff = _period_cutoff(period)
+    # Lọc theo war_end_time (thời điểm war THẬT SỰ kết thúc, lấy từ CoC API)
+    # chứ không phải created_at (lúc DB ghi dòng) — nếu poller từng bị trễ
+    # (CoC API/proxy lỗi vài ngày) thì created_at của cả loạt dữ liệu cũ sẽ
+    # dồn vào đúng lúc poller chạy lại, làm khoảng thời gian hiển thị sai hẳn.
+    war_end_cutoff = _coc_dt_str(cutoff) if cutoff else None
     try:
         q = sb.table("war_participation_log").select(
             "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type,"
             "best_attack_stars,best_attack_destruction,best_attack_duration,best_attack_opponent,"
             "best_defense_stars,best_defense_destruction,best_defense_attacker"
         ).eq("clan_id", clan_id)
-        if cutoff:
-            q = q.gte("created_at", cutoff)
+        if war_end_cutoff:
+            q = q.gte("war_end_time", war_end_cutoff)
         res = q.execute()
     except Exception:
         # Chưa chạy MIGRATION PART 7 — vẫn trả về phần war yếu/hay bỏ war,
@@ -174,8 +199,8 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
         q = sb.table("war_participation_log").select(
             "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type"
         ).eq("clan_id", clan_id)
-        if cutoff:
-            q = q.gte("created_at", cutoff)
+        if war_end_cutoff:
+            q = q.gte("war_end_time", war_end_cutoff)
         res = q.execute()
     rows = res.data or []
 
@@ -247,10 +272,14 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
 
     now_iso = datetime.utcnow().isoformat()
     if cutoff:
-        period_start = cutoff
+        period_start = cutoff.isoformat()
     else:
-        # "all" — lấy created_at sớm nhất trong dữ liệu đang có (từ khi bắt đầu ghi nhận)
-        period_start = min((r["created_at"] for r in rows if r.get("created_at")), default=None)
+        # "all" — lấy war_end_time SỚM NHẤT trong dữ liệu đang có (từ khi bắt
+        # đầu ghi nhận), parse về datetime thật rồi mới so sánh min() vì đây
+        # là chuỗi kiểu CoC ("20260714T182300.000Z"), không phải created_at.
+        parsed_dates = [_parse_coc_dt(r["war_end_time"]) for r in rows if r.get("war_end_time")]
+        parsed_dates = [d for d in parsed_dates if d]
+        period_start = min(parsed_dates).isoformat() if parsed_dates else None
 
     return {
         "period": period,
@@ -297,7 +326,7 @@ async def donation_trend(request: Request, period: str = Query("all", pattern="^
     q = sb.table("donation_snapshot_log").select("player_tag,player_name,donations,snapshot_at").eq("clan_id", clan_id)
     cutoff = _period_cutoff(period)
     if cutoff:
-        q = q.gte("snapshot_at", cutoff)
+        q = q.gte("snapshot_at", cutoff.isoformat())
     res = q.execute()
 
     per_player: dict[str, dict] = {}
