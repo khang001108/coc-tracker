@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
-import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ShieldOff, HeartCrack, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Star, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
@@ -15,7 +15,7 @@ import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SortToggle } from "@/components/ui/SortToggle";
 import { Portal } from "@/components/ui/Portal";
 import { useRoleMap } from "@/lib/useRoleMap";
-import { LaurelIcon, ScrollIcon, ColumnIcon, AmphoraIcon, MedalIcon, ZigguratIcon, ShieldIcon } from "@/components/ui/GrecoIcons";
+import { LaurelIcon, ScrollIcon, ColumnIcon, AmphoraIcon, MedalIcon, ZigguratIcon, BustIcon } from "@/components/ui/GrecoIcons";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, RadarChart, PolarGrid,
@@ -530,7 +530,7 @@ function StatsPageInner() {
   const [warLog, setWarLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"week" | "month" | "all">("all");
-  const [warActivity, setWarActivity] = useState<{ weakest_war: any[]; most_skips: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ weakest_war: [], most_skips: [] });
+  const [warActivity, setWarActivity] = useState<{ most_stars: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ most_stars: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
   const [topCoins, setTopCoins] = useState<any[]>([]);
   const [coinsScope, setCoinsScope] = useState<"clan" | "all">("clan");
@@ -637,7 +637,7 @@ function StatsPageInner() {
                 {id:"cumulative",label:"Tích luỹ",icon:<AmphoraIcon/>},
                 {id:"medals",label:"Huy chương CWL",icon:<MedalIcon/>},
                 {id:"trophies",label:"Top Cúp",icon:<ZigguratIcon/>},
-                {id:"reputation",label:"Danh vọng",icon:<ShieldIcon/>},
+                {id:"reputation",label:"Danh vọng",icon:<BustIcon/>},
               ]}
               active={overviewSubTab} onChange={(id) => setOverviewSubTab(id as any)} className="w-max"/>
           </div>
@@ -753,7 +753,7 @@ function StatsPageInner() {
 
 function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
   period: "week" | "month" | "all"; setPeriod: (p: "week" | "month" | "all") => void; periodLabel: string;
-  warActivity: { weakest_war: any[]; most_skips: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
+  warActivity: { most_stars: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
   topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
@@ -828,11 +828,11 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
         </div>
       )}
 
-      {/* Hiệu suất kém — cần admin lưu ý */}
+      {/* Nhiều sao War nhất */}
       <div>
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <h3 className="font-bold text-white flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-400" /> Cần lưu ý ({periodLabel})
+            <Star size={16} className="text-yellow-400" /> Nhiều sao War nhất ({periodLabel})
           </h3>
           <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
             {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
@@ -844,62 +844,35 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           </div>
         </div>
         {rangeLabel && <p className="text-[11px] text-gray-600 mb-3">Dữ liệu từ {rangeLabel}</p>}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="card">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><HeartCrack size={14} className="text-red-400" /> War yếu nhất (TB sao/war)</h4>
-              {warActivity.weakest_war.length > 0 && (
-                <CopyButton getText={() =>
-                  `⭐ WAR YẾU NHẤT (TB sao/war — ${periodLabel}):\n` +
-                  warActivity.weakest_war.map((p, i) => `${i + 1}. ${p.name}: ${p.avg_stars}⭐ TB (${p.wars} war)`).join("\n")
-                } />
-              )}
-            </div>
-            {insightsLoading ? (
-              <p className="text-xs text-gray-600">Đang tải...</p>
-            ) : warActivity.weakest_war.length === 0 ? (
-              <p className="text-xs text-gray-600">Chưa đủ dữ liệu war trong khoảng thời gian này</p>
-            ) : (
-              <div className="space-y-2">
-                {warActivity.weakest_war.map(p => (
-                  <div key={p.tag} className="flex items-center gap-2 text-sm">
-                    <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
-                    <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
-                  </div>
-                ))}
-              </div>
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><Star size={14} className="text-yellow-400" /> Xếp hạng tổng sao đạt được trong War</h4>
+            {warActivity.most_stars.length > 0 && (
+              <CopyButton getText={() =>
+                `⭐ NHIỀU SAO WAR NHẤT (${periodLabel}):\n` +
+                warActivity.most_stars.map((p, i) => `${i + 1}. ${p.name}: ${p.stars}⭐ (${p.wars} war)`).join("\n")
+              } />
             )}
           </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><ShieldOff size={14} className="text-orange-400" /> Hay bỏ war nhất</h4>
-              {warActivity.most_skips.length > 0 && (
-                <CopyButton getText={() =>
-                  `🛡️ HAY BỎ WAR NHẤT (${periodLabel}):\n` +
-                  warActivity.most_skips.map((p, i) => `${i + 1}. ${p.name}: bỏ ~${p.skipped} war (tích luỹ theo lượt, TB ${p.skip_rate}%/war)`).join("\n")
-                } />
-              )}
+          {insightsLoading ? (
+            <p className="text-xs text-gray-600">Đang tải...</p>
+          ) : warActivity.most_stars.length === 0 ? (
+            <p className="text-xs text-gray-600">Chưa đủ dữ liệu war trong khoảng thời gian này</p>
+          ) : (
+            <div className="space-y-2">
+              {warActivity.most_stars.map((p, i) => (
+                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                  <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
+                  <span className="text-yellow-400 font-semibold shrink-0">{p.stars}⭐ · {p.wars} war</span>
+                </div>
+              ))}
             </div>
-            {insightsLoading ? (
-              <p className="text-xs text-gray-600">Đang tải...</p>
-            ) : warActivity.most_skips.length === 0 ? (
-              <p className="text-xs text-gray-600">Chưa có ai bỏ war trong khoảng thời gian này</p>
-            ) : (
-              <div className="space-y-2">
-                {warActivity.most_skips.map(p => (
-                  <div key={p.tag} className="flex items-center gap-2 text-sm">
-                    <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
-                    <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         <p className="text-[11px] text-gray-600 mt-3">
-          "War yếu nhất"/"Hay bỏ war" tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
+          Tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
           Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
         </p>
       </div>

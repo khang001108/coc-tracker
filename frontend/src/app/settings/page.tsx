@@ -12,9 +12,9 @@ import { ZaloIcon, TelegramIcon, DiscordIcon } from "@/components/ui/SocialIcons
 import { getCurrentClanId, getCurrentClanInfo } from "@/lib/clanContext";
 import { RULE_METRIC_LABELS } from "@/lib/ruleConstants";
 import {
-  LaurelIcon, ColumnIcon, ScrollIcon, TabletIcon, HeraldIcon, UrnPourIcon, MosaicIcon,
-  LyreIcon, BannerIcon, TorchIcon, AmphoraIcon, DoveIcon, MessengerIcon,
-  ShieldIcon, CitizensIcon,
+  LaurelIcon, ColumnIcon, ScrollIcon, TabletIcon, TabletStylusIcon, HeraldIcon, UrnPourIcon, MosaicIcon,
+  LyreIcon, BannerIcon, BackdropIcon, TorchIcon, AmphoraIcon, DoveIcon, MessengerIcon,
+  FascesIcon, CitizensIcon, KeyIcon,
 } from "@/components/ui/GrecoIcons";
 
 function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "success" }) {
@@ -251,7 +251,7 @@ const SECTION_TABS: Record<string, { id: string; label: string; icon: ReactNode 
     { id: "clan", label: "Quản lý Clan", icon: <ColumnIcon/> },
     { id: "discord", label: "Discord", icon: <HeraldIcon/> },
     { id: "telegram", label: "Telegram", icon: <DoveIcon/> },
-    { id: "notify_data", label: "Thông báo & Dữ liệu", icon: <TabletIcon/> },
+    { id: "notify_data", label: "Thông báo & Dữ liệu", icon: <TabletStylusIcon/> },
     { id: "manual_notify", label: "Thông báo thủ công", icon: <MessengerIcon/> },
   ],
   events: [
@@ -261,7 +261,7 @@ const SECTION_TABS: Record<string, { id: string; label: string; icon: ReactNode 
     { id: "cleanup", label: "Dọn dẹp tài sản", icon: <UrnPourIcon/> },
   ],
   music: [
-    { id: "chat_bg", label: "Ảnh nền Chat", icon: <MosaicIcon/> },
+    { id: "chat_bg", label: "Ảnh nền Chat", icon: <BackdropIcon/> },
     { id: "overview_cards", label: "Thẻ Tổng quan", icon: <LaurelIcon/> },
     { id: "ember", label: "Màu tia lửa", icon: <TorchIcon/> },
     { id: "banners", label: "Ảnh nền từng mục", icon: <BannerIcon/> },
@@ -2217,7 +2217,7 @@ export default function SettingsPage() {
         <SlidingTabs
           tabs={[
             { id: "general", label: "Cài đặt thường", icon: <LaurelIcon/> },
-            { id: "admin", label: "Quản trị viên", icon: <ShieldIcon/> },
+            { id: "admin", label: "Quản trị viên", icon: <FascesIcon/> },
           ]}
           active={outerTab} onChange={(id) => setOuterTab(id as any)} className="w-max"/>
       </div>
@@ -2239,12 +2239,12 @@ export default function SettingsPage() {
             <div className="overflow-x-auto -mx-1 px-1 pb-1">
               <SlidingTabs
                 tabs={[
-                  { id: "general", label: "Chung", icon: <ColumnIcon/> },
+                  { id: "general", label: "Chung", icon: <KeyIcon/> },
                   { id: "events",  label: "Sự kiện", icon: <TorchIcon/> },
                   { id: "music",   label: "Bố cục", icon: <MosaicIcon/> },
                   { id: "members", label: "Thành viên", icon: <CitizensIcon/> },
                   { id: "shop",    label: "Cửa hàng", icon: <AmphoraIcon/> },
-                  { id: "rules",   label: "Nội quy", icon: <ScrollIcon/> },
+                  { id: "rules",   label: "Nội quy", icon: <TabletIcon/> },
                 ]}
                 active={tab} onChange={(id) => setTab(id as any)} className="w-max"/>
             </div>

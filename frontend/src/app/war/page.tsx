@@ -12,7 +12,7 @@ import { Swords, Shield, Star, CheckCircle, XCircle, Clock, Trophy, Map, List, C
 import WarBattlefieldMap from "./WarBattlefieldMap";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { MarqueeText } from "@/components/ui/MarqueeText";
-import { ShieldIcon, SwordsIcon, ScrollIcon } from "@/components/ui/GrecoIcons";
+import { ShieldIcon, SwordsIcon, SwordIcon, ScrollIcon } from "@/components/ui/GrecoIcons";
 import { getCurrentClanInfo } from "@/lib/clanContext";
 
 /** Top 3 đòn đánh hay nhất của 1 war cụ thể — sao cao nhất → % phá huỷ cao
@@ -499,7 +499,7 @@ export default function WarPage() {
             <h3 className="font-bold text-white">Lịch sử War</h3>
             <SlidingTabs
               tabs={[
-                { id: "random", label: "War thường", icon: <ShieldIcon/> },
+                { id: "random", label: "War thường", icon: <SwordIcon/> },
                 { id: "cwl", label: "CWL", icon: <SwordsIcon/> },
               ]}
               active={logSubTab} onChange={(id) => setLogSubTab(id as any)} />

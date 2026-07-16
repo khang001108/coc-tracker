@@ -218,21 +218,10 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
                 -(r.get("best_defense_destruction") if r.get("best_defense_destruction") is not None else 100))
 
     for r in rows:
-        p = per_player.setdefault(r["player_tag"], {
-            "tag": r["player_tag"], "name": r["player_name"],
-            "wars": 0, "skipped_fraction": 0.0, "stars": 0, "attacks_used": 0, "attacks_allowed": 0,
-        })
+        p = per_player.setdefault(r["player_tag"], {"tag": r["player_tag"], "name": r["player_name"], "wars": 0, "stars": 0})
         p["name"] = r["player_name"]  # tên mới nhất
         p["wars"] += 1
         p["stars"] += r["stars_earned"] or 0
-        used, allowed = r["attacks_used"] or 0, r["attacks_allowed"] or 0
-        p["attacks_used"] += used
-        p["attacks_allowed"] += allowed
-        # Bỏ lượt TÍCH LUỸ theo TỈ LỆ — bỏ 1/2 lượt trong 1 war tính là 0.5,
-        # 2 war như vậy cộng dồn thành đúng 1 "war bỏ" tương đương, thay vì
-        # tính nguyên 1 war chỉ vì thiếu 1 lượt.
-        if allowed > 0:
-            p["skipped_fraction"] += (allowed - used) / allowed
 
         if r.get("best_attack_stars") is not None:
             if best_attack_overall is None or _attack_key(r) > _attack_key(best_attack_overall):
@@ -241,14 +230,7 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
             if best_defense_overall is None or _defense_key(r) > _defense_key(best_defense_overall):
                 best_defense_overall = r
 
-    players = list(per_player.values())
-    for p in players:
-        p["avg_stars"] = round(p["stars"] / p["wars"], 2) if p["wars"] else 0
-        p["skipped"] = round(p["skipped_fraction"], 1)
-        p["skip_rate"] = round(p["skipped_fraction"] / p["wars"] * 100) if p["wars"] else 0
-
-    weakest = sorted([p for p in players if p["wars"] > 0], key=lambda p: p["avg_stars"])[:10]
-    most_skips = sorted([p for p in players if p["skipped_fraction"] > 0], key=lambda p: (-p["skipped_fraction"], -p["skip_rate"]))[:10]
+    most_stars = sorted([p for p in per_player.values() if p["stars"] > 0], key=lambda p: -p["stars"])[:10]
 
     def _fmt_attack(r):
         if not r:
@@ -286,8 +268,7 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
         "period_start": period_start,
         "period_end": now_iso,
         "total_wars_tracked": len(set(r["war_end_time"] for r in rows)),
-        "weakest_war": weakest,
-        "most_skips": most_skips,
+        "most_stars": most_stars,
         "mvp_attack": _fmt_attack(best_attack_overall),
         "mvp_defense": _fmt_defense(best_defense_overall),
     }

@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { getMemberAuth, getGuestName, setGuestName } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { MessageCircle, Send, Image as ImageIcon, Smile, Lock, Users, Globe } from "lucide-react";
+import { MessageCircle, Send, Image as ImageIcon, Smile, Lock } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
+import { SlidingTabs } from "@/components/ui/SlidingTabs";
+import { MasksIcon, AgoraIcon } from "@/components/ui/GrecoIcons";
 import { thColor } from "@/lib/utils";
 
 const EMOJIS = ["😀","😂","😍","😎","🤔","👍","👎","🔥","❤️","🎉","😢","😡","🏆","⚔️","🛡️","💪","🙏","👏","😴","🤝"];
@@ -203,14 +205,12 @@ export default function ChatPage() {
         <p className="page-subtitle">Nói chuyện với clan hoặc với mọi người</p>
       </div>
 
-      <div className="tab-pill-group">
-        <button onClick={() => setRoom("clan")} className={room === "clan" ? "tab-pill-active" : "tab-pill"}>
-          <Users size={13} className="inline mr-1 -mt-0.5" /> Chat Clan
-        </button>
-        <button onClick={() => setRoom("global")} className={room === "global" ? "tab-pill-active" : "tab-pill"}>
-          <Globe size={13} className="inline mr-1 -mt-0.5" /> Chat công khai
-        </button>
-      </div>
+      <SlidingTabs
+        tabs={[
+          { id: "clan", label: "Chat Clan", icon: <MasksIcon/> },
+          { id: "global", label: "Chat công khai", icon: <AgoraIcon/> },
+        ]}
+        active={room} onChange={(id) => setRoom(id as any)} />
 
       <div className="card flex-1 flex flex-col !p-0 overflow-hidden min-h-0 relative">
         {chatBg && (

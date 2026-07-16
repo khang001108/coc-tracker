@@ -11,7 +11,7 @@ import {
   HISTORY_ACTION_LABELS, isSystemHistoryAction, type RuleTarget,
 } from "@/lib/ruleConstants";
 import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, ChevronRight, ChevronLeft, Trash2, Loader2, ScrollText } from "lucide-react";
-import { ScrollIcon, ScaleIcon, MedalIcon, GateIcon, BrokenColumnIcon, TabletStylusIcon } from "@/components/ui/GrecoIcons";
+import { ScrollIcon, ScaleIcon, MedalIcon, GateIcon, BrokenColumnIcon, TabletIcon } from "@/components/ui/GrecoIcons";
 
 type ListKey = RuleTarget;
 type EvalResult = Record<ListKey, any[]> & { all_members: any[] };
@@ -405,9 +405,9 @@ export default function RulesPage() {
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
             <SlidingTabs
               tabs={[
-                { id: "info", label: "Nội quy", icon: <ScrollIcon/> },
+                { id: "info", label: "Nội quy", icon: <TabletIcon/> },
                 { id: "review", label: "Xét duyệt", icon: <ScaleIcon/> },
-                { id: "history", label: "Lịch sử", icon: <TabletStylusIcon/> },
+                { id: "history", label: "Lịch sử", icon: <ScrollIcon/> },
               ]}
               active={topTab} onChange={(id) => setTopTab(id as TopTab)} className="w-max" />
           </div>

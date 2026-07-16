@@ -307,3 +307,87 @@ export function GateIcon() {
     </svg>
   );
 }
+
+/** Bó gậy Fasces (biểu tượng quyền lực La Mã) — quản trị viên */
+export function FascesIcon() {
+  return (
+    <svg {...base}>
+      <path d="M9 21V6c0-1.5 1.3-2.5 3-2.5s3 1 3 2.5v15" />
+      <path d="M7 8h10M7 12h10M7 16h10" />
+      <path d="M14.5 3.8 20 2v6l-5.5-1.8" />
+    </svg>
+  );
+}
+
+/** Thanh kiếm đơn — war thường (phân biệt với kiếm chéo = CWL) */
+export function SwordIcon() {
+  return (
+    <svg {...base}>
+      <path d="M6 18 16.5 7.5" />
+      <path d="M14.5 5.5 18.5 9.5 16.8 11.2 12.8 7.2Z" fill="currentColor" />
+      <path d="M6 18l-2.2.6.6-2.2Z" />
+      <path d="M9.5 14.5 7.3 12.3" />
+    </svg>
+  );
+}
+
+/** 2 mặt nạ hài/bi kịch Hy Lạp — Chat Clan (đối thoại nội bộ) */
+export function MasksIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 6c0-1 1-1.5 2.5-1.5S9 5 9 6v3c0 2.5-1 4.5-2.5 4.5S4 11.5 4 9Z" />
+      <circle cx="5.7" cy="7.2" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="7.3" cy="7.2" r="0.5" fill="currentColor" stroke="none" />
+      <path d="M5.5 9.3c.5.4 1.5.4 2 0" />
+      <path d="M15 6c0-1 1-1.5 2.5-1.5S20 5 20 6v3c0 2.5-1 4.5-2.5 4.5S15 11.5 15 9Z" />
+      <circle cx="16.7" cy="7.2" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="18.3" cy="7.2" r="0.5" fill="currentColor" stroke="none" />
+      <path d="M16.5 9.7c.5-.4 1.5-.4 2 0" />
+    </svg>
+  );
+}
+
+/** Quảng trường cột tròn (Agora/Forum) — Chat công khai */
+export function AgoraIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 21h16" strokeWidth={2} />
+      <path d="M6 21v-9M9 21v-9M15 21v-9M18 21v-9" />
+      <path d="M4 12 12 4l8 8Z" />
+    </svg>
+  );
+}
+
+/** Chìa khoá cổ — mục cấu hình chung */
+export function KeyIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="7" cy="15.5" r="3.2" />
+      <path d="M9.3 13.2 19 3.5" />
+      <path d="M16 6.5 18 8.5" /><path d="M13.3 9.2 15 10.9" />
+    </svg>
+  );
+}
+
+/** Tượng bán thân trên bệ — Danh vọng */
+export function BustIcon() {
+  return (
+    <svg {...base}>
+      <path d="M5 21v-1.5c0-1.5 1-2.5 2.5-2.5h9c1.5 0 2.5 1 2.5 2.5V21" />
+      <path d="M4 21h16" strokeWidth={2} />
+      <circle cx="12" cy="8" r="3" />
+      <path d="M8.5 14.5c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5" />
+    </svg>
+  );
+}
+
+/** Rèm phông nền — ảnh nền Chat (phân biệt với banner từng mục) */
+export function BackdropIcon() {
+  return (
+    <svg {...base}>
+      <path d="M5 4v13c0 1.5 1 2.5 2.5 2.5S10 18.5 10 17V4" />
+      <path d="M14 4v13c0 1.5 1 2.5 2.5 2.5S19 18.5 19 17V4" />
+      <path d="M5 4h5M14 4h5" />
+    </svg>
+  );
+}
