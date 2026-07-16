@@ -88,21 +88,21 @@ export default function ShopSection() {
     // Vật phẩm đã sở hữu lên đầu để dễ thấy/dùng ngay, không bị kẹt ở vị trí
     // cũ theo giá tiền nữa.
     const sorted = [...list].sort((a, b) => {
-      const ownedA = a.price_coins === 0 || inv.owned_item_ids.includes(a.id);
-      const ownedB = b.price_coins === 0 || inv.owned_item_ids.includes(b.id);
+      const ownedA = a.price_coins === 0 || inv!.owned_item_ids.includes(a.id);
+      const ownedB = b.price_coins === 0 || inv!.owned_item_ids.includes(b.id);
       if (ownedA !== ownedB) return ownedA ? -1 : 1;
       return a.price_coins - b.price_coins;
     });
     return (
       <div className="flex gap-2.5 overflow-x-auto pb-1 snap-x snap-mandatory" style={{ scrollbarWidth: "thin" }}>
         {sorted.map(item => {
-          const owned = item.price_coins === 0 || inv.owned_item_ids.includes(item.id);
-          const equippedField = item.item_type === "castle" ? inv.equipped_castle
-            : item.item_type === "cannon" ? inv.equipped_cannon
-            : item.item_type === "effect" ? inv.equipped_effect
-            : item.item_type === "projectile" ? inv.equipped_projectile
-            : item.item_type === "explosion" ? inv.equipped_explosion
-            : inv.equipped_number_effect;
+          const owned = item.price_coins === 0 || inv!.owned_item_ids.includes(item.id);
+          const equippedField = item.item_type === "castle" ? inv!.equipped_castle
+            : item.item_type === "cannon" ? inv!.equipped_cannon
+            : item.item_type === "effect" ? inv!.equipped_effect
+            : item.item_type === "projectile" ? inv!.equipped_projectile
+            : item.item_type === "explosion" ? inv!.equipped_explosion
+            : inv!.equipped_number_effect;
           const equipped = equippedField === item.svg_key;
           const repNeeded = item.unlock_reputation || 0;
           const repLocked = repNeeded > 0 && myReputation < repNeeded;
@@ -133,7 +133,7 @@ export default function ShopSection() {
                   {busyId === item.id ? "..." : "Trang bị"}
                 </button>
               ) : (
-                <button onClick={() => handleBuy(item)} disabled={busyId === item.id || inv.coins < item.price_coins || repLocked}
+                <button onClick={() => handleBuy(item)} disabled={busyId === item.id || inv!.coins < item.price_coins || repLocked}
                   className="btn-gold !px-2 !py-1 text-[11px] w-full flex items-center justify-center gap-1 disabled:opacity-40">
                   {busyId === item.id ? "..." : <><Lock size={10} /> Đổi</>}
                 </button>
@@ -157,7 +157,7 @@ export default function ShopSection() {
         <div className="relative flex items-center justify-between">
           <h3 className="font-bold text-white flex items-center gap-2">🏰 Cửa hàng vật phẩm</h3>
           <span className="text-sm font-bold text-yellow-400 flex items-center gap-1">
-            <CoinIcon size={16}/> {inv.coins.toLocaleString()}
+            <CoinIcon size={16}/> {inv!.coins.toLocaleString()}
           </span>
         </div>
         <p className="relative text-xs text-gray-500">Dùng Coins (kiếm được từ donate, sau này thêm cả từ war) để đổi lâu đài và pháo trang trí riêng — hiện trên Bản đồ chiến trường ở trang War.</p>

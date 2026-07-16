@@ -51,7 +51,7 @@ async function apiFetch(path: string, opts?: RequestInit, retries = 1) {
           ...(token ? { "X-Admin-Token": token } : {}),
           ...clanHeader,
           ...opts?.headers,
-        },
+        } as Record<string, string>,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
@@ -433,7 +433,7 @@ export const api = {
       method: "POST",
       headers: (() => {
         const member = getMemberAuth();
-        return member ? { "X-Member-Token": member.token } : {};
+        return (member ? { "X-Member-Token": member.token } : {}) as Record<string, string>;
       })(),
       body: JSON.stringify({ subscription, ...opts }),
     }),

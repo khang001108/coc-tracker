@@ -62,7 +62,7 @@ export function MusicPlayer() {
     dragInfo.current = {
       startX: e.clientX, startY: e.clientY,
       baseX: rect.left, baseY: rect.top,
-      dragging: true, moved: false,
+      dragging: true, moved: false, lastPos: null,
     };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }

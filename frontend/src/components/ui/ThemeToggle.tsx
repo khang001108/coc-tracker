@@ -44,14 +44,6 @@ export function ThemeToggle({ variant = "full" }: { variant?: "full" | "icon" })
     );
   }
 
-  if (variant === "icon") {
-    return (
-      <button onClick={toggle} className="icon-btn-game w-9 h-9">
-        {theme === "dark" ? <Sun size={15} className="text-gray-900" /> : <Moon size={15} className="text-gray-900" />}
-      </button>
-    );
-  }
-
   return (
     <button onClick={toggle}
       className="flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm w-full transition-all"

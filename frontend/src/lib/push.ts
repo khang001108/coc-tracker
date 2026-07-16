@@ -50,7 +50,7 @@ export async function enablePush(opts?: { notify_chat?: boolean; notify_event?: 
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(key),
+        applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
       });
     }
 
