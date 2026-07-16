@@ -162,12 +162,12 @@ function TrophyLeaderboardTab() {
         )}
       </div>
       <p className="text-[11px] text-gray-600">
-        Chụp lại vào ngày 1 mỗi tháng (coi như Cúp cuối mùa vừa qua, trước khi CoC reset) — dùng mũi tên để lật lại các mùa trước, tìm mùa đạt Cúp cao nhất.
+        Tự động cập nhật đỉnh Cúp liên tục mỗi 15 phút, kể cả khi CoC reset bất ngờ — dùng mũi tên để lật lại các mùa trước, tìm mùa đạt Cúp cao nhất.
       </p>
       {seasonsLoading ? (
         <div className="h-40 bg-gray-800 rounded-xl animate-pulse"/>
       ) : seasons.length === 0 ? (
-        <p className="text-sm text-gray-600 text-center py-3">Chưa có dữ liệu mùa nào — chờ tới ngày 1 tháng sau.</p>
+        <p className="text-sm text-gray-600 text-center py-3">Chưa có dữ liệu mùa nào.</p>
       ) : (
         <div className="rounded-xl bg-gray-800/50 p-3">
           <p className="text-sm font-bold text-yellow-500 mb-2">Mùa {seasons[seasonIdx].season}</p>

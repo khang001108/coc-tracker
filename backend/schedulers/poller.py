@@ -53,7 +53,10 @@ async def start_scheduler():
     # Danh vọng — 2 khoản chỉ tính được theo THÁNG (Clan Games + Top đóng góp
     # tháng) chạy vào 0h ngày 1 hàng tháng.
     scheduler.add_job(poll_monthly_reputation, CronTrigger(day=1, hour=0, minute=30), id="poll_monthly_reputation", replace_existing=True)
-    scheduler.add_job(poll_trophy_season_snapshot, CronTrigger(day=1, hour=0, minute=45), id="poll_trophy_season_snapshot", replace_existing=True)
+    # Top Cúp theo mùa: KHÔNG cần job riêng nữa — poll_clan (mỗi 15 phút) tự
+    # cập nhật liên tục đỉnh Cúp của mùa hiện tại qua _merge_trophy_season(),
+    # tự "chốt" đúng lúc CoC reset xảy ra bất kể ngày nào, không cần đợi cron
+    # cố định vào ngày 1 hàng tháng như trước.
     # Pháp Điển — đối chiếu ai từng bị gắn cờ đủ điều kiện thăng/hạ/vi phạm
     # với dữ liệu CoC API mới nhất, tự ghi Lịch sử khi điều đó ĐÃ THẬT SỰ xảy
     # ra trong game (không cần Admin bấm tay xác nhận nữa).
@@ -213,16 +216,42 @@ def upsert_snapshot(table: str, data: dict, clan_id: int = 1):
             "updated_at": datetime.utcnow().isoformat(),
         }).execute()
 
+def _merge_trophy_season(sb, clan_id: int, season: str, members: list):
+    """Cập nhật trophy_season_log cho mùa `season` (định dạng 'YYYY-MM') —
+    với mỗi người GIỮ số Cúp CAO HƠN giữa giá trị đã lưu và giá trị vừa lấy,
+    không bao giờ ghi đè bằng số thấp hơn. Gọi liên tục mỗi vòng poll_clan
+    (15 phút/lần, suốt tháng) — nhờ vậy khi CoC thật sự reset Cúp (bất kể
+    đúng ngày nào, không nhất thiết là ngày 1 hàng tháng), số Cúp vừa ghi
+    nhận NGAY TRƯỚC lúc reset vẫn được giữ nguyên làm đỉnh mùa, vì số sau khi
+    reset luôn thấp hơn nên phép so sánh max() tự động bỏ qua — không cần dò
+    đúng thời điểm reset diễn ra hay nhờ Admin bấm tay."""
+    if not members:
+        return
+    try:
+        existing_res = (sb.table("trophy_season_log").select("player_tag,trophies")
+                         .eq("clan_id", clan_id).eq("season", season).execute())
+        existing = {r["player_tag"]: r["trophies"] or 0 for r in (existing_res.data or [])}
+        rows = [{
+            "clan_id": clan_id, "season": season, "player_tag": m["tag"],
+            "player_name": m["name"], "trophies": max(m.get("trophies", 0) or 0, existing.get(m["tag"], 0)),
+        } for m in members]
+        sb.table("trophy_season_log").upsert(rows, on_conflict="clan_id,season,player_tag").execute()
+    except Exception as e:
+        log.error(f"_merge_trophy_season error (clan_id={clan_id}, season={season}): {e}")
+
 # ── Poll jobs (lặp qua tất cả clan) ─────────────────────────────────────────────
 
 async def poll_clan():
     clans = await get_all_clans()
+    sb = get_supabase()
+    season = datetime.utcnow().strftime("%Y-%m")
     for c in clans:
         try:
             tag = c.get("clan_tag")
             if not tag: continue
             data = await get_clan(tag, clan_id=c["id"])
             upsert_snapshot("snapshot_clan", data, clan_id=c["id"])
+            _merge_trophy_season(sb, c["id"], season, data.get("memberList", []))
             log.info(f"Clan snapshot updated (clan_id={c['id']})")
         except Exception as e:
             log.error(f"poll_clan error (clan_id={c.get('id')}): {e}")
@@ -925,35 +954,6 @@ async def poll_monthly_reputation():
         except Exception as e:
             log.error(f"poll_monthly_reputation error (clan_id={c.get('id')}): {e}")
 
-
-async def poll_trophy_season_snapshot():
-    """Chụp Cúp hiện tại của mọi thành viên vào ngày 1 hàng tháng — coi như
-    Cúp cuối mùa vừa qua (xấp xỉ, vì CoC không có API báo thời điểm chính
-    xác lúc mùa Cúp/Legend reset). Dùng để xem lại 'Top Cúp 3 mùa gần nhất'."""
-    from clan_context import get_tag_by_clan_id
-    from services.coc_api import get_clan_members
-    sb = get_supabase()
-    now = datetime.utcnow()
-    # Season "vừa kết thúc" = tháng trước (vì chụp vào ngày 1, Cúp đang thấy
-    # là kết quả của tháng vừa trôi qua).
-    prev_month = (now.replace(day=1) - timedelta(days=1))
-    season = prev_month.strftime("%Y-%m")
-    clans = await get_all_clans()
-    for c in clans:
-        clan_id = c["id"]
-        try:
-            tag = await get_tag_by_clan_id(clan_id)
-            if not tag:
-                continue
-            members = await get_clan_members(tag, clan_id=clan_id)
-            rows = [{
-                "clan_id": clan_id, "season": season, "player_tag": m["tag"],
-                "player_name": m["name"], "trophies": m.get("trophies", 0) or 0,
-            } for m in members]
-            if rows:
-                sb.table("trophy_season_log").upsert(rows, on_conflict="clan_id,season,player_tag").execute()
-        except Exception as e:
-            log.error(f"poll_trophy_season_snapshot error (clan_id={clan_id}): {e}")
 
 
 async def poll_rule_auto_history():

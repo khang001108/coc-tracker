@@ -120,8 +120,10 @@ def _coc_dt_str(dt) -> str:
 
 @router.get("/trophy-seasons")
 async def trophy_seasons(request: Request, seasons_count: int = Query(3, le=12)):
-    """Top Cúp của N mùa gần nhất (chụp vào ngày 1 mỗi tháng — xem
-    poll_trophy_season_snapshot). Trả về nhóm theo từng mùa, mới nhất trước."""
+    """Top Cúp của N mùa gần nhất — trophy_season_log được poll_clan (mỗi 15
+    phút) tự cập nhật liên tục đỉnh Cúp của mùa hiện tại (xem
+    schedulers/poller.py::_merge_trophy_season), tự "chốt" đúng lúc CoC reset
+    xảy ra bất kể ngày nào. Trả về nhóm theo từng mùa, mới nhất trước."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
     try:
