@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api, getAdminToken } from "@/lib/api";
 import { Portal } from "@/components/ui/Portal";
 import { OrnateFrame } from "@/components/ui/OrnateFrame";
@@ -7,7 +7,7 @@ import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { roleLabel, roleClass, thColor } from "@/lib/utils";
 import {
-  RULE_TARGET_LABELS, RULE_TARGET_IS_AND, conditionSentence, checkCondition,
+  RULE_METRIC_LABELS, RULE_TARGET_LABELS, RULE_TARGET_IS_AND, checkCondition,
   HISTORY_ACTION_LABELS, isSystemHistoryAction, type RuleTarget,
 } from "@/lib/ruleConstants";
 import { Scale, Star, Crown, TrendingDown, AlertTriangle, Check, X, Search, ChevronRight, ChevronLeft, Trash2, Loader2, ScrollText } from "lucide-react";
@@ -32,6 +32,45 @@ const REVIEW_TAB_META: Record<ReviewTab, { label: string; icon: JSX.Element; key
   sanction:  { label: "Chế tài",    icon: <BrokenColumnIcon/>, keys: ["demote_co_leader", "demote_elder"] },
   expulsion: { label: "Khai trừ",   icon: <GateIcon/>,         keys: ["violation"] },
 };
+
+/** 1 dòng điều kiện kiểu "khắc trên bia đá" — tên chỉ số in đậm, ngưỡng (≥/≤
+ * + giá trị) in đậm màu vàng kim nổi bật, ghi chú (nếu có) chữ nghiêng xám
+ * nhỏ hơn — dùng chung cho "Điều kiện chi tiết" và popup Tra cứu. */
+function ConditionLine({ cond, extra }: { cond: any; extra?: ReactNode }) {
+  const opSymbol = cond.op === "gte" ? "≥" : "≤";
+  return (
+    <li className="flex gap-2 items-baseline">
+      <span className="text-yellow-500 shrink-0 leading-none" style={{ fontFamily: "Georgia, serif" }}>❧</span>
+      <span className="text-sm leading-relaxed">
+        <span className="font-bold" style={{ color: "var(--py-card-text)" }}>{RULE_METRIC_LABELS[cond.metric] || cond.metric}</span>
+        {" "}
+        <span className="font-extrabold text-yellow-400">{opSymbol} {cond.value}</span>
+        {cond.note && <span className="text-gray-500 italic text-xs"> — {cond.note}</span>}
+        {extra}
+      </span>
+    </li>
+  );
+}
+
+/** Khung 1 nhóm điều kiện kiểu bia đá La Mã — viền vàng kim, tiêu đề in đậm
+ * màu theo target, danh sách ConditionLine bên trong. */
+function ConditionTablet({ target, conditions, children }: { target: RuleTarget; conditions: any[]; children?: ReactNode }) {
+  return (
+    <div className="relative rounded-xl overflow-hidden shrink-0" style={{ padding: "1.5px", background: "linear-gradient(135deg, #F4A130 0%, #8B5A1E 45%, #FFD700 60%, #8B5A1E 85%, #F4A130 100%)" }}>
+      <div className="rounded-[10px] p-3" style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
+        <p className={`text-xs font-extrabold uppercase tracking-wide pb-1.5 mb-1.5 ${LIST_META[target].color}`}
+          style={{ borderBottom: "1px solid rgba(244,161,48,0.3)" }}>
+          {RULE_TARGET_LABELS[target]}
+          <span className="font-normal normal-case text-gray-500"> — {RULE_TARGET_IS_AND[target] ? "phải đạt HẾT các điều kiện sau" : "chỉ cần dính 1 điều kiện sau"}</span>
+        </p>
+        <ul className="space-y-1.5">
+          {conditions.map(c => <ConditionLine key={c.id} cond={c} />)}
+        </ul>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function statLine(m: any): string {
   const parts = [
@@ -62,21 +101,29 @@ function MemberConditionCheck({ member, conditions }: { member: any; conditions:
         const results = list.map(c => ({ cond: c, pass: checkCondition(c, member) }));
         const overall = RULE_TARGET_IS_AND[t] ? results.every(r => r.pass) : results.some(r => r.pass);
         return (
-          <div key={t} className="space-y-1.5 pt-2 border-t border-gray-800">
-            <p className={`text-xs font-semibold flex items-center gap-1.5 ${overall ? "text-green-400" : "text-gray-500"}`}>
-              {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
-            </p>
-            <ul className="space-y-1 pl-1">
-              {results.map(({ cond, pass }) => (
-                <li key={cond.id} className="text-sm flex items-center gap-2">
-                  {pass ? <Check size={13} className="text-green-400 shrink-0" /> : <X size={13} className="text-red-400 shrink-0" />}
-                  <span style={{ color: "var(--py-card-text)" }}>
-                    {conditionSentence(cond)}
-                    <span className="text-gray-500"> — hiện tại: {member[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div key={t} className="relative rounded-xl overflow-hidden"
+            style={{ padding: "1.5px", background: overall
+              ? "linear-gradient(135deg, #22c55e 0%, #15803d 50%, #4ade80 100%)"
+              : "linear-gradient(135deg, #4b5563 0%, #374151 100%)" }}>
+            <div className="rounded-[10px] p-3" style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))" }}>
+              <p className={`text-xs font-extrabold uppercase tracking-wide flex items-center gap-1.5 pb-1.5 mb-1.5 ${overall ? "text-green-400" : "text-gray-400"}`}
+                style={{ borderBottom: "1px solid rgba(244,161,48,0.2)" }}>
+                {overall ? <Check size={13} /> : <X size={13} />} {RULE_TARGET_LABELS[t]}
+              </p>
+              <ul className="space-y-1.5">
+                {results.map(({ cond, pass }) => (
+                  <li key={cond.id} className="flex gap-2 items-baseline">
+                    {pass ? <Check size={13} className="text-green-400 shrink-0 self-center" /> : <X size={13} className="text-red-400 shrink-0 self-center" />}
+                    <span className="text-sm leading-relaxed">
+                      <span className="font-bold" style={{ color: "var(--py-card-text)" }}>{RULE_METRIC_LABELS[cond.metric] || cond.metric}</span>
+                      {" "}
+                      <span className="font-extrabold text-yellow-400">{cond.op === "gte" ? "≥" : "≤"} {cond.value}</span>
+                      <span className="text-gray-500"> — hiện tại: <span className="font-semibold" style={{ color: "var(--py-card-text)" }}>{member[cond.metric] ?? "—"}{cond.metric === "war_attendance" ? "%" : ""}</span></span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         );
       })}
@@ -218,7 +265,8 @@ function ListGroup({ listKey, members, isAdmin, onLogged }: { listKey: ListKey; 
   );
 }
 
-/** Điều kiện chi tiết — popup nổi (bấm mở mới hiện). */
+/** Điều kiện chi tiết — popup nổi (bấm mở mới hiện), mỗi nhóm điều kiện
+ * hiển thị dạng bia đá La Mã (viền vàng kim, chữ đậm, ngưỡng tô màu vàng). */
 function RuleArticlesButton({ conditions }: { conditions: any[] }) {
   const [open, setOpen] = useState(false);
   const byTarget: Record<string, any[]> = {};
@@ -240,37 +288,25 @@ function RuleArticlesButton({ conditions }: { conditions: any[] }) {
       {open && (
         <Portal>
           <div className="modal-overlay" onClick={() => setOpen(false)}>
-            <div className="modal-box max-w-md" onClick={e => e.stopPropagation()}>
-              <div className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-white flex items-center gap-2">
-                    <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
-                  </h3>
-                  <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white"><X size={18} /></button>
-                </div>
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                  {targets.map(t => {
-                    const list = byTarget[t];
-                    if (!list?.length) return null;
-                    return (
-                      <div key={t} className="space-y-1.5">
-                        <p className="text-xs font-semibold text-gray-400">
-                          {RULE_TARGET_LABELS[t]} — {RULE_TARGET_IS_AND[t] ? "phải đạt HẾT các điều kiện sau" : "chỉ cần dính 1 điều kiện sau"}
-                        </p>
-                        <ul className="space-y-1 pl-1">
-                          {list.map(c => (
-                            <li key={c.id} className="text-sm flex gap-2" style={{ color: "var(--py-card-text)" }}>
-                              <span className="text-yellow-500">–</span>
-                              <span>{conditionSentence(c)}{c.note && <span className="text-gray-500"> — {c.note}</span>}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
+            <OrnateFrame className="max-w-md w-full">
+              <div className="modal-box" onClick={e => e.stopPropagation()}>
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-white flex items-center gap-2">
+                      <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
+                    </h3>
+                    <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white"><X size={18} /></button>
+                  </div>
+                  <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                    {targets.map(t => {
+                      const list = byTarget[t];
+                      if (!list?.length) return null;
+                      return <ConditionTablet key={t} target={t} conditions={list} />;
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            </OrnateFrame>
           </div>
         </Portal>
       )}
