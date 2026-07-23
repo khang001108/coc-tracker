@@ -193,13 +193,15 @@ async def delete_history_entry(entry_id: int, request: Request, _: bool = Depend
 
 @router.get("/suggestions")
 async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
-    """Gợi ý ứng viên tiềm năng cho mùa CWL kế tiếp — dựa vào số lần lọt Top 5
-    'tốt' của Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng thủ anh
-    dũng, Coins) trong N tuần gần nhất, CỘNG Danh vọng hiện có. Tính LẠI TỪ
-    ĐẦU mỗi lần gọi (không cache/không đợi lịch tuần) nên luôn phản ánh đúng
-    hiện tại. KHÔNG gợi ý người đang bị giới hạn (vừa được thưởng, còn trong
-    thời gian chờ khôi phục) và KHÔNG gợi ý người đã rời clan (dù server
-    chưa tới hạn dọn tài khoản 7 ngày — họ không thể dự CWL mùa sau nữa)."""
+    """Gợi ý ứng viên tiềm năng cho mùa CWL kế tiếp — CĂN CỨ CHÍNH là Danh
+    vọng hiện có (thước đo toàn diện, tích luỹ nhiều tháng từ War/CWL/Donate/
+    Raid/Clan Games...), CỘNG THÊM điểm phụ từ số lần lọt Top 5 'tốt' của Báo
+    cáo tuần (War, Donate, Capital, Tấn công/Phòng thủ anh dũng, Coins) trong
+    N tuần gần nhất để ưu tiên thêm cho ai đang lên phong độ. Tính LẠI TỪ ĐẦU
+    mỗi lần gọi (không cache/không đợi lịch tuần) nên luôn phản ánh đúng hiện
+    tại. KHÔNG gợi ý người đang bị giới hạn (vừa được thưởng, còn trong thời
+    gian chờ khôi phục) và KHÔNG gợi ý người đã rời clan (dù server chưa tới
+    hạn dọn tài khoản 7 ngày — họ không thể dự CWL mùa sau nữa)."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
 
@@ -240,20 +242,26 @@ async def get_suggestions(request: Request, weeks: int = Query(8, le=26)):
 
     ranked_candidates = list(score_by_tag.values())
 
-    # Danh vọng càng cao càng được ưu tiên — cộng thêm điểm Danh vọng (quy đổi
-    # 1/10, làm tròn) vào điểm gợi ý. Người có Danh vọng cao nhưng chưa lọt
-    # Top 5 tuần nào cũng được xét (không chỉ dựa vào Báo cáo tuần), để Danh
-    # vọng thực sự có vai trò ưu tiên set thưởng mùa sau.
+    # Danh vọng là thước đo TOÀN DIỆN nhất (tích luỹ từ War/CWL/Donate/Raid/
+    # Clan Games suốt nhiều tháng), nên giờ là CĂN CỨ CHÍNH để xếp hạng gợi ý
+    # — không quy đổi nhỏ đi (chia 10) như trước nữa, cộng THẲNG vào điểm.
+    # Điểm nổi bật tuần (weekly_score) chỉ còn vai trò PHỤ — cộng thêm chút
+    # ưu tiên cho ai đang lên phong độ gần đây, không lấn át được Danh vọng.
+    # Người có Danh vọng cao nhưng chưa lọt Top 5 tuần nào vẫn được xét đầy
+    # đủ (không chỉ dựa vào Báo cáo tuần).
     from services.reputation import get_all_totals
     rep_totals = get_all_totals(sb, clan_id)
     by_tag = {e["player_tag"]: e for e in ranked_candidates}
+    for e in by_tag.values():
+        e["weekly_score"] = e["score"]  # giữ lại điểm nổi bật tuần riêng để hiện trong chi tiết
     for tag_, info in rep_totals.items():
         if tag_ in limited_tags or info["total"] <= 0:
             continue
         if tag_ not in by_tag:
-            by_tag[tag_] = {"player_tag": tag_, "player_name": info["player_name"], "score": 0, "highlights": 0, "category_counts": {}, "weeks": []}
+            by_tag[tag_] = {"player_tag": tag_, "player_name": info["player_name"], "score": 0, "weekly_score": 0, "highlights": 0, "category_counts": {}, "weeks": []}
         by_tag[tag_]["reputation"] = info["total"]
-        by_tag[tag_]["score"] += round(info["total"] / 10)
+    for e in by_tag.values():
+        e["score"] = e.get("reputation", 0) + e["weekly_score"]
 
     # Chỉ gợi ý người HIỆN CÒN trong clan — ai đã rời clan (dù chưa tới hạn
     # dọn tài khoản 7 ngày) sẽ không thể tham gia mùa CWL kế tiếp nên loại

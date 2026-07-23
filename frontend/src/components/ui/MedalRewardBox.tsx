@@ -195,9 +195,10 @@ export function MedalRewardBox() {
           </div>
         </div>
         <p className="text-[10px] text-gray-600 mb-2">
-          Tính từ số lần lọt Top 5 "tốt" ở Báo cáo tuần (War, Donate, Capital, Tấn công/Phòng
-          thủ anh dũng, Coins) trong khung thời gian đã chọn, CỘNG THÊM Danh vọng hiện có (Danh vọng càng
-          cao càng được ưu tiên) — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
+          Xếp hạng CHÍNH theo <strong className="text-cyan-300">Danh vọng hiện có</strong> (thước đo toàn diện, tích luỹ
+          nhiều tháng từ War/CWL/Donate/Raid/Clan Games...), cộng thêm điểm phụ từ số lần lọt Top 5 "tốt" ở Báo cáo
+          tuần (War, Donate, Capital, Tấn công/Phòng thủ anh dũng, Coins) trong khung thời gian đã chọn để ưu tiên
+          thêm cho ai đang lên phong độ gần đây — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
           Bấm vào 1 người để xem vì sao được xếp hạng đó.
         </p>
         {suggestionsLoading ? (
@@ -219,7 +220,7 @@ export function MedalRewardBox() {
                     <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
                       style={{ width: `${(s.score / maxScore) * 100}%` }}/>
                   </div>
-                  <span className="text-[10px] text-yellow-400 w-24 text-right shrink-0">{s.highlights} nổi bật{s.reputation ? ` · 🏵️${s.reputation}` : ""}</span>
+                  <span className="text-[10px] text-cyan-300 w-28 text-right shrink-0">🏵️{s.reputation || 0}{s.highlights ? ` · ${s.highlights} nổi bật` : ""}</span>
                 </button>
               ))}
             </div>
@@ -368,11 +369,10 @@ export function MedalRewardBox() {
                 </h3>
                 <button onClick={() => setSelectedCandidate(null)} className="text-gray-400 text-sm">✕</button>
               </div>
-              <div className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2">
-                <span className="text-sm text-white">Điểm gợi ý: <strong className="text-yellow-400">{selectedCandidate.score}</strong></span>
-                {selectedCandidate.reputation != null && (
-                  <span className="text-sm text-gray-400">🏵️ Danh vọng: <strong className="text-cyan-300">{selectedCandidate.reputation}</strong></span>
-                )}
+              <div className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2 flex-wrap">
+                <span className="text-sm text-white">🏵️ Danh vọng: <strong className="text-cyan-300">{selectedCandidate.reputation ?? 0}</strong> <span className="text-[10px] text-gray-500">(căn cứ chính)</span></span>
+                <span className="text-sm text-gray-400">+{selectedCandidate.weekly_score ?? 0} <span className="text-[10px]">điểm phụ từ Báo cáo tuần</span></span>
+                <span className="text-xs text-gray-600">= <strong className="text-yellow-400">{selectedCandidate.score}</strong> điểm gợi ý</span>
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-400 mb-1.5">Vì sao được xếp hạng này</p>
