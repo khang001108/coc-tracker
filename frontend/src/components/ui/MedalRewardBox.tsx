@@ -138,12 +138,20 @@ export function MedalRewardBox() {
     await load();
   }
 
-  function copyAwardedList() {
+  async function copyAwardedList() {
     const lines = [
-      `🎖️ Đã trao thưởng huy chương CWL${currentSeasonNumber != null ? ` — Mùa ${currentSeasonNumber}` : ""}`,
-      `${awardedThisSeason.length}/${members.length} thành viên`,
-      ...awardedThisSeason.map(m => `- ${m.player_name} (bởi ${m.last_award?.awarded_by || "?"})`),
+      `🎖️ Trao thưởng CWL${currentSeasonNumber != null ? ` — Mùa ${currentSeasonNumber}` : ""} (${awardedThisSeason.length}/${members.length})`,
     ];
+    if (awardedThisSeason.length > 0) {
+      lines.push(`Đã trao: ${awardedThisSeason.map(m => m.player_name).join(", ")}`);
+    }
+    try {
+      const activity = await api.getWarActivity("all");
+      const topSkips = (activity.most_skips || []).slice(0, 5);
+      if (topSkips.length > 0) {
+        lines.push(`⚠️ Bỏ war nhiều nhất: ${topSkips.map((p: any) => `${p.name} (~${p.skipped} lần)`).join(", ")}`);
+      }
+    } catch {}
     navigator.clipboard.writeText(lines.join("\n"));
     setAwardedCopied(true);
     setTimeout(() => setAwardedCopied(false), 1500);

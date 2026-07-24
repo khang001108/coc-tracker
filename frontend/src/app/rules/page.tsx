@@ -254,7 +254,7 @@ function RuleArticlesButton({ conditions }: { conditions: any[] }) {
       <button onClick={() => setOpen(true)}
         className="card w-full flex items-center justify-between !py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
         <span className="font-bold text-white flex items-center gap-2">
-          <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
+          <Scale size={16} strokeWidth={2.5} className="text-yellow-400" style={{ color: "#F4A130" }} /> Điều kiện chi tiết
         </span>
         <ChevronRight size={16} className="text-gray-500" />
       </button>
@@ -266,7 +266,7 @@ function RuleArticlesButton({ conditions }: { conditions: any[] }) {
               <div className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-white flex items-center gap-2">
-                    <Scale size={16} className="text-yellow-400" /> Điều kiện chi tiết
+                    <Scale size={16} strokeWidth={2.5} className="text-yellow-400" style={{ color: "#F4A130" }} /> Điều kiện chi tiết
                   </h3>
                   <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white"><X size={18} /></button>
                 </div>
@@ -410,7 +410,7 @@ export default function RulesPage() {
   return (
     <div className="space-y-6 max-w-3xl animate-fade-up">
       <div>
-        <h1 className="page-title flex items-center gap-2"><Scale size={22} className="text-yellow-400" /> Pháp Điển</h1>
+        <h1 className="page-title flex items-center gap-2"><Scale size={22} strokeWidth={2.5} className="text-yellow-400" style={{ color: "#F4A130" }} /> Pháp Điển</h1>
         <p className="page-subtitle">Nội quy clan — luật chơi, điều kiện thăng/hạ cấp và loại khỏi clan</p>
       </div>
 
