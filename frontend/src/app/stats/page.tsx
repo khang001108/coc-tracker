@@ -246,14 +246,28 @@ function ReputationLeaderboardTab() {
       api.getReputationLeaderboard(50, scope).catch(() => []),
       api.getReputationTierConfig().catch(() => []),
     ]).then(([r, t]) => { setRows(r); setTierInfo(t); }).finally(() => setLoading(false));
+
+    // Tự làm mới ngầm mỗi 60s — Danh vọng được poller cộng nền mỗi 5 phút
+    // (war/donate/CWL...), nếu để yên quá lâu danh sách sẽ CŨ hơn lúc bấm
+    // xem chi tiết 1 người (luôn tải mới), gây hiện 2 số khác nhau.
+    const t = setInterval(() => {
+      api.getReputationLeaderboard(50, scope).then(setRows).catch(() => {});
+    }, 60000);
+    return () => clearInterval(t);
   }, [scope]);
 
   async function openMember(r: any) {
     setSelected(r);
     setDetailLoading(true);
-    try { setDetail(await api.getMemberReputation(r.player_tag)); }
-    catch { setDetail(null); }
-    finally { setDetailLoading(false); }
+    try {
+      const d = await api.getMemberReputation(r.player_tag);
+      setDetail(d);
+      // Đồng bộ lại đúng số điểm MỚI NHẤT vào danh sách xếp hạng — trước đây
+      // danh sách chỉ tải 1 lần lúc mở tab, có thể bị CŨ hơn (poller vẫn
+      // chạy nền cộng điểm mỗi 5 phút) so với lúc bấm xem chi tiết (luôn
+      // tải mới), khiến 2 nơi hiện 2 số khác nhau cho cùng 1 người.
+      setRows(prev => prev.map(row => row.player_tag === r.player_tag ? { ...row, total: d.total, tier: d.tier } : row));
+    } catch { setDetail(null); } finally { setDetailLoading(false); }
   }
 
   if (loading) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-800 rounded-xl animate-pulse"/>)}</div>;
