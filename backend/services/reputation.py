@@ -194,13 +194,25 @@ def get_total_reputation(sb, clan_id: int, player_tag: str) -> int:
 
 def get_all_totals(sb, clan_id: int) -> dict:
     """{player_tag: {player_name, total}} — tổng Danh vọng của TẤT CẢ người
-    từng có điểm trong clan (gộp toàn bộ lịch sử, tính 1 lần cho hiệu năng)."""
-    res = sb.table("member_reputation_log").select("player_tag,player_name,points").eq("clan_id", clan_id).execute()
+    từng có điểm trong clan (gộp toàn bộ lịch sử, tính 1 lần cho hiệu năng).
+    PHẢI phân trang thủ công — Supabase/PostgREST mặc định chỉ trả về tối đa
+    1000 dòng/lượt gọi, clan hoạt động lâu dễ có hơn 1000 dòng log Danh vọng
+    (nhiều lý do × nhiều thành viên × nhiều tuần), nếu không phân trang sẽ bị
+    CẮT BỚT dữ liệu — tổng tính thiếu ngay từ đầu, không phải do dữ liệu cũ."""
     totals: dict = {}
-    for r in (res.data or []):
-        e = totals.setdefault(r["player_tag"], {"player_name": r["player_name"], "total": 0})
-        e["total"] += r["points"]
-        e["player_name"] = r["player_name"]  # tên mới nhất ghi đè (đổi tên trong game)
+    page_size = 1000
+    start = 0
+    while True:
+        res = (sb.table("member_reputation_log").select("player_tag,player_name,points")
+               .eq("clan_id", clan_id).range(start, start + page_size - 1).execute())
+        rows = res.data or []
+        for r in rows:
+            e = totals.setdefault(r["player_tag"], {"player_name": r["player_name"], "total": 0})
+            e["total"] += r["points"]
+            e["player_name"] = r["player_name"]  # tên mới nhất ghi đè (đổi tên trong game)
+        if len(rows) < page_size:
+            break
+        start += page_size
     return totals
 
 

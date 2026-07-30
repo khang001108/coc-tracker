@@ -186,25 +186,36 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
     # (CoC API/proxy lỗi vài ngày) thì created_at của cả loạt dữ liệu cũ sẽ
     # dồn vào đúng lúc poller chạy lại, làm khoảng thời gian hiển thị sai hẳn.
     war_end_cutoff = _coc_dt_str(cutoff) if cutoff else None
+
+    def _fetch_all(select_cols: str) -> list:
+        """Phân trang thủ công — Supabase/PostgREST mặc định chỉ trả tối đa
+        1000 dòng/lượt gọi. Clan war đều đặn nhiều tháng dễ vượt mốc này
+        (mỗi war ~15-50 dòng), không phân trang sẽ CẮT BỚT dữ liệu cũ, làm
+        thống kê (War yếu nhất/Hay bỏ war/MVP...) sai ngay từ đầu."""
+        out: list = []
+        start = 0
+        page_size = 1000
+        while True:
+            q = sb.table("war_participation_log").select(select_cols).eq("clan_id", clan_id)
+            if war_end_cutoff:
+                q = q.gte("war_end_time", war_end_cutoff)
+            batch = (q.range(start, start + page_size - 1).execute()).data or []
+            out.extend(batch)
+            if len(batch) < page_size:
+                break
+            start += page_size
+        return out
+
     try:
-        q = sb.table("war_participation_log").select(
+        rows = _fetch_all(
             "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type,"
             "best_attack_stars,best_attack_destruction,best_attack_duration,best_attack_opponent,"
             "best_defense_stars,best_defense_destruction,best_defense_attacker"
-        ).eq("clan_id", clan_id)
-        if war_end_cutoff:
-            q = q.gte("war_end_time", war_end_cutoff)
-        res = q.execute()
+        )
     except Exception:
         # Chưa chạy MIGRATION PART 7 — vẫn trả về phần war yếu/hay bỏ war,
         # chỉ bỏ qua MVP tấn công/phòng thủ.
-        q = sb.table("war_participation_log").select(
-            "player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type"
-        ).eq("clan_id", clan_id)
-        if war_end_cutoff:
-            q = q.gte("war_end_time", war_end_cutoff)
-        res = q.execute()
-    rows = res.data or []
+        rows = _fetch_all("player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type")
 
     per_player: dict[str, dict] = {}
     best_attack_overall = None   # đòn đánh anh dũng nhất trong cả khoảng thời gian
@@ -326,14 +337,24 @@ async def war_history(request: Request, war_type: str = Query("random", pattern=
 async def donation_trend(request: Request, period: str = Query("all", pattern="^(week|month|all)$")):
     clan_id = get_clan_id(request)
     sb = get_supabase()
-    q = sb.table("donation_snapshot_log").select("player_tag,player_name,donations,snapshot_at").eq("clan_id", clan_id)
     cutoff = _period_cutoff(period)
-    if cutoff:
-        q = q.gte("snapshot_at", cutoff.isoformat())
-    res = q.execute()
+    # Phân trang thủ công — xem lý do ở _fetch_all trong war_activity phía
+    # trên (Supabase/PostgREST mặc định cắt ở 1000 dòng/lượt gọi).
+    all_rows: list = []
+    start = 0
+    page_size = 1000
+    while True:
+        q = sb.table("donation_snapshot_log").select("player_tag,player_name,donations,snapshot_at").eq("clan_id", clan_id)
+        if cutoff:
+            q = q.gte("snapshot_at", cutoff.isoformat())
+        batch = (q.range(start, start + page_size - 1).execute()).data or []
+        all_rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        start += page_size
 
     per_player: dict[str, dict] = {}
-    for r in res.data or []:
+    for r in all_rows:
         p = per_player.setdefault(r["player_tag"], {"tag": r["player_tag"], "name": r["player_name"], "donations": 0, "weeks": 0})
         p["name"] = r["player_name"]
         p["donations"] += r["donations"] or 0

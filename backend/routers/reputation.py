@@ -150,9 +150,17 @@ async def get_member_reputation(player_tag: str, request: Request):
     dùng cho trang Thành viên (bấm vào xem chi tiết)."""
     clan_id = get_clan_id(request)
     sb = get_supabase()
-    res = (sb.table("member_reputation_log").select("*").eq("clan_id", clan_id)
-           .eq("player_tag", player_tag).order("created_at", desc=True).execute())
-    rows = res.data or []
+    rows: list = []
+    start = 0
+    page_size = 1000
+    while True:
+        res = (sb.table("member_reputation_log").select("*").eq("clan_id", clan_id)
+               .eq("player_tag", player_tag).order("created_at", desc=True).range(start, start + page_size - 1).execute())
+        batch = res.data or []
+        rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        start += page_size
     total = sum(r["points"] for r in rows)
     by_reason: dict = {}
     for r in rows:
