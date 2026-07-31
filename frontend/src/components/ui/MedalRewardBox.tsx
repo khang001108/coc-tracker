@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { api, getAdminToken, getMemberAuth } from "@/lib/api";
 import { Award, Lock, CheckCircle2, Sparkles, Medal, Copy, Check, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRoleMap } from "@/lib/useRoleMap";
+import { useRosterMap } from "@/lib/useRosterMap";
+import { NameEffect } from "@/components/ui/NameEffect";
 import { roleLabel, roleClass } from "@/lib/utils";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { Portal } from "@/components/ui/Portal";
@@ -43,6 +45,7 @@ export function MedalRewardBox() {
   const confirm = useConfirm();
   const [members, setMembers] = useState<any[]>([]);
   const roleMap = useRoleMap();
+  const rosterMap = useRosterMap();
   const [resetCount, setResetCount] = useState(3);
   const [resetCountInput, setResetCountInput] = useState("3");
   const [currentSeasonNumber, setCurrentSeasonNumber] = useState<number | null>(null);
@@ -223,7 +226,7 @@ export function MedalRewardBox() {
                 <button key={s.player_tag} onClick={() => setSelectedCandidate(s)}
                   className="w-full flex items-center gap-2 text-left hover:brightness-110 rounded-lg px-1 py-0.5 -mx-1">
                   <span className={`text-[10px] w-4 text-right shrink-0 ${i < 5 ? "text-yellow-500 font-bold" : "text-gray-500"}`}>{i+1}</span>
-                  <MarqueeText className="text-xs text-gray-200 w-20 shrink-0">{s.player_name}</MarqueeText>
+                  <MarqueeText className="text-xs text-gray-200 w-20 shrink-0"><NameEffect effectKey={rosterMap[s.player_tag]?.equipped_effect}>{s.player_name}</NameEffect></MarqueeText>
                   <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
                       style={{ width: `${(s.score / maxScore) * 100}%` }}/>
@@ -266,7 +269,7 @@ export function MedalRewardBox() {
               <div key={m.player_tag} className="flex items-center gap-2 bg-green-500/5 border border-green-500/15 rounded-xl px-3 py-2">
                 <Medal size={14} className="text-yellow-400 shrink-0"/>
                 <MarqueeText className="text-sm text-white flex-1">
-                  <span>{m.player_name}</span>
+                  <NameEffect effectKey={rosterMap[m.player_tag]?.equipped_effect}>{m.player_name}</NameEffect>
                   {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
                 </MarqueeText>
                 <span className="text-[10px] text-gray-500 shrink-0">bởi {m.last_award?.awarded_by || "?"}</span>
@@ -329,7 +332,7 @@ export function MedalRewardBox() {
                         <Lock size={12} className="text-purple-300 shrink-0"/>
                       )}
                       <MarqueeText className="text-sm text-white flex-1">
-                        <span>{m.player_name}</span>
+                        <NameEffect effectKey={rosterMap[m.player_tag]?.equipped_effect}>{m.player_name}</NameEffect>
                         {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
                       </MarqueeText>
                       {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} mùa</span>}
@@ -438,7 +441,7 @@ export function MedalRewardBox() {
                 {history.length === 0 && <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>}
                 {history.map(h => (
                   <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
-                    <MarqueeText className="text-white flex-1">{h.player_name}</MarqueeText>
+                    <MarqueeText className="text-white flex-1"><NameEffect effectKey={rosterMap[h.player_tag]?.equipped_effect}>{h.player_name}</NameEffect></MarqueeText>
                     <span className="text-gray-500 shrink-0">Mùa {h.season_number ?? "?"}</span>
                     <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
                     {perm.is_admin && (

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { api, getAdminToken } from "@/lib/api";
 import { Portal } from "@/components/ui/Portal";
 import { OrnateFrame } from "@/components/ui/OrnateFrame";
+import { useRosterMap } from "@/lib/useRosterMap";
+import { NameEffect } from "@/components/ui/NameEffect";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { roleLabel, roleClass, thColor } from "@/lib/utils";
@@ -90,6 +92,7 @@ function MemberConditionCheck({ member, conditions }: { member: any; conditions:
 function LookupModal({ members, conditions, scopeLabel, onClose }: { members: any[]; conditions: any[]; scopeLabel: string; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<any>(null);
+  const rosterMap = useRosterMap();
 
   const q = query.trim().toLowerCase();
   const filtered = (q ? members.filter(m => m.name.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q)) : members)
@@ -131,7 +134,7 @@ function LookupModal({ members, conditions, scopeLabel, onClose }: { members: an
                         {m.townHallLevel ?? "?"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                        <p className="text-sm font-semibold text-white truncate"><NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect></p>
                         <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
                       </div>
                       <div className="text-right shrink-0 space-y-0.5">
@@ -150,7 +153,7 @@ function LookupModal({ members, conditions, scopeLabel, onClose }: { members: an
                     {selected.townHallLevel ?? "?"}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-white truncate">{selected.name}</p>
+                    <p className="font-bold text-white truncate"><NameEffect effectKey={rosterMap[selected.tag]?.equipped_effect}>{selected.name}</NameEffect></p>
                     <p className={`text-xs ${roleClass(selected.role)}`}>{roleLabel(selected.role)} · #{selected.tag.replace("#", "")}</p>
                   </div>
                 </div>
@@ -171,6 +174,7 @@ function MemberActionRow({ m, isAdmin, historyAction, onLogged, conditions }: { 
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const rosterMap = useRosterMap();
 
   async function markProcessed() {
     setBusy(true);
@@ -187,7 +191,7 @@ function MemberActionRow({ m, isAdmin, historyAction, onLogged, conditions }: { 
       style={{ background: "var(--py-card-bg)", border: "1px solid var(--py-card-border)" }}>
       <button onClick={() => setShowDetail(true)} className="min-w-0 text-left flex-1 hover:brightness-110">
         <p className="font-semibold truncate" style={{ color: "var(--py-card-text)" }}>
-          {m.name} <span className="text-gray-500 font-normal">#{(m.tag || "").replace("#", "")}</span>
+          <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect> <span className="text-gray-500 font-normal">#{(m.tag || "").replace("#", "")}</span>
         </p>
         <p className="text-gray-500 mt-0.5">{statLine(m)}</p>
       </button>
@@ -207,7 +211,7 @@ function MemberActionRow({ m, isAdmin, historyAction, onLogged, conditions }: { 
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm" style={{ color: "var(--py-card-text)" }}>
-                {m.name} <span className="text-gray-500 font-normal">#{(m.tag || "").replace("#", "")}</span>
+                <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect> <span className="text-gray-500 font-normal">#{(m.tag || "").replace("#", "")}</span>
               </h3>
               <button onClick={() => setShowDetail(false)} className="text-gray-400 text-sm">✕</button>
             </div>
@@ -301,6 +305,7 @@ function RuleArticlesButton({ conditions }: { conditions: any[] }) {
 }
 
 function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdmin: boolean; onChanged: () => void }) {
+  const rosterMap = useRosterMap();
   const confirm = useConfirm();
   const [query, setQuery] = useState("");
 
@@ -344,7 +349,7 @@ function HistorySection({ history, isAdmin, onChanged }: { history: any[]; isAdm
                 <div className="min-w-0">
                   {!isSystem && (
                     <p className="font-semibold truncate" style={{ color: "var(--py-card-text)" }}>
-                      {h.player_name} <span className="text-gray-500 font-normal">#{(h.player_tag || "").replace("#", "")}</span>
+                      <NameEffect effectKey={rosterMap[h.player_tag]?.equipped_effect}>{h.player_name}</NameEffect> <span className="text-gray-500 font-normal">#{(h.player_tag || "").replace("#", "")}</span>
                     </p>
                   )}
                   <p className={`mt-0.5 font-medium ${meta.color}`}>

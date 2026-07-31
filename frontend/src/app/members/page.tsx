@@ -50,10 +50,11 @@ function RoleFlourish({ color, glow, flip = false }: { color: string; glow: stri
   );
 }
 
-function PyramidGroupSection({ g, gi, onSelect }: {
+function PyramidGroupSection({ g, gi, onSelect, rosterMap }: {
   g: { role: string; list: any[] };
   gi: number;
   onSelect: (m: any) => void;
+  rosterMap: Record<string, any>;
 }) {
   const defaultOpen = gi === 0;
   const [open, setOpen] = useState(defaultOpen);
@@ -102,7 +103,7 @@ function PyramidGroupSection({ g, gi, onSelect }: {
                   {m.townHallLevel}
                 </div>
                 <p className="text-[11px] font-semibold text-center truncate w-full px-1" style={{ color: "var(--py-card-text)" }}>
-                  {m.name}
+                  <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                 </p>
                 <p className="text-[10px] font-medium" style={{ color: rs.text }}>🏆 {formatNumber(m.trophies)}</p>
               </button>
@@ -114,7 +115,7 @@ function PyramidGroupSection({ g, gi, onSelect }: {
   );
 }
 
-function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any) => void }) {
+function PyramidView({ members, onSelect, rosterMap }: { members: any[]; onSelect: (m: any) => void; rosterMap: Record<string, any> }) {
   const groups = ROLE_ORDER.map(role => ({
     role,
     list: [...members.filter(m => m.role === role || (role === "admin" && m.role === "elder"))].sort((a, b) => b.trophies - a.trophies),
@@ -123,7 +124,7 @@ function PyramidView({ members, onSelect }: { members: any[]; onSelect: (m: any)
   return (
     <div className="space-y-5 py-2">
       {groups.map((g, gi) => (
-        <PyramidGroupSection key={g.role} g={g} gi={gi} onSelect={onSelect} />
+        <PyramidGroupSection key={g.role} g={g} gi={gi} onSelect={onSelect} rosterMap={rosterMap} />
       ))}
     </div>
   );
@@ -209,7 +210,7 @@ export default function MembersPage() {
         <CocLoader text="Đang tải thành viên..." minHeight={220} />
       ) : tab === "pyramid" ? (
         <div className="card">
-          <PyramidView members={members} onSelect={openPlayer} />
+          <PyramidView members={members} onSelect={openPlayer} rosterMap={rosterMap} />
         </div>
       ) : tab === "list" ? (
         <>

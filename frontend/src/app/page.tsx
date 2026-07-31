@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { formatNumber, roleLabel, roleClass, thColor, warStateLabel, formatDate } from "@/lib/utils";
 import { Shield, Users, Trophy, Star, Swords, AlertCircle, TrendingUp, Crown, Copy, Check, RefreshCw, Scale } from "lucide-react";
 import { NameEffect } from "@/components/ui/NameEffect";
+import { useRosterMap } from "@/lib/useRosterMap";
 import { NumberEffect } from "@/components/ui/NumberEffect";
 import { EmberField } from "@/components/ui/EmberField";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
@@ -436,6 +437,7 @@ function WeeklyReportCarousel() {
 }
 
 function TopTrophiesBox({ members }: { members: any[] }) {
+  const rosterMap = useRosterMap();
   const bannerSrc = usePageBanner("overview_trophies", "/art/prince-celebration.jpg");
   const repRankMap = useReputationRankMap();
   const ranked = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0)).slice(0, 5);
@@ -453,7 +455,7 @@ function TopTrophiesBox({ members }: { members: any[] }) {
             <div key={m.tag} className="flex items-center gap-2">
               <span className="text-xs w-5 text-center shrink-0">{medal(i) || i + 1}</span>
               <MarqueeText className="text-sm text-white flex-1">
-                <span>{m.name}</span>
+                <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
                 {repRankMap[m.tag] && <ReputationBadge rank={repRankMap[m.tag]}/>}
                 <span className={`text-[9px] shrink-0 ${roleClass(m.role)}`}>{roleLabel(m.role)}</span>
               </MarqueeText>
@@ -471,6 +473,7 @@ function TopReputationBox() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const roleMap = useRoleMap();
+  const rosterMap = useRosterMap();
   useEffect(() => {
     api.getReputationLeaderboard(5).then(setRows).catch(() => {}).finally(() => setLoading(false));
   }, []);
@@ -489,7 +492,7 @@ function TopReputationBox() {
             <div key={r.player_tag} className="flex items-center gap-2">
               <ReputationBadge rank={i + 1}/>
               <MarqueeText className="text-sm text-white flex-1">
-                <span>{r.player_name}</span>
+                <NameEffect effectKey={rosterMap[r.player_tag]?.equipped_effect}>{r.player_name}</NameEffect>
                 {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
               </MarqueeText>
               <span className="text-xs text-yellow-400 shrink-0">{r.total}</span>

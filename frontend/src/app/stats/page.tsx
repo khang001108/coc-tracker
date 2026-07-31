@@ -15,6 +15,8 @@ import { MarqueeText } from "@/components/ui/MarqueeText";
 import { SortToggle } from "@/components/ui/SortToggle";
 import { Portal } from "@/components/ui/Portal";
 import { useRoleMap } from "@/lib/useRoleMap";
+import { useRosterMap } from "@/lib/useRosterMap";
+import { NameEffect } from "@/components/ui/NameEffect";
 import { LaurelIcon, ScrollIcon, ColumnIcon, AmphoraIcon, MedalIcon, ZigguratIcon, BustIcon } from "@/components/ui/GrecoIcons";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -55,13 +57,14 @@ const WEEKLY_CATEGORY_ORDER = ["war", "donate", "capital", "best_attack", "best_
 
 function WeeklyRankRow({ e, i, tone }: { e: any; i: number; tone: "good" | "bad" }) {
   const isGood = tone === "good";
+  const rosterMap = useRosterMap();
   return (
     <div className={isGood
       ? "flex items-start gap-2 bg-green-500/5 border border-green-500/10 rounded-lg px-2.5 py-1.5"
       : "flex items-start gap-2 bg-red-500/5 border border-red-500/10 rounded-lg px-2.5 py-1.5"}>
       <span className="text-xs w-4 text-gray-500 shrink-0 pt-0.5">{i + 1}</span>
       <div className="flex-1 min-w-0">
-        <MarqueeText className="text-sm text-white">{e.player_name}</MarqueeText>
+        <MarqueeText className="text-sm text-white"><NameEffect effectKey={rosterMap[e.player_tag]?.equipped_effect}>{e.player_name}</NameEffect></MarqueeText>
         {e.value && <p className={isGood ? "text-[10px] text-green-400 truncate" : "text-[10px] text-red-400 truncate"}>{e.value}</p>}
       </div>
     </div>
@@ -130,6 +133,7 @@ function TrophyLeaderboardTab() {
   const [seasonsLoading, setSeasonsLoading] = useState(true);
   const [seasonIdx, setSeasonIdx] = useState(0);
   const roleMap = useRoleMap();
+  const rosterMap = useRosterMap();
 
   useEffect(() => {
     setLoading(true);
@@ -204,7 +208,7 @@ function TrophyLeaderboardTab() {
             m.clan_badge ? <img src={m.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={m.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
           )}
           <MarqueeText className="text-sm text-white flex-1">
-            <span>{m.name}</span>
+            <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect>
             {roleMap[m.tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.tag])}`}>{roleLabel(roleMap[m.tag])}</span>}
             {scope === "all" && <span className="text-gray-600 text-xs">· {m.clan_name}</span>}
           </MarqueeText>
@@ -227,6 +231,7 @@ function ReputationLeaderboardTab() {
   const [detail, setDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const roleMap = useRoleMap();
+  const rosterMap = useRosterMap();
   const [showFormula, setShowFormula] = useState(false);
   const [formula, setFormula] = useState<any>(null);
   const [formulaLoading, setFormulaLoading] = useState(false);
@@ -328,7 +333,7 @@ function ReputationLeaderboardTab() {
               r.clan_badge ? <img src={r.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={r.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
             )}
             <MarqueeText className="text-sm text-white flex-1">
-              <span>{r.player_name}</span>
+              <NameEffect effectKey={rosterMap[r.player_tag]?.equipped_effect}>{r.player_name}</NameEffect>
               {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
               {scope === "all" && <span className="text-gray-600 text-xs">· {r.clan_name}</span>}
             </MarqueeText>
@@ -771,6 +776,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
   topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
+  const rosterMap = useRosterMap();
   const fmtD = (s?: string) => {
     if (!s) return null;
     try { return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(s)); }
@@ -877,7 +883,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               {warActivity.most_stars.map((p, i) => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
                   <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                  <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
+                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
                   <span className="text-yellow-400 font-semibold shrink-0">{p.stars}⭐ · {p.wars} war</span>
                 </div>
               ))}
@@ -904,7 +910,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <div className="space-y-2">
               {warActivity.weakest.map(p => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
+                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
                   <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
                 </div>
               ))}
@@ -932,7 +938,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <div className="space-y-2">
               {warActivity.most_skips.map(p => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <MarqueeText className="flex-1 text-gray-300">{p.name}</MarqueeText>
+                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
                   <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
                 </div>
               ))}

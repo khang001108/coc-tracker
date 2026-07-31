@@ -90,8 +90,8 @@ function fmtWarDate(raw?: string): string {
   return `${d}/${m}/${y}`;
 }
 
-function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
-  w: any; expanded: boolean; onToggle: () => void; top3: any[]; skippers: string[]; loading: boolean;
+function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading, rosterMap = {} }: {
+  w: any; expanded: boolean; onToggle: () => void; top3: any[]; skippers: string[]; loading: boolean; rosterMap?: Record<string, any>;
 }) {
   const won = w.result === "win";
   const draw = w.result === "tie";
@@ -164,7 +164,7 @@ function WarHistoryCard({ w, expanded, onToggle, top3, skippers, loading }: {
           ) : top3.map((m, idx) => (
             <div key={m.tag || idx} className="flex items-center gap-2 text-sm">
               <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
-              <MarqueeText className="flex-1 text-gray-200">{m.name}</MarqueeText>
+              <MarqueeText className="flex-1 text-gray-200"><NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect></MarqueeText>
               <span className="text-yellow-400 font-semibold shrink-0">⭐{m.stars} · {m.destruction}% · {Math.floor(m.duration/60)}p{m.duration%60}s</span>
             </div>
           ))}
@@ -460,7 +460,7 @@ export default function WarPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {notAttacked.map((m: any) => (
-                      <span key={m.tag} className="badge-red">{m.name}</span>
+                      <span key={m.tag} className="badge-red"><NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect></span>
                     ))}
                   </div>
                 </div>
@@ -516,7 +516,7 @@ export default function WarPage() {
             ) : (
               <div className="space-y-3">
                 {randomHistory.map((w: any, i: number) => (
-                  <WarHistoryCard key={w.id}
+                  <WarHistoryCard key={w.id} rosterMap={rosterMap}
                     w={w} expanded={expandedRandomWar === i}
                     top3={randomTop3ByIdx[i] || []} skippers={randomSkippersByIdx[i] || []}
                     loading={randomTop3Loading === i}
@@ -570,7 +570,7 @@ export default function WarPage() {
                     </div>
                     <div className="space-y-3">
                       {g.wars.map(({ w, idx: i }) => (
-                        <WarHistoryCard key={w.id}
+                        <WarHistoryCard key={w.id} rosterMap={rosterMap}
                           w={w} expanded={expandedCwlWar === i}
                           top3={cwlTop3ByIdx[i] || []} skippers={cwlSkippersByIdx[i] || []}
                           loading={cwlTop3Loading === i}
@@ -639,7 +639,7 @@ export default function WarPage() {
                   <div key={m.tag} className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800">
                     <span className="text-lg shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-sm font-semibold text-white truncate"><NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect></p>
                       <p className="text-xs text-gray-500">Đánh {m.opponent} · Vòng {m.round}</p>
                     </div>
                     <div className="text-right shrink-0">

@@ -164,7 +164,7 @@ export default function CapitalPage() {
               <div className="flex flex-wrap gap-2">
                 {belowTH6.map((m: any) => (
                   <span key={m.tag} className="badge" style={{ color: "#9ca3af", background: "rgba(156,163,175,0.1)", border: "1px solid rgba(156,163,175,0.25)" }}>
-                    {m.name} (TH{m.townHallLevel})
+                    <NameEffect effectKey={rosterMap[m.tag]?.equipped_effect}>{m.name}</NameEffect> (TH{m.townHallLevel})
                   </span>
                 ))}
               </div>

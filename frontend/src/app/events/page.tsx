@@ -13,6 +13,8 @@ import { TorchIcon, CompassIcon, ScrollIcon } from "@/components/ui/GrecoIcons";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { MarqueeText } from "@/components/ui/MarqueeText";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
+import { useRosterMap } from "@/lib/useRosterMap";
+import { NameEffect } from "@/components/ui/NameEffect";
 import { SortToggle } from "@/components/ui/SortToggle";
 import {
   PartyPopper, Plus, Trash2, ExternalLink, RefreshCw, CheckCircle2, Circle, X,
@@ -277,6 +279,7 @@ function ParticipantList({ participants }: { participants: any[] }) {
   // Mặc định LUÔN thu gọn — chỉ hiện đủ khi người dùng bấm "Xem tất cả".
   const [expanded, setExpanded] = useState(false);
   const repRankMap = useReputationRankMap();
+  const rosterMap = useRosterMap();
   if (!participants.length) return null;
   const show = expanded ? participants : participants.slice(0, PARTICIPANT_COLLAPSED_COUNT);
   const hiddenCount = participants.length - PARTICIPANT_COLLAPSED_COUNT;
@@ -295,7 +298,7 @@ function ParticipantList({ participants }: { participants: any[] }) {
           <div key={p.player_tag} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5">
             <span className="text-xs text-gray-600 w-4 text-right">{i+1}</span>
             <MarqueeText className="text-sm text-gray-200 flex-1">
-              <span>{p.player_name}</span>
+              <NameEffect effectKey={rosterMap[p.player_tag]?.equipped_effect}>{p.player_name}</NameEffect>
               {repRankMap[p.player_tag] && <ReputationBadge rank={repRankMap[p.player_tag]}/>}
             </MarqueeText>
             <span className="text-[10px] text-gray-600">{fmtDateTime(p.joined_at)}</span>
@@ -314,6 +317,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
   const confirm = useConfirm();
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const repRankMap = useReputationRankMap();
+  const rosterMap = useRosterMap();
   const [claims, setClaims]           = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
   const [lbNote, setLbNote]           = useState("");
@@ -646,7 +650,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                         {m.rank<=3?["🥇","🥈","🥉"][m.rank-1]:m.rank}
                       </span>
                       <MarqueeText className="text-sm text-white flex-1">
-                        <span>{m.player_name}</span>
+                        <NameEffect effectKey={rosterMap[m.player_tag]?.equipped_effect}>{m.player_name}</NameEffect>
                         {repRankMap[m.player_tag] && <ReputationBadge rank={repRankMap[m.player_tag]}/>}
                       </MarqueeText>
                       <span className="text-xs text-yellow-400 font-semibold">{m.metric_value}</span>
@@ -670,7 +674,7 @@ function EventDetailModal({ event, isAdmin, isCreator, onClose, onChanged }: any
                   {claims.map((c: any) => (
                     <div key={c.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-2">
                       <span className="text-xs text-gray-500 w-5 text-right">{c.rank}</span>
-                      <MarqueeText className="text-sm text-white flex-1">{c.player_name}</MarqueeText>
+                      <MarqueeText className="text-sm text-white flex-1"><NameEffect effectKey={rosterMap[c.player_tag]?.equipped_effect}>{c.player_name}</NameEffect></MarqueeText>
                       <span className="text-xs text-gray-500">{c.metric_value}</span>
                       {isAdmin && c.redeem_code && (
                         <span className="text-[10px] font-mono text-yellow-500/80 bg-black/30 rounded px-1.5 py-0.5">{c.redeem_code}</span>
@@ -1379,6 +1383,7 @@ function CopyWinnersButton({ ev }: { ev: any }) {
 function RewardHistorySection() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const rosterMap = useRosterMap();
 
   useEffect(() => {
     api.getRewardHistory().then(setHistory).catch(() => {}).finally(() => setLoading(false));
@@ -1408,7 +1413,7 @@ function RewardHistorySection() {
             <div className="mt-2 space-y-1">
               {ev.claims.map((c: any) => (
                 <div key={c.id} className="flex items-center justify-between text-xs">
-                  <span className="text-gray-300">#{c.rank} {c.player_name}</span>
+                  <span className="text-gray-300">#{c.rank} <NameEffect effectKey={rosterMap[c.player_tag]?.equipped_effect}>{c.player_name}</NameEffect></span>
                   <span className={c.claimed ? "text-green-400" : "text-gray-500"}>
                     {c.claimed ? "✓ Đã nhận" : "Chưa nhận"}
                   </span>

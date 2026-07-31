@@ -5,6 +5,7 @@ import { Settings, MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Music
 import { AdminGate } from "@/components/ui/AdminGate";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { MarqueeText } from "@/components/ui/MarqueeText";
+import { NameEffect } from "@/components/ui/NameEffect";
 import { SlidingTabs } from "@/components/ui/SlidingTabs";
 import { InstallAppButton } from "@/components/ui/InstallAppButton";
 import { roleLabel, roleClass } from "@/lib/utils";
@@ -1065,7 +1066,7 @@ function MemberAccountsSettings() {
           {claimedList.map(m => (
             <div key={m.tag} className="flex items-center gap-3 bg-gray-800/50 rounded-xl px-3 py-2.5">
               <div className="flex-1 min-w-0">
-                <MarqueeText className="text-sm font-semibold text-white">{m.name}</MarqueeText>
+                <MarqueeText className="text-sm font-semibold text-white"><NameEffect effectKey={m.equipped_effect}>{m.name}</NameEffect></MarqueeText>
                 <p className={`text-xs ${roleClass(m.role)}`}>{roleLabel(m.role)}</p>
               </div>
               <button onClick={() => handleRelease(m.tag, m.name)} disabled={busyTag === m.tag}
