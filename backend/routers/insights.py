@@ -14,17 +14,25 @@ router = APIRouter()
 
 
 @router.get("/activity-index")
-async def activity_index(request: Request, limit: int = Query(50, le=200)):
+async def activity_index(request: Request, limit: int = Query(500, le=2000), scope: str = Query("clan")):
     """Chỉ số hoạt động của mọi thành viên — xem services/activity.py.
-    Trả về sắp xếp thấp → cao (ai lâu không hoạt động lên đầu, dễ chú ý)."""
-    clan_id = get_clan_id(request)
+    Trả về sắp xếp thấp → cao (ai lâu không hoạt động lên đầu, dễ chú ý).
+    scope=clan: chỉ trong clan đang chọn. scope=all: liên clan (mọi clan)."""
     sb = get_supabase()
     from services.activity import get_activity_settings
     days_to_full, threshold = get_activity_settings(sb)
     try:
-        res = (sb.table("activity_index").select("*").eq("clan_id", clan_id)
-               .order("percent").limit(limit).execute())
+        q = sb.table("activity_index").select("*")
+        if scope != "all":
+            q = q.eq("clan_id", get_clan_id(request))
+        res = q.order("percent").limit(limit).execute()
         rows = res.data or []
+        if scope == "all" and rows:
+            lookup = _clan_lookup(sb)
+            for r in rows:
+                info = lookup.get(r.get("clan_id"), {})
+                r["clan_name"] = info.get("name", "?")
+                r["clan_badge"] = info.get("badge", "")
     except Exception:
         rows = []
     return {"days_to_full": days_to_full, "penalty_threshold": threshold, "members": rows}
@@ -193,22 +201,27 @@ async def top_trophies(request: Request, limit: int = Query(10, le=50), scope: s
     return {"top": [{"tag": m["tag"], "name": m["name"], "trophies": m.get("trophies") or 0} for m in ranked[:limit]]}
 
 
-@router.get("/war-activity")
-async def war_activity(request: Request, period: str = Query("all", pattern="^(week|month|all)$")):
-    clan_id = get_clan_id(request)
-    sb = get_supabase()
-    cutoff = _period_cutoff(period)
-    # Lọc theo war_end_time (thời điểm war THẬT SỰ kết thúc, lấy từ CoC API)
-    # chứ không phải created_at (lúc DB ghi dòng) — nếu poller từng bị trễ
-    # (CoC API/proxy lỗi vài ngày) thì created_at của cả loạt dữ liệu cũ sẽ
-    # dồn vào đúng lúc poller chạy lại, làm khoảng thời gian hiển thị sai hẳn.
-    war_end_cutoff = _coc_dt_str(cutoff) if cutoff else None
+def _clan_lookup(sb) -> dict:
+    """{clan_id: {name, badge}} cho mọi clan — dùng snapshot đã lưu sẵn,
+    không gọi lại CoC API cho từng clan (nhanh hơn nhiều khi xem liên clan)."""
+    clans_res = sb.table("clans").select("id, clan_name").execute()
+    info = {c["id"]: {"name": c["clan_name"], "badge": ""} for c in (clans_res.data or [])}
+    for cid in info:
+        try:
+            snap = sb.table("snapshot_clan").select("data").eq("clan_id", cid).order("id", desc=True).limit(1).execute()
+            if snap.data:
+                info[cid]["badge"] = json.loads(snap.data[0]["data"]).get("badgeUrls", {}).get("medium", "")
+        except Exception:
+            pass
+    return info
 
+
+def _compute_clan_war_stats(sb, clan_id: int, war_end_cutoff, report_cutoff_iso: str | None) -> dict:
+    """Tính chỉ số War cho 1 clan — KHÔNG sort/cắt bớt (để gộp nhiều clan lại
+    thành 1 danh sách rồi mới sort 1 lần khi xem Liên clan)."""
     def _fetch_all(select_cols: str) -> list:
         """Phân trang thủ công — Supabase/PostgREST mặc định chỉ trả tối đa
-        1000 dòng/lượt gọi. Clan war đều đặn nhiều tháng dễ vượt mốc này
-        (mỗi war ~15-50 dòng), không phân trang sẽ CẮT BỚT dữ liệu cũ, làm
-        thống kê (War yếu nhất/Hay bỏ war/MVP...) sai ngay từ đầu."""
+        1000 dòng/lượt gọi. Clan war đều đặn nhiều tháng dễ vượt mốc này."""
         out: list = []
         start = 0
         page_size = 1000
@@ -230,20 +243,15 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
             "best_defense_stars,best_defense_destruction,best_defense_attacker"
         )
     except Exception:
-        # Chưa chạy MIGRATION PART 7 — vẫn trả về phần war yếu/hay bỏ war,
-        # chỉ bỏ qua MVP tấn công/phòng thủ.
         rows = _fetch_all("player_tag,player_name,attacks_used,attacks_allowed,stars_earned,created_at,war_end_time,war_type")
 
     per_player: dict[str, dict] = {}
-    best_attack_overall = None   # đòn đánh anh dũng nhất trong cả khoảng thời gian
-    best_defense_overall = None  # phòng thủ anh dũng nhất trong cả khoảng thời gian
+    best_attack, best_defense = None, None
 
     def _attack_key(r):
         return (r.get("best_attack_stars") or 0, r.get("best_attack_destruction") or 0, -(r.get("best_attack_duration") or 99999))
 
     def _defense_key(r):
-        # Phòng thủ tốt = đối phương ăn ÍT sao/ít % — nên "tốt nhất" là nhỏ nhất,
-        # ta đảo dấu để dùng chung logic "lớn nhất là tốt nhất" khi so sánh.
         return (-(r.get("best_defense_stars") if r.get("best_defense_stars") is not None else 99),
                 -(r.get("best_defense_destruction") if r.get("best_defense_destruction") is not None else 100))
 
@@ -252,74 +260,33 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
             "tag": r["player_tag"], "name": r["player_name"], "wars": 0, "stars": 0,
             "skipped_fraction": 0.0, "attacks_used": 0, "attacks_allowed": 0,
         })
-        p["name"] = r["player_name"]  # tên mới nhất
+        p["name"] = r["player_name"]
         p["wars"] += 1
         p["stars"] += r["stars_earned"] or 0
         used, allowed = r.get("attacks_used") or 0, r.get("attacks_allowed") or 0
         p["attacks_used"] += used
         p["attacks_allowed"] += allowed
-        # Bỏ lượt TÍCH LUỸ theo TỈ LỆ — bỏ 1/2 lượt trong 1 war tính là 0.5,
-        # bỏ CẢ 2/2 lượt tính đúng 1 "war bỏ" (không phải hơn 1), 2 war bỏ
-        # 1/2 lượt mỗi war cộng dồn cũng ra đúng "1 war bỏ" tương đương.
         if allowed > 0:
             p["skipped_fraction"] += (allowed - used) / allowed
-
         if r.get("best_attack_stars") is not None:
-            if best_attack_overall is None or _attack_key(r) > _attack_key(best_attack_overall):
-                best_attack_overall = r
+            if best_attack is None or _attack_key(r) > _attack_key(best_attack):
+                best_attack = r
         if r.get("best_defense_stars") is not None:
-            if best_defense_overall is None or _defense_key(r) > _defense_key(best_defense_overall):
-                best_defense_overall = r
+            if best_defense is None or _defense_key(r) > _defense_key(best_defense):
+                best_defense = r
 
     for p in per_player.values():
         p["avg_stars"] = round(p["stars"] / p["wars"], 2) if p["wars"] else 0
         p["skipped"] = round(p["skipped_fraction"], 1)
         p["skip_rate"] = round(p["skipped_fraction"] / p["wars"] * 100) if p["wars"] else 0
 
-    most_stars = sorted([p for p in per_player.values() if p["stars"] > 0], key=lambda p: -p["stars"])[:10]
-    weakest = sorted([p for p in per_player.values() if p["wars"] > 0], key=lambda p: p["avg_stars"])[:10]
-    most_skips = sorted([p for p in per_player.values() if p["skipped_fraction"] > 0], key=lambda p: (-p["skipped_fraction"], -p["skip_rate"]))[:10]
-
-    def _fmt_attack(r):
-        if not r:
-            return None
-        return {
-            "player_name": r["player_name"], "player_tag": r["player_tag"],
-            "stars": r.get("best_attack_stars"), "destruction": r.get("best_attack_destruction"),
-            "duration": r.get("best_attack_duration"), "opponent": r.get("best_attack_opponent"),
-            "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
-        }
-
-    def _fmt_defense(r):
-        if not r:
-            return None
-        return {
-            "player_name": r["player_name"], "player_tag": r["player_tag"],
-            "stars": r.get("best_defense_stars"), "destruction": r.get("best_defense_destruction"),
-            "attacker": r.get("best_defense_attacker"),
-            "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
-        }
-
-    now_iso = datetime.utcnow().isoformat()
-    if cutoff:
-        period_start = cutoff.isoformat()
-    else:
-        # "all" — lấy war_end_time SỚM NHẤT trong dữ liệu đang có (từ khi bắt
-        # đầu ghi nhận), parse về datetime thật rồi mới so sánh min() vì đây
-        # là chuỗi kiểu CoC ("20260714T182300.000Z"), không phải created_at.
-        parsed_dates = [_parse_coc_dt(r["war_end_time"]) for r in rows if r.get("war_end_time")]
-        parsed_dates = [d for d in parsed_dates if d]
-        period_start = min(parsed_dates).isoformat() if parsed_dates else None
-
-    # War nổi bật — số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần, lọc
-    # theo CÙNG khung thời gian (Tuần/Tháng/Từ đầu) như các mục khác ở đây.
+    # War nổi bật — số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần
     war_highlight_count: dict[str, dict] = {}
     try:
         q = sb.table("weekly_report_log").select("report").eq("clan_id", clan_id)
-        if cutoff:
-            q = q.gte("created_at", cutoff.isoformat())
-        reports_res = q.execute()
-        for row in (reports_res.data or []):
+        if report_cutoff_iso:
+            q = q.gte("created_at", report_cutoff_iso)
+        for row in (q.execute().data or []):
             for e in ((row.get("report") or {}).get("war") or {}).get("good", [])[:5]:
                 t = e.get("player_tag")
                 if not t:
@@ -328,40 +295,114 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
                 acc["count"] += 1
     except Exception:
         pass
-    war_highlights = sorted(war_highlight_count.values(), key=lambda p: -p["count"])[:10]
 
-    # Kiếm Coins nhiều nhất TRONG KHUNG THỜI GIAN đã chọn — khác với "Nhiều
-    # Coins nhất" (số dư HIỆN TẠI) — đây là TỔNG kiếm được (chỉ cộng, không
-    # trừ lúc mua đồ) trong đúng khung thời gian, từ coins_log.
-    coins_earned_map: dict[str, dict] = {}
-    try:
-        start = 0
-        page_size = 1000
-        while True:
-            q = sb.table("coins_log").select("player_tag,player_name,amount").eq("clan_id", clan_id).gt("amount", 0)
-            if cutoff:
-                q = q.gte("created_at", cutoff.isoformat())
-            batch = (q.range(start, start + page_size - 1).execute()).data or []
-            for r in batch:
-                acc = coins_earned_map.setdefault(r["player_tag"], {"tag": r["player_tag"], "name": r["player_name"], "earned": 0})
-                acc["earned"] += r["amount"] or 0
-            if len(batch) < page_size:
-                break
-            start += page_size
-    except Exception:
-        pass
-    coins_earned = sorted(coins_earned_map.values(), key=lambda p: -p["earned"])[:10]
+    return {
+        "rows": rows, "per_player": list(per_player.values()),
+        "war_highlight_count": war_highlight_count,
+        "best_attack": best_attack, "best_defense": best_defense,
+    }
+
+
+@router.get("/war-activity")
+async def war_activity(request: Request, period: str = Query("all", pattern="^(week|month|all)$"), scope: str = Query("clan")):
+    """scope=clan: chỉ trong clan đang chọn. scope=all: liên clan (mọi
+    clan) — để so sánh giữa các clan với nhau. TRẢ VỀ ĐẦY ĐỦ mọi thành viên
+    (không giới hạn Top 10) — sắp thứ tự để hiển thị, cắt bớt tuỳ frontend."""
+    sb = get_supabase()
+    cutoff = _period_cutoff(period)
+    # Lọc theo war_end_time (thời điểm war THẬT SỰ kết thúc, lấy từ CoC API)
+    # chứ không phải created_at (lúc DB ghi dòng) — nếu poller từng bị trễ
+    # (CoC API/proxy lỗi vài ngày) thì created_at của cả loạt dữ liệu cũ sẽ
+    # dồn vào đúng lúc poller chạy lại, làm khoảng thời gian hiển thị sai hẳn.
+    war_end_cutoff = _coc_dt_str(cutoff) if cutoff else None
+    report_cutoff_iso = cutoff.isoformat() if cutoff else None
+
+    if scope == "all":
+        clans_res = sb.table("clans").select("id").execute()
+        clan_ids = [c["id"] for c in (clans_res.data or [])]
+        lookup = _clan_lookup(sb)
+    else:
+        clan_ids = [get_clan_id(request)]
+        lookup = {}
+
+    all_rows: list = []
+    all_players: list = []
+    all_highlights: list = []
+    best_attack_overall, best_defense_overall = None, None
+
+    def _attack_key(r):
+        return (r.get("best_attack_stars") or 0, r.get("best_attack_destruction") or 0, -(r.get("best_attack_duration") or 99999))
+
+    def _defense_key(r):
+        return (-(r.get("best_defense_stars") if r.get("best_defense_stars") is not None else 99),
+                -(r.get("best_defense_destruction") if r.get("best_defense_destruction") is not None else 100))
+
+    for cid in clan_ids:
+        stats = _compute_clan_war_stats(sb, cid, war_end_cutoff, report_cutoff_iso)
+        tag_info = lookup.get(cid, {})
+        for p in stats["per_player"]:
+            if scope == "all":
+                p = {**p, "clan_id": cid, "clan_name": tag_info.get("name", "?"), "clan_badge": tag_info.get("badge", "")}
+            all_players.append(p)
+        for h in stats["war_highlight_count"].values():
+            if scope == "all":
+                h = {**h, "clan_id": cid, "clan_name": tag_info.get("name", "?"), "clan_badge": tag_info.get("badge", "")}
+            all_highlights.append(h)
+        all_rows.extend(stats["rows"])
+        ba, bd = stats["best_attack"], stats["best_defense"]
+        if ba is not None and (best_attack_overall is None or _attack_key(ba) > _attack_key(best_attack_overall)):
+            best_attack_overall = {**ba, "clan_id": cid, "clan_name": tag_info.get("name")} if scope == "all" else ba
+        if bd is not None and (best_defense_overall is None or _defense_key(bd) > _defense_key(best_defense_overall)):
+            best_defense_overall = {**bd, "clan_id": cid, "clan_name": tag_info.get("name")} if scope == "all" else bd
+
+    most_stars = sorted([p for p in all_players if p["stars"] > 0], key=lambda p: -p["stars"])
+    weakest = sorted([p for p in all_players if p["wars"] > 0], key=lambda p: p["avg_stars"])
+    most_skips = sorted([p for p in all_players if p["skipped_fraction"] > 0], key=lambda p: (-p["skipped_fraction"], -p["skip_rate"]))
+    war_highlights = sorted(all_highlights, key=lambda p: -p["count"])
+
+    def _fmt_attack(r):
+        if not r:
+            return None
+        out = {
+            "player_name": r["player_name"], "player_tag": r["player_tag"],
+            "stars": r.get("best_attack_stars"), "destruction": r.get("best_attack_destruction"),
+            "duration": r.get("best_attack_duration"), "opponent": r.get("best_attack_opponent"),
+            "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
+        }
+        if scope == "all":
+            out["clan_name"] = r.get("clan_name")
+        return out
+
+    def _fmt_defense(r):
+        if not r:
+            return None
+        out = {
+            "player_name": r["player_name"], "player_tag": r["player_tag"],
+            "stars": r.get("best_defense_stars"), "destruction": r.get("best_defense_destruction"),
+            "attacker": r.get("best_defense_attacker"),
+            "war_end_time": r.get("war_end_time"), "war_type": r.get("war_type"),
+        }
+        if scope == "all":
+            out["clan_name"] = r.get("clan_name")
+        return out
+
+    now_iso = datetime.utcnow().isoformat()
+    if cutoff:
+        period_start = cutoff.isoformat()
+    else:
+        parsed_dates = [_parse_coc_dt(r["war_end_time"]) for r in all_rows if r.get("war_end_time")]
+        parsed_dates = [d for d in parsed_dates if d]
+        period_start = min(parsed_dates).isoformat() if parsed_dates else None
 
     return {
         "period": period,
         "period_start": period_start,
         "period_end": now_iso,
-        "total_wars_tracked": len(set(r["war_end_time"] for r in rows)),
+        "total_wars_tracked": len(set(r["war_end_time"] for r in all_rows)),
         "most_stars": most_stars,
         "weakest": weakest,
         "most_skips": most_skips,
         "war_highlights": war_highlights,
-        "coins_earned": coins_earned,
         "mvp_attack": _fmt_attack(best_attack_overall),
         "mvp_defense": _fmt_defense(best_defense_overall),
     }

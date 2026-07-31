@@ -549,7 +549,8 @@ function StatsPageInner() {
   const [warLog, setWarLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"week" | "month" | "all">("all");
-  const [warActivity, setWarActivity] = useState<{ most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; coins_earned: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ most_stars: [], weakest: [], most_skips: [], war_highlights: [], coins_earned: [] });
+  const [warScope, setWarScope] = useState<"clan" | "all">("clan");
+  const [warActivity, setWarActivity] = useState<{ most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ most_stars: [], weakest: [], most_skips: [], war_highlights: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
   const [topCoins, setTopCoins] = useState<any[]>([]);
   const [coinsScope, setCoinsScope] = useState<"clan" | "all">("clan");
@@ -572,13 +573,13 @@ function StatsPageInner() {
 
   useEffect(() => {
     setInsightsLoading(true);
-    Promise.allSettled([api.getWarActivity(period), api.getDonationTrend(period)])
+    Promise.allSettled([api.getWarActivity(period, warScope), api.getDonationTrend(period)])
       .then(([wa, dt]) => {
         if (wa.status === "fulfilled") setWarActivity(wa.value as any);
         if (dt.status === "fulfilled") setDonationTrend(dt.value as any);
       })
       .finally(() => setInsightsLoading(false));
-  }, [period]);
+  }, [period, warScope]);
 
   // TH distribution
   const thDist = members.reduce((acc: Record<number, number>, m) => {
@@ -671,6 +672,7 @@ function StatsPageInner() {
             <CumulativeTab
               period={period} setPeriod={setPeriod} periodLabel={periodLabel}
               warActivity={warActivity} insightsLoading={insightsLoading}
+              warScope={warScope} setWarScope={setWarScope}
               topCoins={topCoins} coinsScope={coinsScope} setCoinsScope={setCoinsScope}
               coinsCopied={coinsCopied} setCoinsCopied={setCoinsCopied}
             />
@@ -770,22 +772,25 @@ function StatsPageInner() {
   );
 }
 
-function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
+function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, warScope, setWarScope, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
   period: "week" | "month" | "all"; setPeriod: (p: "week" | "month" | "all") => void; periodLabel: string;
-  warActivity: { most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; coins_earned: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
+  warActivity: { most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
+  warScope: "clan" | "all"; setWarScope: (s: "clan" | "all") => void;
   topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
   const rosterMap = useRosterMap();
+  const [activityScope, setActivityScope] = useState<"clan" | "all">("clan");
   const [activityIndex, setActivityIndex] = useState<any[]>([]);
   const [activityMeta, setActivityMeta] = useState<{ days_to_full?: number; penalty_threshold?: number }>({});
   const [activityLoading, setActivityLoading] = useState(true);
   useEffect(() => {
-    api.getActivityIndex(50).then((r: any) => {
+    setActivityLoading(true);
+    api.getActivityIndex(500, activityScope).then((r: any) => {
       setActivityIndex(r.members || []);
       setActivityMeta({ days_to_full: r.days_to_full, penalty_threshold: r.penalty_threshold });
     }).catch(() => {}).finally(() => setActivityLoading(false));
-  }, []);
+  }, [activityScope]);
   const fmtD = (s?: string) => {
     if (!s) return null;
     try { return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(s)); }
@@ -809,7 +814,6 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
 
   const TILES = [
     { key: "coins", icon: <CoinIcon size={22}/>, label: "Nhiều Coins nhất" },
-    { key: "coins_earned", icon: <CoinIcon size={22} className="text-green-400"/>, label: "Kiếm Coins nhiều nhất" },
     { key: "stars", icon: <Star size={22} className="text-yellow-400"/>, label: "Nhiều sao War nhất" },
     { key: "weakest", icon: <HeartCrack size={22} className="text-red-400"/>, label: "War yếu nhất" },
     { key: "skips", icon: <ShieldOff size={22} className="text-orange-400"/>, label: "Hay bỏ war nhất" },
@@ -845,16 +849,22 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs text-gray-500">Khung thời gian (War):</p>
-        <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
-          {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
-            <button key={o.v} onClick={() => setPeriod(o.v as any)}
-              className={`text-xs px-2.5 py-1 rounded-md transition-colors ${period === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
-              {o.l}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+            <button onClick={() => setWarScope("clan")} className={`px-2.5 py-1 ${warScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+            <button onClick={() => setWarScope("all")} className={`px-2.5 py-1 ${warScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+          </div>
+          <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
+            {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
+              <button key={o.v} onClick={() => setPeriod(o.v as any)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${period === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
+                {o.l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      {rangeLabel && <p className="text-[11px] text-gray-600 -mt-3">Dữ liệu từ {rangeLabel}</p>}
+      {rangeLabel && <p className="text-[11px] text-gray-600 -mt-3">Dữ liệu từ {rangeLabel}{warScope === "all" ? " · liên clan" : ""}</p>}
 
       {/* Lưới các mục — bấm vào 1 ô để xem chi tiết dạng popup */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -933,8 +943,14 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <div className="space-y-2">
               {warActivity.most_stars.map((p, i) => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
+                  <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
+                  {warScope === "all" && (
+                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
+                  )}
+                  <MarqueeText className="flex-1 text-gray-300">
+                    <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                  </MarqueeText>
                   <span className="text-yellow-400 font-semibold shrink-0">{p.stars}⭐ · {p.wars} war</span>
                 </div>
               ))}
@@ -959,9 +975,16 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <p className="text-xs text-gray-600">Chưa đủ dữ liệu war trong khoảng thời gian này</p>
           ) : (
             <div className="space-y-2">
-              {warActivity.weakest.map(p => (
+              {warActivity.weakest.map((p, i) => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
+                  <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
+                  {warScope === "all" && (
+                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
+                  )}
+                  <MarqueeText className="flex-1 text-gray-300">
+                    <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                  </MarqueeText>
                   <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
                 </div>
               ))}
@@ -987,39 +1010,17 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <p className="text-xs text-gray-600">Chưa có ai bỏ lượt trong khoảng thời gian này</p>
           ) : (
             <div className="space-y-2">
-              {warActivity.most_skips.map(p => (
+              {warActivity.most_skips.map((p, i) => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
+                  <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
+                  {warScope === "all" && (
+                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
+                  )}
+                  <MarqueeText className="flex-1 text-gray-300">
+                    <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                  </MarqueeText>
                   <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionModal>
-      )}
-
-      {openSection === "coins_earned" && (
-        <SectionModal title={`Kiếm Coins nhiều nhất (${periodLabel})`} icon={<CoinIcon size={18} className="text-green-400"/>}>
-          {warActivity.coins_earned?.length > 0 && (
-            <div className="flex justify-end -mt-1">
-              <CopyButton getText={() =>
-                `🪙 KIẾM COINS NHIỀU NHẤT (${periodLabel}):\n` +
-                warActivity.coins_earned.map((p, i) => `${i + 1}. ${p.name}: +${p.earned.toLocaleString()} coins`).join("\n")
-              } />
-            </div>
-          )}
-          <p className="text-[10px] text-gray-600 mb-1">Tổng Coins KIẾM ĐƯỢC (không tính lúc mua đồ Cửa hàng) trong đúng khung thời gian đã chọn — khác với "Nhiều Coins nhất" (số dư hiện tại).</p>
-          {insightsLoading ? (
-            <p className="text-xs text-gray-600">Đang tải...</p>
-          ) : !warActivity.coins_earned || warActivity.coins_earned.length === 0 ? (
-            <p className="text-xs text-gray-600">Chưa có dữ liệu trong khoảng thời gian này</p>
-          ) : (
-            <div className="space-y-2">
-              {warActivity.coins_earned.map((p, i) => (
-                <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
-                  <span className="text-green-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> +{p.earned.toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -1037,7 +1038,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               } />
             </div>
           )}
-          <p className="text-[10px] text-gray-600 mb-1">Số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần trong đúng khung thời gian đã chọn — dùng chung điều kiện "Số lần nổi bật War/CWL" ở Nội quy.</p>
+          <p className="text-[10px] text-gray-600 mb-1">Cộng dồn số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần, TÍCH LUỸ theo đúng khung thời gian đã chọn — dùng chung điều kiện "Số lần nổi bật War/CWL" ở Nội quy. Khác với chỉ số "X lần đạt 3 sao" hiện trong 1 tuần cụ thể ở Báo cáo tuần.</p>
           {insightsLoading ? (
             <p className="text-xs text-gray-600">Đang tải...</p>
           ) : !warActivity.war_highlights || warActivity.war_highlights.length === 0 ? (
@@ -1046,8 +1047,14 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <div className="space-y-2">
               {warActivity.war_highlights.map((p, i) => (
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
-                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
+                  <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
+                  {warScope === "all" && (
+                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
+                  )}
+                  <MarqueeText className="flex-1 text-gray-300">
+                    <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                  </MarqueeText>
                   <span className="text-yellow-400 font-semibold shrink-0">{p.count} lần</span>
                 </div>
               ))}
@@ -1058,14 +1065,18 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
 
       {openSection === "activity" && (
         <SectionModal title="Chỉ số hoạt động" icon={<span>📊</span>}>
-          {activityIndex.length > 0 && (
-            <div className="flex justify-end -mt-1">
+          <div className="flex items-center justify-between -mt-1">
+            <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+              <button onClick={() => setActivityScope("clan")} className={`px-2.5 py-1 ${activityScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+              <button onClick={() => setActivityScope("all")} className={`px-2.5 py-1 ${activityScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+            </div>
+            {activityIndex.length > 0 && (
               <CopyButton getText={() =>
                 `📊 CHỈ SỐ HOẠT ĐỘNG:\n` +
                 activityIndex.map((p, i) => `${i + 1}. ${p.player_name}: ${p.percent}%`).join("\n")
               } />
-            </div>
-          )}
+            )}
+          </div>
           <p className="text-[10px] text-gray-600 mb-1">
             Theo dõi Donate/War/Capital mỗi ngày — có thay đổi tính "có hoạt động". Đủ {activityMeta.days_to_full || 6} ngày liên tục là 100%
             (được +2 Danh vọng/ngày khi giữ ≥100%); tụt dưới {activityMeta.penalty_threshold ?? 20}% bị trừ 3 Danh vọng.
@@ -1076,9 +1087,16 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
             <p className="text-xs text-gray-600">Chưa có dữ liệu — job chạy 1 lần/ngày, cần ít nhất 2 ngày mới có số đầu tiên.</p>
           ) : (
             <div className="space-y-2">
-              {activityIndex.map(p => (
+              {activityIndex.map((p, i) => (
                 <div key={p.player_tag} className="flex items-center gap-2 text-sm">
-                  <MarqueeText className="w-24 shrink-0 text-gray-300"><NameEffect effectKey={rosterMap[p.player_tag]?.equipped_effect}>{p.player_name}</NameEffect></MarqueeText>
+                  <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
+                  {activityScope === "all" && (
+                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
+                  )}
+                  <MarqueeText className="w-24 shrink-0 text-gray-300">
+                    <NameEffect effectKey={rosterMap[p.player_tag]?.equipped_effect}>{p.player_name}</NameEffect>
+                  </MarqueeText>
+                  {activityScope === "all" && <span className="text-gray-600 text-[10px] shrink-0 max-w-[60px] truncate">{p.clan_name}</span>}
                   <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
                     <div className={`h-full rounded-full ${p.percent >= 100 ? "bg-green-500" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "bg-red-500" : "bg-yellow-500"}`}
                       style={{ width: `${Math.min(100, p.percent)}%` }}/>

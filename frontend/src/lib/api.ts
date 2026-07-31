@@ -77,7 +77,7 @@ export const api = {
   getCWL:         () => apiFetch("/api/war/cwl"),
   getCWLStandings: () => apiFetch("/api/war/cwl/standings"),
   getCWLTopWarriors: () => apiFetch("/api/war/cwl/top-warriors"),
-  getWarActivity: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/war-activity?period=${period}`),
+  getWarActivity: (period: "week" | "month" | "all" = "all", scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/war-activity?period=${period}&scope=${scope}`),
   getTopCoins: (limit = 10, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/top-coins?limit=${limit}&scope=${scope}`),
   getWarHistoryLog: (war_type: "random" | "cwl" = "random", limit = 20) => apiFetch(`/api/insights/war-history?war_type=${war_type}&limit=${limit}`),
   getDonationTrend: (period: "week" | "month" | "all" = "all") => apiFetch(`/api/insights/donation-trend?period=${period}`),
@@ -340,7 +340,7 @@ export const api = {
   // Danh vọng
   getReputationLeaderboard: (limit = 50, scope: "clan" | "all" = "clan") => apiFetch(`/api/reputation/leaderboard?limit=${limit}&scope=${scope}`),
   getCoinsHistory: (playerTag: string) => apiFetch(`/api/insights/coins-history/${encodeURIComponent(playerTag)}`),
-  getActivityIndex: (limit = 50) => apiFetch(`/api/insights/activity-index?limit=${limit}`),
+  getActivityIndex: (limit = 500, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/activity-index?limit=${limit}&scope=${scope}`),
   getTopTrophies: (limit = 10, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/top-trophies?limit=${limit}&scope=${scope}`),
   getTrophySeasons: (count = 3) => apiFetch(`/api/insights/trophy-seasons?seasons_count=${count}`),
   getMemberReputation: (playerTag: string) => apiFetch(`/api/reputation/member/${encodeURIComponent(playerTag)}`),
