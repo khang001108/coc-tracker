@@ -1178,3 +1178,46 @@ DROP POLICY IF EXISTS "service_all" ON clan_rule_flags;
 CREATE POLICY "service_all" ON clan_rule_flags FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.clan_rule_flags TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 40 (Chỉ số hoạt động — theo dõi xem thành viên có THẬT
+-- SỰ chơi mỗi ngày không, dựa vào các chỉ số lẽ ra phải thay đổi liên tục
+-- khi online (Donate/War/Capital). Mỗi ngày chỉ số này tăng 100/N% nếu có
+-- hoạt động, giảm 100/N% nếu không — đủ N ngày liên tục (mặc định 6, chỉnh
+-- ở Cài đặt) là đạt 100%. Đạt/duy trì 100% được +2 Danh vọng/ngày; tụt dưới
+-- ngưỡng % (mặc định 20%, chỉnh ở Cài đặt) bị trừ 3 Danh vọng.)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS activity_daily_snapshot (
+  id            SERIAL PRIMARY KEY,
+  clan_id       INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag    TEXT NOT NULL,
+  player_name   TEXT NOT NULL,
+  snapshot_date DATE NOT NULL,
+  donations     INTEGER DEFAULT 0,
+  war_attacks   INTEGER DEFAULT 0,   -- tổng số lượt tấn công War/CWL đã dùng (cộng dồn all-time)
+  capital_gold  INTEGER DEFAULT 0,   -- tổng Gold Capital đã góp (cộng dồn all-time)
+  UNIQUE(clan_id, player_tag, snapshot_date)
+);
+CREATE INDEX IF NOT EXISTS idx_activity_snapshot_clan_date ON activity_daily_snapshot(clan_id, snapshot_date);
+
+CREATE TABLE IF NOT EXISTS activity_index (
+  player_tag        TEXT PRIMARY KEY,
+  clan_id           INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_name       TEXT NOT NULL,
+  percent           NUMERIC NOT NULL DEFAULT 0,
+  last_updated_date DATE,             -- ngày gần nhất đã cộng/trừ % (chặn tính 2 lần/ngày)
+  last_full_reward_date DATE,         -- ngày gần nhất đã +2 Danh vọng vì đang ≥100%
+  below_penalty_flag BOOLEAN DEFAULT false,  -- đã bị trừ 3 Danh vọng ở lần tụt ngưỡng gần nhất chưa (reset khi vượt lại ngưỡng)
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_activity_index_clan ON activity_index(clan_id);
+
+ALTER TABLE activity_daily_snapshot ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON activity_daily_snapshot;
+CREATE POLICY "service_all" ON activity_daily_snapshot FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_daily_snapshot TO service_role;
+
+ALTER TABLE activity_index ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON activity_index;
+CREATE POLICY "service_all" ON activity_index FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_index TO service_role;

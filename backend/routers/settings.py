@@ -18,6 +18,7 @@ ALLOWED_KEYS = [
     "asset_cleanup_days", "coins_per_war_star", "stats_retention_days", "chat_retention_days",
     "chat_background_image", "overview_show_war", "overview_show_cwl", "overview_show_capital", "ember_color", "page_banners",
     "medal_reward_reset_cwl_count",
+    "activity_days_to_full", "activity_penalty_threshold",
 ]
 
 @router.post("/login")

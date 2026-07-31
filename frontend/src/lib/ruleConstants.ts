@@ -4,6 +4,8 @@ export const RULE_METRIC_LABELS: Record<string, string> = {
   reputation: "Danh vọng (tổng)",
   capital: "Capital Gold (mùa hiện tại)",
   cup: "Cúp (hiện tại)",
+  war_highlight: "Số lần nổi bật War/CWL (Báo cáo tuần)",
+  activity_index: "Chỉ số hoạt động (%)",
 };
 
 export type RuleTarget = "elder" | "co_leader" | "demote_co_leader" | "demote_elder" | "violation";

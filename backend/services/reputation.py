@@ -54,6 +54,10 @@ POINTS = {
     # không để dồn tới sát giờ chót.
     "war_early_attack":  3,
     "war_late_attack":   1,
+    # Chỉ số hoạt động — đạt/duy trì 100% (chơi đều mỗi ngày) thưởng nhẹ mỗi
+    # ngày; tụt dưới ngưỡng cấu hình thì phạt (xem services/activity.py).
+    "daily_activity":    2,
+    "activity_drop":    -3,
 }
 DEFAULT_POINTS = dict(POINTS)  # giữ nguyên bản gốc để hiện "khôi phục mặc định" ở Cài đặt
 
@@ -100,6 +104,8 @@ REASON_LABELS = {
     "leave_clan_7d":    "Rời clan 7 ngày",
     "war_early_attack": "Đánh sớm trong War (trong 12h đầu)",
     "war_late_attack":  "Đánh muộn trong War (sau 12h)",
+    "daily_activity":   "Chỉ số hoạt động đạt 100% (hôm nay)",
+    "activity_drop":    "Chỉ số hoạt động tụt dưới ngưỡng",
     "manual":           "Điều chỉnh thủ công",
 }
 

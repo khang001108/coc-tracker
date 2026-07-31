@@ -777,6 +777,15 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
   const rosterMap = useRosterMap();
+  const [activityIndex, setActivityIndex] = useState<any[]>([]);
+  const [activityMeta, setActivityMeta] = useState<{ days_to_full?: number; penalty_threshold?: number }>({});
+  const [activityLoading, setActivityLoading] = useState(true);
+  useEffect(() => {
+    api.getActivityIndex(50).then((r: any) => {
+      setActivityIndex(r.members || []);
+      setActivityMeta({ days_to_full: r.days_to_full, penalty_threshold: r.penalty_threshold });
+    }).catch(() => {}).finally(() => setActivityLoading(false));
+  }, []);
   const fmtD = (s?: string) => {
     if (!s) return null;
     try { return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(s)); }
@@ -940,6 +949,41 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
                   <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
                   <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Chỉ số hoạt động */}
+        <div className="card mt-3">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">📊 Chỉ số hoạt động</h4>
+            {activityIndex.length > 0 && (
+              <CopyButton getText={() =>
+                `📊 CHỈ SỐ HOẠT ĐỘNG:\n` +
+                activityIndex.map((p, i) => `${i + 1}. ${p.player_name}: ${p.percent}%`).join("\n")
+              } />
+            )}
+          </div>
+          <p className="text-[10px] text-gray-600 mb-2">
+            Theo dõi Donate/War/Capital mỗi ngày — có thay đổi tính "có hoạt động". Đủ {activityMeta.days_to_full || 6} ngày liên tục là 100%
+            (được +2 Danh vọng/ngày khi giữ ≥100%); tụt dưới {activityMeta.penalty_threshold ?? 20}% bị trừ 3 Danh vọng.
+          </p>
+          {activityLoading ? (
+            <p className="text-xs text-gray-600">Đang tải...</p>
+          ) : activityIndex.length === 0 ? (
+            <p className="text-xs text-gray-600">Chưa có dữ liệu — job chạy 1 lần/ngày, cần ít nhất 2 ngày mới có số đầu tiên.</p>
+          ) : (
+            <div className="space-y-2">
+              {activityIndex.map(p => (
+                <div key={p.player_tag} className="flex items-center gap-2 text-sm">
+                  <MarqueeText className="w-24 shrink-0 text-gray-300"><NameEffect effectKey={rosterMap[p.player_tag]?.equipped_effect}>{p.player_name}</NameEffect></MarqueeText>
+                  <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
+                    <div className={`h-full rounded-full ${p.percent >= 100 ? "bg-green-500" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "bg-red-500" : "bg-yellow-500"}`}
+                      style={{ width: `${Math.min(100, p.percent)}%` }}/>
+                  </div>
+                  <span className={`font-semibold shrink-0 w-12 text-right ${p.percent >= 100 ? "text-green-400" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "text-red-400" : "text-yellow-400"}`}>{p.percent}%</span>
                 </div>
               ))}
             </div>

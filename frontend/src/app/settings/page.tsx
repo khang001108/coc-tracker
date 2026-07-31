@@ -1507,6 +1507,9 @@ function ClanRulesSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
+  const [activityDays, setActivityDays] = useState(6);
+  const [activityThreshold, setActivityThreshold] = useState(20);
+  const [savingActivity, setSavingActivity] = useState(false);
 
   function flashMsg(text: string, type: "error" | "success" = "error") {
     setMsg({ text, type });
@@ -1520,9 +1523,22 @@ function ClanRulesSettings() {
       setRulesText(data.rules_text || "");
       setWarWeeks(data.war_weeks || 4);
       setConditions(data.conditions || []);
+      const s = await api.getSettings().catch(() => ({} as any));
+      setActivityDays(Number(s.activity_days_to_full) || 6);
+      setActivityThreshold(Number(s.activity_penalty_threshold) || 20);
     } catch {} finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+
+  async function saveActivitySettings() {
+    setSavingActivity(true);
+    try {
+      await api.saveSetting("activity_days_to_full", String(activityDays));
+      await api.saveSetting("activity_penalty_threshold", String(activityThreshold));
+      flashMsg("Đã lưu cấu hình Chỉ số hoạt động!", "success");
+    } catch (e: any) { flashMsg(e.message || "Lỗi lưu"); }
+    finally { setSavingActivity(false); }
+  }
 
   async function saveText() {
     setSaving(true);
@@ -1556,6 +1572,26 @@ function ClanRulesSettings() {
           onChange={e => setWarWeeks(Number(e.target.value) || 4)} />
         <label className="text-xs text-gray-500 shrink-0">tuần gần nhất</label>
         <button onClick={saveText} disabled={saving} className="btn-gold text-xs ml-auto">{saving ? "Đang lưu..." : "💾 Lưu"}</button>
+      </div>
+
+      <div className="rounded-xl bg-gray-800/50 p-3 space-y-2">
+        <p className="text-xs font-semibold text-white">📊 Chỉ số hoạt động</p>
+        <p className="text-[11px] text-gray-500">
+          Theo dõi Donate/War/Capital mỗi ngày — có thay đổi thì tính "có hoạt động". Đủ số ngày liên tục dưới đây là đạt 100%.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs text-gray-500 shrink-0">Đạt 100% sau</label>
+          <input type="number" min={1} max={30} className="input !py-1.5 !w-16 text-xs" value={activityDays}
+            onChange={e => setActivityDays(Number(e.target.value) || 6)} />
+          <label className="text-xs text-gray-500 shrink-0">ngày liên tục hoạt động</label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs text-gray-500 shrink-0">Phạt Danh vọng khi tụt dưới</label>
+          <input type="number" min={0} max={100} className="input !py-1.5 !w-16 text-xs" value={activityThreshold}
+            onChange={e => setActivityThreshold(Number(e.target.value) || 20)} />
+          <label className="text-xs text-gray-500 shrink-0">%</label>
+          <button onClick={saveActivitySettings} disabled={savingActivity} className="btn-gold text-xs ml-auto">{savingActivity ? "Đang lưu..." : "💾 Lưu"}</button>
+        </div>
       </div>
 
       {msg && <MiniToast msg={msg.text} type={msg.type} />}

@@ -53,6 +53,7 @@ async def start_scheduler():
     # Danh vọng — 2 khoản chỉ tính được theo THÁNG (Clan Games + Top đóng góp
     # tháng) chạy vào 0h ngày 1 hàng tháng.
     scheduler.add_job(poll_monthly_reputation, CronTrigger(day=1, hour=0, minute=30), id="poll_monthly_reputation", replace_existing=True)
+    scheduler.add_job(poll_activity_index, CronTrigger(hour=0, minute=15), id="poll_activity_index", replace_existing=True)
     # Top Cúp theo mùa: KHÔNG cần job riêng nữa — poll_clan (mỗi 15 phút) tự
     # cập nhật liên tục đỉnh Cúp của mùa hiện tại qua _merge_trophy_season(),
     # tự "chốt" đúng lúc CoC reset xảy ra bất kể ngày nào, không cần đợi cron
@@ -970,3 +971,16 @@ async def poll_rule_auto_history():
             await sync_rule_auto_history(sb, c["id"])
         except Exception as e:
             log.error(f"poll_rule_auto_history error (clan_id={c.get('id')}): {e}")
+
+
+async def poll_activity_index():
+    """Chạy 1 lần/ngày (00:15 UTC) — cập nhật Chỉ số hoạt động cho mọi clan.
+    Xem services/activity.py::run_daily_activity_update để biết chi tiết."""
+    from services.activity import run_daily_activity_update
+    sb = get_supabase()
+    clans = await get_all_clans()
+    for c in clans:
+        try:
+            await run_daily_activity_update(sb, c["id"])
+        except Exception as e:
+            log.error(f"poll_activity_index error (clan_id={c.get('id')}): {e}")

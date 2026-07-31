@@ -340,6 +340,7 @@ export const api = {
   // Danh vọng
   getReputationLeaderboard: (limit = 50, scope: "clan" | "all" = "clan") => apiFetch(`/api/reputation/leaderboard?limit=${limit}&scope=${scope}`),
   getCoinsHistory: (playerTag: string) => apiFetch(`/api/insights/coins-history/${encodeURIComponent(playerTag)}`),
+  getActivityIndex: (limit = 50) => apiFetch(`/api/insights/activity-index?limit=${limit}`),
   getTopTrophies: (limit = 10, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/top-trophies?limit=${limit}&scope=${scope}`),
   getTrophySeasons: (count = 3) => apiFetch(`/api/insights/trophy-seasons?seasons_count=${count}`),
   getMemberReputation: (playerTag: string) => apiFetch(`/api/reputation/member/${encodeURIComponent(playerTag)}`),

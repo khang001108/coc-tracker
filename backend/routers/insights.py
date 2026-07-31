@@ -13,6 +13,23 @@ import json
 router = APIRouter()
 
 
+@router.get("/activity-index")
+async def activity_index(request: Request, limit: int = Query(50, le=200)):
+    """Chỉ số hoạt động của mọi thành viên — xem services/activity.py.
+    Trả về sắp xếp thấp → cao (ai lâu không hoạt động lên đầu, dễ chú ý)."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    from services.activity import get_activity_settings
+    days_to_full, threshold = get_activity_settings(sb)
+    try:
+        res = (sb.table("activity_index").select("*").eq("clan_id", clan_id)
+               .order("percent").limit(limit).execute())
+        rows = res.data or []
+    except Exception:
+        rows = []
+    return {"days_to_full": days_to_full, "penalty_threshold": threshold, "members": rows}
+
+
 @router.get("/coins-history/{player_tag}")
 async def coins_history(player_tag: str, request: Request, limit: int = Query(50, le=200)):
     """Lịch sử cộng/trừ Coins của 1 người — dùng khi bấm vào tên ở

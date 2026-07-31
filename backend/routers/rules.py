@@ -36,7 +36,7 @@ from services.rule_engine import evaluate_rules
 
 router = APIRouter()
 
-METRICS = {"donate", "war_attendance", "reputation", "capital", "cup"}
+METRICS = {"donate", "war_attendance", "reputation", "capital", "cup", "war_highlight", "activity_index"}
 TARGETS = {"elder", "co_leader", "demote_co_leader", "demote_elder", "violation"}
 # elder/co_leader PHẢI đạt HẾT điều kiện (AND) — thăng chức. Các target còn
 # lại chỉ cần dính 1 (OR) — hạ cấp/vi phạm, không giữ được 1 tiêu chuẩn nào
@@ -53,6 +53,8 @@ _METRIC_LABELS_VI = {
     "reputation": "Danh vọng (tổng)",
     "capital": "Capital Gold (mùa hiện tại)",
     "cup": "Cúp (hiện tại)",
+    "war_highlight": "Số lần nổi bật War/CWL (Báo cáo tuần)",
+    "activity_index": "Chỉ số hoạt động (%)",
 }
 _TARGET_LABELS_VI = {
     "elder": "Lên Huynh trưởng",

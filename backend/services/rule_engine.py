@@ -65,6 +65,29 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
     except Exception:
         pass
 
+    # Nổi bật War/CWL — số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần
+    # trong war_weeks tuần gần nhất (dùng chung khung thời gian với war_attendance).
+    war_highlight: dict[str, int] = {}
+    try:
+        reports_res = (sb.table("weekly_report_log").select("report").eq("clan_id", clan_id)
+                       .gte("created_at", cutoff).execute())
+        for row in (reports_res.data or []):
+            for e in ((row.get("report") or {}).get("war") or {}).get("good", [])[:5]:
+                t = e.get("player_tag")
+                if t:
+                    war_highlight[t] = war_highlight.get(t, 0) + 1
+    except Exception:
+        pass
+
+    # Chỉ số hoạt động — % hiện tại (xem services/activity.py)
+    activity_pct: dict[str, float] = {}
+    try:
+        act_res = sb.table("activity_index").select("player_tag,percent").eq("clan_id", clan_id).execute()
+        for r in (act_res.data or []):
+            activity_pct[r["player_tag"]] = float(r["percent"])
+    except Exception:
+        pass
+
     def metric_value(metric: str, m: dict):
         if metric == "donate":
             return m.get("donations") or 0
@@ -76,6 +99,10 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
             return capital_loot.get(m["tag"], 0)
         if metric == "war_attendance":
             return war_attendance.get(m["tag"])
+        if metric == "war_highlight":
+            return war_highlight.get(m["tag"], 0)
+        if metric == "activity_index":
+            return activity_pct.get(m["tag"], 0.0)
         return None
 
     def check(cond: dict, m: dict) -> bool:
@@ -96,6 +123,8 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
             "reputation": rep_totals.get(m["tag"], {}).get("total", 0),
             "capital": capital_loot.get(m["tag"], 0),
             "war_attendance": war_attendance.get(m["tag"]),
+            "war_highlight": war_highlight.get(m["tag"], 0),
+            "activity_index": activity_pct.get(m["tag"], 0.0),
         }
 
     result = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": [], "all_members": []}
