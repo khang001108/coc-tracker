@@ -797,6 +797,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
   const [coinHistTag, setCoinHistTag] = useState<string | null>(null);
   const [coinHistData, setCoinHistData] = useState<any>(null);
   const [coinHistLoading, setCoinHistLoading] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
   async function openCoinsHistory(tag: string) {
     setCoinHistTag(tag);
@@ -804,6 +805,32 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
     try { setCoinHistData(await api.getCoinsHistory(tag)); }
     catch { setCoinHistData(null); }
     finally { setCoinHistLoading(false); }
+  }
+
+  const TILES = [
+    { key: "coins", icon: <CoinIcon size={22}/>, label: "Nhiều Coins nhất" },
+    { key: "stars", icon: <Star size={22} className="text-yellow-400"/>, label: "Nhiều sao War nhất" },
+    { key: "weakest", icon: <HeartCrack size={22} className="text-red-400"/>, label: "War yếu nhất" },
+    { key: "skips", icon: <ShieldOff size={22} className="text-orange-400"/>, label: "Hay bỏ war nhất" },
+    { key: "activity", icon: <span className="text-2xl leading-none">📊</span>, label: "Chỉ số hoạt động" },
+  ];
+
+  function SectionModal({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+    return (
+      <Portal>
+        <div className="modal-overlay" onClick={() => setOpenSection(null)}>
+          <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+            style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white flex items-center gap-2">{icon} {title}</h3>
+              <button onClick={() => setOpenSection(null)} className="text-gray-400 text-sm">✕</button>
+            </div>
+            {children}
+          </div>
+        </div>
+      </Portal>
+    );
   }
 
   return (
@@ -814,75 +841,88 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
         </p>
       </div>
 
-      {/* Nhiều Coins nhất — xếp đầu tiên */}
-      {topCoins.length > 0 && (
-        <div className="card">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><CoinIcon size={16}/> Nhiều Coins nhất</h4>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-                <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-                <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
-              </div>
-              <button onClick={() => {
-                const lines = topCoins.map((p, i) => coinsScope === "all"
-                  ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
-                  : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
-                const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
-                navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
-                setCoinsCopied(true);
-                setTimeout(() => setCoinsCopied(false), 2000);
-              }} title="Copy làm báo cáo" className="text-gray-500 hover:text-yellow-400 shrink-0">
-                {coinsCopied ? <Check size={15}/> : <Copy size={15}/>}
-              </button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {topCoins.map((p, i) => (
-              <button key={p.tag} onClick={() => openCoinsHistory(p.tag)} className="w-full flex items-center gap-3 text-sm hover:brightness-110 text-left">
-                <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                {coinsScope === "all" && (
-                  p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
-                    : <span className="w-5 h-5 shrink-0" />
-                )}
-                <MarqueeText className="flex-1">
-                  <span className="text-gray-300">{p.name}</span>
-                  {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
-                </MarqueeText>
-                <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs text-gray-500">Khung thời gian (War):</p>
+        <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
+          {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
+            <button key={o.v} onClick={() => setPeriod(o.v as any)}
+              className={`text-xs px-2.5 py-1 rounded-md transition-colors ${period === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
+              {o.l}
+            </button>
+          ))}
         </div>
+      </div>
+      {rangeLabel && <p className="text-[11px] text-gray-600 -mt-3">Dữ liệu từ {rangeLabel}</p>}
+
+      {/* Lưới các mục — bấm vào 1 ô để xem chi tiết dạng popup */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {TILES.map(t => (
+          <button key={t.key} onClick={() => setOpenSection(t.key)}
+            className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all">
+            {t.icon}
+            <span className="text-xs font-semibold text-white text-center leading-tight">{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className="text-[11px] text-gray-600">
+        Tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
+        Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
+      </p>
+
+      {openSection === "coins" && (
+        <SectionModal title="Nhiều Coins nhất" icon={<CoinIcon size={18}/>}>
+          <div className="flex items-center justify-end gap-2 -mt-1">
+            <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
+              <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
+              <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
+            </div>
+            <button onClick={() => {
+              const lines = topCoins.map((p, i) => coinsScope === "all"
+                ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
+                : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
+              const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
+              navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
+              setCoinsCopied(true);
+              setTimeout(() => setCoinsCopied(false), 2000);
+            }} title="Copy làm báo cáo" className="text-gray-500 hover:text-yellow-400 shrink-0">
+              {coinsCopied ? <Check size={15}/> : <Copy size={15}/>}
+            </button>
+          </div>
+          {topCoins.length === 0 ? (
+            <p className="text-xs text-gray-600">Chưa có dữ liệu</p>
+          ) : (
+            <div className="space-y-2">
+              {topCoins.map((p, i) => (
+                <button key={p.tag} onClick={() => openCoinsHistory(p.tag)} className="w-full flex items-center gap-3 text-sm hover:brightness-110 text-left">
+                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                  {coinsScope === "all" && (
+                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
+                      : <span className="w-5 h-5 shrink-0" />
+                  )}
+                  <MarqueeText className="flex-1">
+                    <span className="text-gray-300">{p.name}</span>
+                    {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                  </MarqueeText>
+                  <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-[11px] text-gray-600 mt-2">Chỉ tính người đã đăng nhập/nhận tài khoản trên web — Coins kiếm được từ war/donate.</p>
+        </SectionModal>
       )}
 
-      {/* Nhiều sao War nhất */}
-      <div>
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <Star size={16} className="text-yellow-400" /> Nhiều sao War nhất ({periodLabel})
-          </h3>
-          <div className="flex gap-1 p-0.5 rounded-lg bg-gray-800">
-            {[{ v: "week", l: "Tuần" }, { v: "month", l: "Tháng" }, { v: "all", l: "Từ đầu" }].map(o => (
-              <button key={o.v} onClick={() => setPeriod(o.v as any)}
-                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${period === o.v ? "bg-yellow-500 text-gray-900 font-semibold" : "text-gray-400"}`}>
-                {o.l}
-              </button>
-            ))}
-          </div>
-        </div>
-        {rangeLabel && <p className="text-[11px] text-gray-600 mb-3">Dữ liệu từ {rangeLabel}</p>}
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><Star size={14} className="text-yellow-400" /> Xếp hạng tổng sao đạt được trong War</h4>
-            {warActivity.most_stars.length > 0 && (
+      {openSection === "stars" && (
+        <SectionModal title={`Nhiều sao War nhất (${periodLabel})`} icon={<Star size={18} className="text-yellow-400"/>}>
+          {warActivity.most_stars.length > 0 && (
+            <div className="flex justify-end -mt-1">
               <CopyButton getText={() =>
                 `⭐ NHIỀU SAO WAR NHẤT (${periodLabel}):\n` +
                 warActivity.most_stars.map((p, i) => `${i + 1}. ${p.name}: ${p.stars}⭐ (${p.wars} war)`).join("\n")
               } />
-            )}
-          </div>
+            </div>
+          )}
           {insightsLoading ? (
             <p className="text-xs text-gray-600">Đang tải...</p>
           ) : warActivity.most_stars.length === 0 ? (
@@ -898,19 +938,19 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               ))}
             </div>
           )}
-        </div>
+        </SectionModal>
+      )}
 
-        {/* War yếu nhất */}
-        <div className="card mt-3">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><HeartCrack size={14} className="text-red-400" /> War yếu nhất (TB sao/war)</h4>
-            {warActivity.weakest?.length > 0 && (
+      {openSection === "weakest" && (
+        <SectionModal title="War yếu nhất (TB sao/war)" icon={<HeartCrack size={18} className="text-red-400"/>}>
+          {warActivity.weakest?.length > 0 && (
+            <div className="flex justify-end -mt-1">
               <CopyButton getText={() =>
                 `💔 WAR YẾU NHẤT (${periodLabel}):\n` +
                 warActivity.weakest.map((p, i) => `${i + 1}. ${p.name}: ${p.avg_stars}⭐ TB · ${p.wars} war`).join("\n")
               } />
-            )}
-          </div>
+            </div>
+          )}
           {insightsLoading ? (
             <p className="text-xs text-gray-600">Đang tải...</p>
           ) : !warActivity.weakest || warActivity.weakest.length === 0 ? (
@@ -925,20 +965,20 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               ))}
             </div>
           )}
-        </div>
+        </SectionModal>
+      )}
 
-        {/* Hay bỏ war nhất */}
-        <div className="card mt-3">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5"><ShieldOff size={14} className="text-orange-400" /> Hay bỏ war nhất</h4>
-            {warActivity.most_skips?.length > 0 && (
+      {openSection === "skips" && (
+        <SectionModal title="Hay bỏ war nhất" icon={<ShieldOff size={18} className="text-orange-400"/>}>
+          {warActivity.most_skips?.length > 0 && (
+            <div className="flex justify-end -mt-1">
               <CopyButton getText={() =>
                 `🚫 HAY BỎ WAR NHẤT (${periodLabel}):\n` +
                 warActivity.most_skips.map((p, i) => `${i + 1}. ${p.name}: bỏ ~${p.skipped} war (${p.wars} war · TB ${p.skip_rate}%)`).join("\n")
               } />
-            )}
-          </div>
-          <p className="text-[10px] text-gray-600 mb-2">Tính TÍCH LUỸ theo tỉ lệ lượt bỏ — bỏ 1/2 lượt trong 1 war = 0.5, bỏ 2/2 lượt = 1 (không phải hơn 1); cộng dồn nhiều war ra số lẻ.</p>
+            </div>
+          )}
+          <p className="text-[10px] text-gray-600 mb-1">Tính TÍCH LUỸ theo tỉ lệ lượt bỏ — bỏ 1/2 lượt trong 1 war = 0.5, bỏ 2/2 lượt = 1 (không phải hơn 1); cộng dồn nhiều war ra số lẻ.</p>
           {insightsLoading ? (
             <p className="text-xs text-gray-600">Đang tải...</p>
           ) : !warActivity.most_skips || warActivity.most_skips.length === 0 ? (
@@ -953,20 +993,20 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               ))}
             </div>
           )}
-        </div>
+        </SectionModal>
+      )}
 
-        {/* Chỉ số hoạt động */}
-        <div className="card mt-3">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">📊 Chỉ số hoạt động</h4>
-            {activityIndex.length > 0 && (
+      {openSection === "activity" && (
+        <SectionModal title="Chỉ số hoạt động" icon={<span>📊</span>}>
+          {activityIndex.length > 0 && (
+            <div className="flex justify-end -mt-1">
               <CopyButton getText={() =>
                 `📊 CHỈ SỐ HOẠT ĐỘNG:\n` +
                 activityIndex.map((p, i) => `${i + 1}. ${p.player_name}: ${p.percent}%`).join("\n")
               } />
-            )}
-          </div>
-          <p className="text-[10px] text-gray-600 mb-2">
+            </div>
+          )}
+          <p className="text-[10px] text-gray-600 mb-1">
             Theo dõi Donate/War/Capital mỗi ngày — có thay đổi tính "có hoạt động". Đủ {activityMeta.days_to_full || 6} ngày liên tục là 100%
             (được +2 Danh vọng/ngày khi giữ ≥100%); tụt dưới {activityMeta.penalty_threshold ?? 20}% bị trừ 3 Danh vọng.
           </p>
@@ -988,13 +1028,8 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               ))}
             </div>
           )}
-        </div>
-
-        <p className="text-[11px] text-gray-600 mt-3">
-          Tính từ dữ liệu tích luỹ mỗi khi có war kết thúc (kể cả CWL) — càng dùng lâu càng chính xác.
-          Xem "Tấn công/Phòng thủ anh dũng nhất" và "Donate ít nhất" theo TỪNG TUẦN ở tab "Báo cáo tuần".
-        </p>
-      </div>
+        </SectionModal>
+      )}
 
       {coinHistTag && (
         <Portal>

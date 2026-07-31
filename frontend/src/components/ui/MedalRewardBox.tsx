@@ -56,6 +56,8 @@ export function MedalRewardBox() {
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ text: string; type: "error" | "success" } | null>(null);
   const [showAwardPanel, setShowAwardPanel] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showAwarded, setShowAwarded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [awardedCopied, setAwardedCopied] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
@@ -160,6 +162,17 @@ export function MedalRewardBox() {
     setTimeout(() => setAwardedCopied(false), 1500);
   }
 
+  const [suggestionsCopied, setSuggestionsCopied] = useState(false);
+  function copySuggestions() {
+    const lines = [
+      `✨ GỢI Ý TIỀM NĂNG${currentSeasonNumber != null ? ` — Mùa ${currentSeasonNumber + 1}` : ""} (${WEEKS_PRESETS[weeksIdx]} tuần gần nhất):`,
+      ...suggestions.map((s, i) => `${i + 1}. ${s.player_name}: 🏵️${s.reputation || 0}${s.highlights ? ` · ${s.highlights} nổi bật` : ""}`),
+    ];
+    navigator.clipboard.writeText(lines.join("\n"));
+    setSuggestionsCopied(true);
+    setTimeout(() => setSuggestionsCopied(false), 1500);
+  }
+
   async function handleDeleteHistory(id: number, name: string) {
     if (!(await confirm({ message: `Xoá lượt trao thưởng của "${name}"? Người này sẽ được xét nhận lại ngay.`, danger: true }))) return;
     try { await api.deleteMedalHistory(id); await load(); }
@@ -186,110 +199,145 @@ export function MedalRewardBox() {
         dấu sau khi trao thật trong game, hệ thống tự xoay vòng công bằng cho mùa kế tiếp.
       </p>
 
-      {/* Gợi ý tiềm năng mùa tiếp theo — đưa lên đầu cho dễ nhìn */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <p className="text-xs font-semibold text-white flex items-center gap-1.5">
-            <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa tiếp theo
-            {currentSeasonNumber != null && <span className="badge-gold text-[9px]">Mùa {currentSeasonNumber + 1}</span>}
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setWeeksIdx(i => Math.max(0, i - 1))} disabled={weeksIdx <= 0}
-              title="Xem khung thời gian ngắn hơn" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
-              <ChevronLeft size={14}/>
-            </button>
-            <span className="text-[10px] text-gray-500 w-16 text-center shrink-0">{WEEKS_PRESETS[weeksIdx]} tuần</span>
-            <button onClick={() => setWeeksIdx(i => Math.min(WEEKS_PRESETS.length - 1, i + 1))} disabled={weeksIdx >= WEEKS_PRESETS.length - 1}
-              title="Xem khung thời gian dài hơn" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
-              <ChevronRight size={14}/>
-            </button>
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-600 mb-2">
-          Xếp hạng CHÍNH theo <strong className="text-cyan-300">Danh vọng hiện có</strong> (thước đo toàn diện, tích luỹ
-          nhiều tháng từ War/CWL/Donate/Raid/Clan Games...), cộng thêm điểm phụ từ số lần lọt Top 5 "tốt" ở Báo cáo
-          tuần (War, Donate, Capital, Tấn công/Phòng thủ anh dũng, Coins) trong khung thời gian đã chọn để ưu tiên
-          thêm cho ai đang lên phong độ gần đây — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
-          Bấm vào 1 người để xem vì sao được xếp hạng đó.
-        </p>
-        {suggestionsLoading ? (
-          <div className="h-32 bg-gray-800 rounded-xl animate-pulse"/>
-        ) : suggestions.length === 0 ? (
-          <p className="text-sm text-gray-600 text-center py-3">
-            Chưa có dữ liệu — Báo cáo tuần cần chạy ít nhất 1 lần (tự động mỗi thứ 2, hoặc admin bấm
-            "Tạo lại ngay" ở tab Báo cáo tuần) mới có gợi ý ở đây.
-          </p>
-        ) : (
-          <>
-            <div className="space-y-1.5">
-              {(showAllSuggestions ? suggestions : suggestions.slice(0, 5)).map((s, i) => (
-                <button key={s.player_tag} onClick={() => setSelectedCandidate(s)}
-                  className="w-full flex items-center gap-2 text-left hover:brightness-110 rounded-lg px-1 py-0.5 -mx-1">
-                  <span className={`text-[10px] w-4 text-right shrink-0 ${i < 5 ? "text-yellow-500 font-bold" : "text-gray-500"}`}>{i+1}</span>
-                  <MarqueeText className="text-xs text-gray-200 w-20 shrink-0"><NameEffect effectKey={rosterMap[s.player_tag]?.equipped_effect}>{s.player_name}</NameEffect></MarqueeText>
-                  <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
-                      style={{ width: `${(s.score / maxScore) * 100}%` }}/>
-                  </div>
-                  <span className="text-[10px] text-cyan-300 w-28 text-right shrink-0">🏵️{s.reputation || 0}{s.highlights ? ` · ${s.highlights} nổi bật` : ""}</span>
-                </button>
-              ))}
-            </div>
-            {suggestions.length > 5 && (
-              <button onClick={() => setShowAllSuggestions(s => !s)} className="text-[11px] text-yellow-500 hover:underline mt-2">
-                {showAllSuggestions ? "Thu gọn ▲" : `Xem tất cả ${suggestions.length} người ▼`}
-              </button>
-            )}
-          </>
-        )}
+      {/* Lưới các mục — bấm vào 1 ô để xem chi tiết dạng popup */}
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => setShowSuggestions(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all">
+          <Sparkles size={22} className="text-yellow-400"/>
+          <span className="text-xs font-semibold text-white text-center leading-tight">Gợi ý tiềm năng mùa tiếp theo</span>
+        </button>
+        <button onClick={() => setShowAwarded(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all relative">
+          <Award size={22} className="text-yellow-400"/>
+          <span className="text-xs font-semibold text-white text-center leading-tight">Đã trao thưởng mùa này</span>
+          <span className="text-[10px] text-gray-500">{awardedThisSeason.length}/{members.length}</span>
+        </button>
+        <button onClick={() => setShowAwardPanel(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all">
+          <Medal size={22} className="text-yellow-400"/>
+          <span className="text-xs font-semibold text-white text-center leading-tight">Xác nhận trao</span>
+          <span className="text-[10px] text-gray-500">{awardedThisSeason.length}/{members.length} đã trao</span>
+        </button>
+        <button onClick={() => setShowHistory(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all">
+          <Clock size={22} className="text-gray-400"/>
+          <span className="text-xs font-semibold text-white text-center leading-tight">Lịch sử trao thưởng</span>
+          <span className="text-[10px] text-gray-500">{history.length} lượt</span>
+        </button>
       </div>
 
-      {/* Ai đã được trao thưởng mùa này — trọng tâm hiển thị */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <Award size={18} className="text-yellow-400"/> Đã trao thưởng mùa này
-            {currentSeasonNumber != null && <span className="badge-gold text-[10px]">Mùa {currentSeasonNumber}</span>}
-          </h3>
-          <span className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-gray-500">{awardedThisSeason.length}/{members.length} thành viên</span>
-            {awardedThisSeason.length > 0 && (
-              <button onClick={copyAwardedList} title="Copy danh sách đã trao thưởng mùa này"
-                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-yellow-400 transition-colors">
-                {awardedCopied ? <Check size={14} className="text-green-400"/> : <Copy size={14}/>}
-              </button>
-            )}
-          </span>
-        </div>
-        {awardedThisSeason.length === 0 ? (
-          <p className="text-sm text-gray-600 text-center py-4">Chưa có ai được trao huy chương ở mùa này.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {awardedThisSeason.map(m => (
-              <div key={m.player_tag} className="flex items-center gap-2 bg-green-500/5 border border-green-500/15 rounded-xl px-3 py-2">
-                <Medal size={14} className="text-yellow-400 shrink-0"/>
-                <MarqueeText className="text-sm text-white flex-1">
-                  <NameEffect effectKey={rosterMap[m.player_tag]?.equipped_effect}>{m.player_name}</NameEffect>
-                  {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
-                </MarqueeText>
-                <span className="text-[10px] text-gray-500 shrink-0">bởi {m.last_award?.awarded_by || "?"}</span>
+      {showSuggestions && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setShowSuggestions(false)}>
+            <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <p className="text-xs font-semibold text-white flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa tiếp theo
+                  {currentSeasonNumber != null && <span className="badge-gold text-[9px]">Mùa {currentSeasonNumber + 1}</span>}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => setWeeksIdx(i => Math.max(0, i - 1))} disabled={weeksIdx <= 0}
+                    title="Xem khung thời gian ngắn hơn" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
+                    <ChevronLeft size={14}/>
+                  </button>
+                  <span className="text-[10px] text-gray-500 w-16 text-center shrink-0">{WEEKS_PRESETS[weeksIdx]} tuần</span>
+                  <button onClick={() => setWeeksIdx(i => Math.min(WEEKS_PRESETS.length - 1, i + 1))} disabled={weeksIdx >= WEEKS_PRESETS.length - 1}
+                    title="Xem khung thời gian dài hơn" className="p-1 rounded-lg border border-gray-700 text-gray-400 hover:text-yellow-400 disabled:opacity-30">
+                    <ChevronRight size={14}/>
+                  </button>
+                  {suggestions.length > 0 && (
+                    <button onClick={copySuggestions} title="Copy danh sách gợi ý" className="text-gray-500 hover:text-yellow-400 shrink-0">
+                      {suggestionsCopied ? <Check size={15} className="text-green-400"/> : <Copy size={15}/>}
+                    </button>
+                  )}
+                  <button onClick={() => setShowSuggestions(false)} className="text-gray-400 text-sm shrink-0">✕</button>
+                </div>
               </div>
-            ))}
+              <p className="text-[10px] text-gray-600 mb-2">
+                Xếp hạng CHÍNH theo <strong className="text-cyan-300">Danh vọng hiện có</strong> (thước đo toàn diện, tích luỹ
+                nhiều tháng từ War/CWL/Donate/Raid/Clan Games...), cộng thêm điểm phụ từ số lần lọt Top 5 "tốt" ở Báo cáo
+                tuần (War, Donate, Capital, Tấn công/Phòng thủ anh dũng, Coins) trong khung thời gian đã chọn để ưu tiên
+                thêm cho ai đang lên phong độ gần đây — tính lại mới mỗi lần mở, đã loại người đang bị giới hạn và người đã rời clan.
+                Bấm vào 1 người để xem vì sao được xếp hạng đó.
+              </p>
+              {suggestionsLoading ? (
+                <div className="h-32 bg-gray-800 rounded-xl animate-pulse"/>
+              ) : suggestions.length === 0 ? (
+                <p className="text-sm text-gray-600 text-center py-3">
+                  Chưa có dữ liệu — Báo cáo tuần cần chạy ít nhất 1 lần (tự động mỗi thứ 2, hoặc admin bấm
+                  "Tạo lại ngay" ở tab Báo cáo tuần) mới có gợi ý ở đây.
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    {(showAllSuggestions ? suggestions : suggestions.slice(0, 5)).map((s, i) => (
+                      <button key={s.player_tag} onClick={() => setSelectedCandidate(s)}
+                        className="w-full flex items-center gap-2 text-left hover:brightness-110 rounded-lg px-1 py-0.5 -mx-1">
+                        <span className={`text-[10px] w-4 text-right shrink-0 ${i < 5 ? "text-yellow-500 font-bold" : "text-gray-500"}`}>{i+1}</span>
+                        <MarqueeText className="text-xs text-gray-200 w-20 shrink-0"><NameEffect effectKey={rosterMap[s.player_tag]?.equipped_effect}>{s.player_name}</NameEffect></MarqueeText>
+                        <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-orange-400"
+                            style={{ width: `${(s.score / maxScore) * 100}%` }}/>
+                        </div>
+                        <span className="text-[10px] text-cyan-300 w-28 text-right shrink-0">🏵️{s.reputation || 0}{s.highlights ? ` · ${s.highlights} nổi bật` : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {suggestions.length > 5 && (
+                    <button onClick={() => setShowAllSuggestions(s => !s)} className="text-[11px] text-yellow-500 hover:underline mt-2">
+                      {showAllSuggestions ? "Thu gọn ▲" : `Xem tất cả ${suggestions.length} người ▼`}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        )}
-        {limitedCount > 0 && (
-          <p className="text-[11px] text-purple-300 mt-2 flex items-center gap-1"><Lock size={10}/> {limitedCount} người đang trong thời gian giới hạn (kể cả từ các mùa trước).</p>
-        )}
-      </div>
+        </Portal>
+      )}
 
-      {/* Xác nhận trao cho người chưa nhận — gọn lại, mở khi cần */}
-      <button onClick={() => setShowAwardPanel(true)}
-        className="w-full card !p-4 flex items-center justify-between text-left hover:brightness-110">
-        <span className="font-bold text-white text-sm flex items-center gap-2">
-          <Medal size={16} className="text-yellow-400"/> Xác nhận trao cho người chưa nhận mùa này
-        </span>
-        <span className="text-xs text-gray-400 shrink-0">{awardedThisSeason.length}/{members.length} đã trao</span>
-      </button>
+      {showAwarded && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setShowAwarded(false)}>
+            <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <Award size={18} className="text-yellow-400"/> Đã trao thưởng mùa này
+                  {currentSeasonNumber != null && <span className="badge-gold text-[10px]">Mùa {currentSeasonNumber}</span>}
+                </h3>
+                <span className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-500">{awardedThisSeason.length}/{members.length} thành viên</span>
+                  {awardedThisSeason.length > 0 && (
+                    <button onClick={copyAwardedList} title="Copy danh sách đã trao thưởng mùa này"
+                      className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-yellow-400 transition-colors">
+                      {awardedCopied ? <Check size={14} className="text-green-400"/> : <Copy size={14}/>}
+                    </button>
+                  )}
+                  <button onClick={() => setShowAwarded(false)} className="text-gray-400 text-sm shrink-0">✕</button>
+                </span>
+              </div>
+              {awardedThisSeason.length === 0 ? (
+                <p className="text-sm text-gray-600 text-center py-4">Chưa có ai được trao huy chương ở mùa này.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {awardedThisSeason.map(m => (
+                    <div key={m.player_tag} className="flex items-center gap-2 bg-green-500/5 border border-green-500/15 rounded-xl px-3 py-2">
+                      <Medal size={14} className="text-yellow-400 shrink-0"/>
+                      <MarqueeText className="text-sm text-white flex-1">
+                        <NameEffect effectKey={rosterMap[m.player_tag]?.equipped_effect}>{m.player_name}</NameEffect>
+                        {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
+                      </MarqueeText>
+                      <span className="text-[10px] text-gray-500 shrink-0">bởi {m.last_award?.awarded_by || "?"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {limitedCount > 0 && (
+                <p className="text-[11px] text-purple-300 mt-2 flex items-center gap-1"><Lock size={10}/> {limitedCount} người đang trong thời gian giới hạn (kể cả từ các mùa trước).</p>
+              )}
+            </div>
+          </div>
+        </Portal>
+      )}
 
       {showAwardPanel && (
         <Portal>
@@ -417,15 +465,6 @@ export function MedalRewardBox() {
           </div>
         </Portal>
       )}
-
-      {/* Lịch sử — chỉ Admin xoá được */}
-      <button onClick={() => setShowHistory(true)}
-        className="w-full card !p-4 flex items-center justify-between text-left hover:brightness-110">
-        <span className="font-bold text-white text-sm flex items-center gap-2">
-          <Clock size={16} className="text-gray-400"/> Lịch sử trao thưởng
-        </span>
-        <span className="text-xs text-gray-400 shrink-0">{history.length} lượt</span>
-      </button>
 
       {showHistory && (
         <Portal>
