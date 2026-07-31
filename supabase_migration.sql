@@ -1221,3 +1221,13 @@ ALTER TABLE activity_index ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "service_all" ON activity_index;
 CREATE POLICY "service_all" ON activity_index FOR ALL TO service_role USING (true);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_index TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 41 (SỬA LỖI: bảng clan_rule_conditions có ràng buộc
+-- CHECK ở tầng database CHỈ cho phép đúng 5 metric gốc — dù code app đã cho
+-- phép "war_highlight"/"activity_index" từ PART 40, INSERT vẫn bị database
+-- TỪ CHỐI vì ràng buộc cũ chưa được cập nhật theo. Mở rộng lại constraint.)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;
+ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
+  CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index'));
