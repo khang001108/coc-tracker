@@ -43,9 +43,17 @@ app.include_router(quests.router, prefix="/api/quests", tags=["Quests"])
 app.include_router(rules.router,   prefix="/api/rules",   tags=["Rules"])
 
 @app.get("/")
+@app.head("/")
 async def root():
+    # UptimeRobot (và nhiều dịch vụ "ping giữ awake" khác) mặc định gửi
+    # HEAD request để tiết kiệm băng thông — bản free của UptimeRobot KHÔNG
+    # cho đổi sang GET (tính năng trả phí). Trước đây route này chỉ khai
+    # báo GET nên HEAD bị trả về 405 Method Not Allowed — UptimeRobot hiểu
+    # nhầm là server DOWN, ping "giữ awake" thất bại liên tục, Render vẫn
+    # tự ngủ như bình thường → mỗi lần mở web thật vẫn phải chờ cold start.
     return {"message": "CoC Tracker API", "docs": "/docs", "health": "/health"}
 
 @app.get("/health")
+@app.head("/health")
 async def health():
     return {"status": "ok"}
