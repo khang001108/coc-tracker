@@ -803,6 +803,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
   const [coinHistData, setCoinHistData] = useState<any>(null);
   const [coinHistLoading, setCoinHistLoading] = useState(false);
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
 
   async function openCoinsHistory(tag: string) {
     setCoinHistTag(tag);
@@ -1038,7 +1039,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               } />
             </div>
           )}
-          <p className="text-[10px] text-gray-600 mb-1">Cộng dồn số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần, TÍCH LUỸ theo đúng khung thời gian đã chọn — dùng chung điều kiện "Số lần nổi bật War/CWL" ở Nội quy. Khác với chỉ số "X lần đạt 3 sao" hiện trong 1 tuần cụ thể ở Báo cáo tuần.</p>
+          <p className="text-[10px] text-gray-600 mb-1">Cộng dồn số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần, TÍCH LUỸ theo đúng khung thời gian đã chọn — dùng chung điều kiện "Số lần nổi bật War/CWL" ở Nội quy. Khác với chỉ số "X lần đạt 3 sao" hiện trong 1 tuần cụ thể ở Báo cáo tuần. Bấm vào 1 người để xem cụ thể tuần nào.</p>
           {insightsLoading ? (
             <p className="text-xs text-gray-600">Đang tải...</p>
           ) : !warActivity.war_highlights || warActivity.war_highlights.length === 0 ? (
@@ -1046,7 +1047,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {warActivity.war_highlights.map((p, i) => (
-                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                <button key={p.tag} onClick={() => setSelectedHighlight(p)} className="w-full flex items-center gap-2 text-sm hover:brightness-110 text-left">
                   <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
                   {warScope === "all" && (
                     p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
@@ -1056,11 +1057,38 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-yellow-400 font-semibold shrink-0">{p.count} lần</span>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </SectionModal>
+      )}
+
+      {selectedHighlight && (
+        <Portal>
+          <div className="modal-overlay" onClick={() => setSelectedHighlight(null)}>
+            <div className="relative w-full max-w-md mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
+              style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                  <Sparkles size={16} className="text-yellow-400"/> {selectedHighlight.name} — {selectedHighlight.count} lần nổi bật
+                </h3>
+                <button onClick={() => setSelectedHighlight(null)} className="text-gray-400 text-sm">✕</button>
+              </div>
+              <p className="text-xs text-gray-500">Những tuần cụ thể người này lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần:</p>
+              <div className="space-y-1.5">
+                {(selectedHighlight.weeks || []).map((w: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 text-xs bg-gray-800/40 rounded-lg px-2.5 py-1.5">
+                    <span className="text-gray-400 shrink-0">{w.date ? new Date(w.date).toLocaleDateString("vi-VN") : "?"}</span>
+                    <span className="text-yellow-500 font-semibold shrink-0">Hạng {w.rank}</span>
+                    <span className="text-gray-300 text-right flex-1 truncate">{w.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Portal>
       )}
 
       {openSection === "activity" && (

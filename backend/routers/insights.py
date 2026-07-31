@@ -283,16 +283,17 @@ def _compute_clan_war_stats(sb, clan_id: int, war_end_cutoff, report_cutoff_iso:
     # War nổi bật — số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần
     war_highlight_count: dict[str, dict] = {}
     try:
-        q = sb.table("weekly_report_log").select("report").eq("clan_id", clan_id)
+        q = sb.table("weekly_report_log").select("report,created_at").eq("clan_id", clan_id)
         if report_cutoff_iso:
             q = q.gte("created_at", report_cutoff_iso)
         for row in (q.execute().data or []):
-            for e in ((row.get("report") or {}).get("war") or {}).get("good", [])[:5]:
+            for idx, e in enumerate(((row.get("report") or {}).get("war") or {}).get("good", [])[:5]):
                 t = e.get("player_tag")
                 if not t:
                     continue
-                acc = war_highlight_count.setdefault(t, {"tag": t, "name": e.get("player_name"), "count": 0})
+                acc = war_highlight_count.setdefault(t, {"tag": t, "name": e.get("player_name"), "count": 0, "weeks": []})
                 acc["count"] += 1
+                acc["weeks"].append({"date": row.get("created_at"), "rank": idx + 1, "value": e.get("value")})
     except Exception:
         pass
 
