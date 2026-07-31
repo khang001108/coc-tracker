@@ -262,6 +262,17 @@ async def generate_weekly_report(clan_id: int = 1) -> dict:
     except Exception as e:
         log.error(f"weekly_report_log insert error (clan_id={clan_id}): {e}")
 
+    # Thưởng Danh vọng cho ai lọt Top 5 "War/CWL giỏi nhất" tuần này — dùng
+    # week_ref làm ref_key nên tạo lại report cùng tuần KHÔNG cộng trùng.
+    try:
+        from services.reputation import add_reputation
+        for e in (report.get("war", {}).get("good") or [])[:5]:
+            if e.get("player_tag"):
+                add_reputation(sb, clan_id, e["player_tag"], e["player_name"], "war_weekly_highlight",
+                                ref_key=f"war-highlight-{week_ref}", note="Nổi bật War/CWL tuần này")
+    except Exception as e:
+        log.error(f"weekly war highlight reputation error (clan_id={clan_id}): {e}")
+
     # Tin nhắn Telegram/Discord — CHỈ Top 5 Danh vọng cộng/trừ nhiều nhất tuần này
     rep_summary = _reputation_weekly_summary(sb, clan_id, period_start_iso)
     message = _build_message(rep_summary)

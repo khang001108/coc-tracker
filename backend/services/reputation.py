@@ -58,6 +58,8 @@ POINTS = {
     # ngày; tụt dưới ngưỡng cấu hình thì phạt (xem services/activity.py).
     "daily_activity":    2,
     "activity_drop":    -3,
+    # Được gắn cờ "nổi bật" Top 5 War/CWL ở Báo cáo tuần (thứ 2 hàng tuần)
+    "war_weekly_highlight": 3,
 }
 DEFAULT_POINTS = dict(POINTS)  # giữ nguyên bản gốc để hiện "khôi phục mặc định" ở Cài đặt
 
@@ -106,6 +108,7 @@ REASON_LABELS = {
     "war_late_attack":  "Đánh muộn trong War (sau 12h)",
     "daily_activity":   "Chỉ số hoạt động đạt 100% (hôm nay)",
     "activity_drop":    "Chỉ số hoạt động tụt dưới ngưỡng",
+    "war_weekly_highlight": "Nổi bật War/CWL (Báo cáo tuần)",
     "manual":           "Điều chỉnh thủ công",
 }
 
