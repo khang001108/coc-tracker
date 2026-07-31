@@ -6,6 +6,8 @@ export const RULE_METRIC_LABELS: Record<string, string> = {
   cup: "Cúp (hiện tại)",
   war_highlight: "Số lần nổi bật War/CWL (Báo cáo tuần)",
   activity_index: "Chỉ số hoạt động (%)",
+  war_stars_total: "Tổng số sao War kiếm được (career)",
+  coins_earned_total: "Coin kiếm được (tổng, không tính lúc mua đồ)",
 };
 
 export type RuleTarget = "elder" | "co_leader" | "demote_co_leader" | "demote_elder" | "violation";

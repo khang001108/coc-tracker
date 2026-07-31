@@ -88,6 +88,23 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
     except Exception:
         pass
 
+    # Coin kiếm được — TỔNG cộng dồn TỪ TRƯỚC TỚI NAY (không tính lúc mua đồ
+    # Cửa hàng), từ coins_log
+    coins_earned_total: dict[str, int] = {}
+    try:
+        start = 0
+        page_size = 1000
+        while True:
+            batch = (sb.table("coins_log").select("player_tag,amount").eq("clan_id", clan_id).gt("amount", 0)
+                     .range(start, start + page_size - 1).execute()).data or []
+            for r in batch:
+                coins_earned_total[r["player_tag"]] = coins_earned_total.get(r["player_tag"], 0) + (r["amount"] or 0)
+            if len(batch) < page_size:
+                break
+            start += page_size
+    except Exception:
+        pass
+
     def metric_value(metric: str, m: dict):
         if metric == "donate":
             return m.get("donations") or 0
@@ -103,6 +120,10 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
             return war_highlight.get(m["tag"], 0)
         if metric == "activity_index":
             return activity_pct.get(m["tag"], 0.0)
+        if metric == "war_stars_total":
+            return m.get("warStars") or 0
+        if metric == "coins_earned_total":
+            return coins_earned_total.get(m["tag"], 0)
         return None
 
     def check(cond: dict, m: dict) -> bool:
@@ -125,6 +146,8 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
             "war_attendance": war_attendance.get(m["tag"]),
             "war_highlight": war_highlight.get(m["tag"], 0),
             "activity_index": activity_pct.get(m["tag"], 0.0),
+            "war_stars_total": m.get("warStars") or 0,
+            "coins_earned_total": coins_earned_total.get(m["tag"], 0),
         }
 
     result = {"elder": [], "co_leader": [], "demote_co_leader": [], "demote_elder": [], "violation": [], "all_members": []}

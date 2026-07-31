@@ -1231,3 +1231,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_index TO service_role;
 ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;
 ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
   CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index'));
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 42 (Thêm 2 metric mới cho Nội quy: "Tổng số sao War
+-- kiếm được" + "Coin kiếm được" — nhớ rút kinh nghiệm PART 41, cập nhật
+-- LUÔN CHECK constraint metric, không đợi báo lỗi mới sửa.)
+-- ════════════════════════════════════════════════════════════════
+ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;
+ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
+  CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index', 'war_stars_total', 'coins_earned_total'));

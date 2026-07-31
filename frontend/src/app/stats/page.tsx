@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
-import { BarChart3, TrendingUp, TrendingDown, Star, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, HeartCrack, ShieldOff } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Star, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, HeartCrack, ShieldOff, Sparkles } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
@@ -549,7 +549,7 @@ function StatsPageInner() {
   const [warLog, setWarLog] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"week" | "month" | "all">("all");
-  const [warActivity, setWarActivity] = useState<{ most_stars: any[]; weakest: any[]; most_skips: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ most_stars: [], weakest: [], most_skips: [] });
+  const [warActivity, setWarActivity] = useState<{ most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; coins_earned: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ most_stars: [], weakest: [], most_skips: [], war_highlights: [], coins_earned: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
   const [topCoins, setTopCoins] = useState<any[]>([]);
   const [coinsScope, setCoinsScope] = useState<"clan" | "all">("clan");
@@ -772,7 +772,7 @@ function StatsPageInner() {
 
 function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
   period: "week" | "month" | "all"; setPeriod: (p: "week" | "month" | "all") => void; periodLabel: string;
-  warActivity: { most_stars: any[]; weakest: any[]; most_skips: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
+  warActivity: { most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; coins_earned: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
   topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
@@ -809,9 +809,11 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
 
   const TILES = [
     { key: "coins", icon: <CoinIcon size={22}/>, label: "Nhiều Coins nhất" },
+    { key: "coins_earned", icon: <CoinIcon size={22} className="text-green-400"/>, label: "Kiếm Coins nhiều nhất" },
     { key: "stars", icon: <Star size={22} className="text-yellow-400"/>, label: "Nhiều sao War nhất" },
     { key: "weakest", icon: <HeartCrack size={22} className="text-red-400"/>, label: "War yếu nhất" },
     { key: "skips", icon: <ShieldOff size={22} className="text-orange-400"/>, label: "Hay bỏ war nhất" },
+    { key: "war_highlights", icon: <Sparkles size={22} className="text-yellow-400"/>, label: "War nổi bật" },
     { key: "activity", icon: <span className="text-2xl leading-none">📊</span>, label: "Chỉ số hoạt động" },
   ];
 
@@ -989,6 +991,64 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                 <div key={p.tag} className="flex items-center gap-2 text-sm">
                   <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
                   <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionModal>
+      )}
+
+      {openSection === "coins_earned" && (
+        <SectionModal title={`Kiếm Coins nhiều nhất (${periodLabel})`} icon={<CoinIcon size={18} className="text-green-400"/>}>
+          {warActivity.coins_earned?.length > 0 && (
+            <div className="flex justify-end -mt-1">
+              <CopyButton getText={() =>
+                `🪙 KIẾM COINS NHIỀU NHẤT (${periodLabel}):\n` +
+                warActivity.coins_earned.map((p, i) => `${i + 1}. ${p.name}: +${p.earned.toLocaleString()} coins`).join("\n")
+              } />
+            </div>
+          )}
+          <p className="text-[10px] text-gray-600 mb-1">Tổng Coins KIẾM ĐƯỢC (không tính lúc mua đồ Cửa hàng) trong đúng khung thời gian đã chọn — khác với "Nhiều Coins nhất" (số dư hiện tại).</p>
+          {insightsLoading ? (
+            <p className="text-xs text-gray-600">Đang tải...</p>
+          ) : !warActivity.coins_earned || warActivity.coins_earned.length === 0 ? (
+            <p className="text-xs text-gray-600">Chưa có dữ liệu trong khoảng thời gian này</p>
+          ) : (
+            <div className="space-y-2">
+              {warActivity.coins_earned.map((p, i) => (
+                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
+                  <span className="text-green-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> +{p.earned.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionModal>
+      )}
+
+      {openSection === "war_highlights" && (
+        <SectionModal title={`War nổi bật (${periodLabel})`} icon={<Sparkles size={18} className="text-yellow-400"/>}>
+          {warActivity.war_highlights?.length > 0 && (
+            <div className="flex justify-end -mt-1">
+              <CopyButton getText={() =>
+                `✨ WAR NỔI BẬT (${periodLabel}):\n` +
+                warActivity.war_highlights.map((p, i) => `${i + 1}. ${p.name}: ${p.count} lần`).join("\n")
+              } />
+            </div>
+          )}
+          <p className="text-[10px] text-gray-600 mb-1">Số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần trong đúng khung thời gian đã chọn — dùng chung điều kiện "Số lần nổi bật War/CWL" ở Nội quy.</p>
+          {insightsLoading ? (
+            <p className="text-xs text-gray-600">Đang tải...</p>
+          ) : !warActivity.war_highlights || warActivity.war_highlights.length === 0 ? (
+            <p className="text-xs text-gray-600">Chưa có dữ liệu trong khoảng thời gian này</p>
+          ) : (
+            <div className="space-y-2">
+              {warActivity.war_highlights.map((p, i) => (
+                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                  <MarqueeText className="flex-1 text-gray-300"><NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect></MarqueeText>
+                  <span className="text-yellow-400 font-semibold shrink-0">{p.count} lần</span>
                 </div>
               ))}
             </div>

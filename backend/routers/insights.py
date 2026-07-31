@@ -311,6 +311,47 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
         parsed_dates = [d for d in parsed_dates if d]
         period_start = min(parsed_dates).isoformat() if parsed_dates else None
 
+    # War nổi bật — số lần lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần, lọc
+    # theo CÙNG khung thời gian (Tuần/Tháng/Từ đầu) như các mục khác ở đây.
+    war_highlight_count: dict[str, dict] = {}
+    try:
+        q = sb.table("weekly_report_log").select("report").eq("clan_id", clan_id)
+        if cutoff:
+            q = q.gte("created_at", cutoff.isoformat())
+        reports_res = q.execute()
+        for row in (reports_res.data or []):
+            for e in ((row.get("report") or {}).get("war") or {}).get("good", [])[:5]:
+                t = e.get("player_tag")
+                if not t:
+                    continue
+                acc = war_highlight_count.setdefault(t, {"tag": t, "name": e.get("player_name"), "count": 0})
+                acc["count"] += 1
+    except Exception:
+        pass
+    war_highlights = sorted(war_highlight_count.values(), key=lambda p: -p["count"])[:10]
+
+    # Kiếm Coins nhiều nhất TRONG KHUNG THỜI GIAN đã chọn — khác với "Nhiều
+    # Coins nhất" (số dư HIỆN TẠI) — đây là TỔNG kiếm được (chỉ cộng, không
+    # trừ lúc mua đồ) trong đúng khung thời gian, từ coins_log.
+    coins_earned_map: dict[str, dict] = {}
+    try:
+        start = 0
+        page_size = 1000
+        while True:
+            q = sb.table("coins_log").select("player_tag,player_name,amount").eq("clan_id", clan_id).gt("amount", 0)
+            if cutoff:
+                q = q.gte("created_at", cutoff.isoformat())
+            batch = (q.range(start, start + page_size - 1).execute()).data or []
+            for r in batch:
+                acc = coins_earned_map.setdefault(r["player_tag"], {"tag": r["player_tag"], "name": r["player_name"], "earned": 0})
+                acc["earned"] += r["amount"] or 0
+            if len(batch) < page_size:
+                break
+            start += page_size
+    except Exception:
+        pass
+    coins_earned = sorted(coins_earned_map.values(), key=lambda p: -p["earned"])[:10]
+
     return {
         "period": period,
         "period_start": period_start,
@@ -319,6 +360,8 @@ async def war_activity(request: Request, period: str = Query("all", pattern="^(w
         "most_stars": most_stars,
         "weakest": weakest,
         "most_skips": most_skips,
+        "war_highlights": war_highlights,
+        "coins_earned": coins_earned,
         "mvp_attack": _fmt_attack(best_attack_overall),
         "mvp_defense": _fmt_defense(best_defense_overall),
     }
