@@ -355,7 +355,7 @@ function ReputationLeaderboardTab() {
               <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
               <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
             </button>
-            {isAdmin && (
+            {isAdmin && r.left_clan && (
               <button onClick={() => handleHide(r.player_tag, r.player_name)} disabled={hidingTag === r.player_tag}
                 title="Ẩn khỏi bảng xếp hạng (admin)" className="text-gray-700 hover:text-red-400 shrink-0 disabled:opacity-40">
                 <Trash2 size={12}/>
@@ -845,8 +845,8 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
     return <span className="text-[9px] text-gray-500 border border-gray-700 rounded px-1 py-0.5 shrink-0">đã rời clan</span>;
   }
 
-  function HideBtn({ tag, name }: { tag: string; name: string }) {
-    if (!isAdmin) return null;
+  function HideBtn({ tag, name, leftClan }: { tag: string; name: string; leftClan?: boolean }) {
+    if (!isAdmin || !leftClan) return null;
     return (
       <button onClick={(e) => { e.stopPropagation(); handleHide(tag, name); }} disabled={hidingTag === tag}
         title="Ẩn khỏi bảng xếp hạng (admin)" className="text-gray-700 hover:text-red-400 shrink-0 disabled:opacity-40">
@@ -971,7 +971,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                     </MarqueeText>
                     <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
                   </button>
-                  <HideBtn tag={p.tag} name={p.name}/>
+                  <HideBtn tag={p.tag} name={p.name} leftClan={p.left_clan}/>
                 </div>
               ))}
             </div>
@@ -1008,7 +1008,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-yellow-400 font-semibold shrink-0">{p.stars}⭐ · {p.wars} war</span>
-                  <HideBtn tag={p.tag} name={p.name}/>
+                  <HideBtn tag={p.tag} name={p.name} leftClan={p.left_clan}/>
                 </div>
               ))}
             </div>
@@ -1044,7 +1044,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
-                  <HideBtn tag={p.tag} name={p.name}/>
+                  <HideBtn tag={p.tag} name={p.name} leftClan={p.left_clan}/>
                 </div>
               ))}
             </div>
@@ -1081,7 +1081,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
-                  <HideBtn tag={p.tag} name={p.name}/>
+                  <HideBtn tag={p.tag} name={p.name} leftClan={p.left_clan}/>
                 </div>
               ))}
             </div>
@@ -1120,7 +1120,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                     </MarqueeText>
                     <span className="text-yellow-400 font-semibold shrink-0">{p.count} lần</span>
                   </button>
-                  <HideBtn tag={p.tag} name={p.name}/>
+                  <HideBtn tag={p.tag} name={p.name} leftClan={p.left_clan}/>
                 </div>
               ))}
             </div>
@@ -1197,7 +1197,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                       style={{ width: `${Math.min(100, p.percent)}%` }}/>
                   </div>
                   <span className={`font-semibold shrink-0 w-12 text-right ${p.percent >= 100 ? "text-green-400" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "text-red-400" : "text-yellow-400"}`}>{p.percent}%</span>
-                  <HideBtn tag={p.player_tag} name={p.player_name}/>
+                  <HideBtn tag={p.player_tag} name={p.player_name} leftClan={p.left_clan}/>
                 </div>
               ))}
             </div>

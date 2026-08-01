@@ -606,22 +606,41 @@ async def poll_members():
                 res = sb.table("member_log").select("player_tag,name,th_level,status").eq("status", "active").execute()
             prev_tags = {r["player_tag"]: r for r in res.data}
 
-            # New members
+            # New members HOẶC người QUAY LẠI (member_log đã có dòng cũ với
+            # status="left" — trước đây code chỉ check "không có trong
+            # prev_tags [status=active]" rồi INSERT dòng MỚI, khiến dòng CŨ
+            # vẫn kẹt ở status="left" mãi mãi dù họ đã quay lại thật — sai
+            # cả "đã rời clan" hiện ở Thống kê lẫn phạt Danh vọng rời clan).
             for tag_id, member in current_tags.items():
-                if tag_id not in prev_tags:
-                    row = {
-                        "player_tag": tag_id,
-                        "name": member.get("name"),
-                        "th_level": member.get("townHallLevel", 0),
-                        "status": "active",
-                        "joined_at": datetime.utcnow().isoformat(),
-                    }
-                    try:
+                if tag_id in prev_tags:
+                    continue
+                row = {
+                    "player_tag": tag_id,
+                    "name": member.get("name"),
+                    "th_level": member.get("townHallLevel", 0),
+                    "status": "active",
+                    "joined_at": datetime.utcnow().isoformat(),
+                    "left_at": None,
+                }
+                try:
+                    existing = sb.table("member_log").select("id").eq("player_tag", tag_id).eq("clan_id", clan_id).execute()
+                except Exception:
+                    existing = sb.table("member_log").select("id").eq("player_tag", tag_id).execute()
+                is_rejoin = bool(existing.data)
+                try:
+                    if is_rejoin:
+                        q = sb.table("member_log").update(row).eq("player_tag", tag_id)
+                        try:
+                            q.eq("clan_id", clan_id).execute()
+                        except Exception:
+                            q.execute()
+                    else:
                         sb.table("member_log").insert({**row, "clan_id": clan_id}).execute()
-                    except Exception:
+                except Exception:
+                    if not is_rejoin:
                         sb.table("member_log").insert(row).execute()
-                    if c.get("notify_join_leave", True):
-                        await notify_member_join(member.get("name", "?"), member.get("townHallLevel", 0), clan_id=clan_id)
+                if c.get("notify_join_leave", True):
+                    await notify_member_join(member.get("name", "?"), member.get("townHallLevel", 0), clan_id=clan_id)
 
             # Left members
             for tag_id, prev in prev_tags.items():
