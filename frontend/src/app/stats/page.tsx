@@ -575,8 +575,7 @@ function StatsPageInner() {
   const [warActivity, setWarActivity] = useState<{ most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; mvp_attack?: any; mvp_defense?: any; period_start?: string; period_end?: string }>({ most_stars: [], weakest: [], most_skips: [], war_highlights: [] });
   const [donationTrend, setDonationTrend] = useState<{ least_donate: any[] }>({ least_donate: [] });
   const [topCoins, setTopCoins] = useState<any[]>([]);
-  const [coinsScope, setCoinsScope] = useState<"clan" | "all">("clan");
-  const [coinsCopied, setCoinsCopied] = useState(false);
+    const [coinsCopied, setCoinsCopied] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
@@ -590,8 +589,8 @@ function StatsPageInner() {
   }, []);
 
   useEffect(() => {
-    api.getTopCoins(10, coinsScope).then((res: any) => setTopCoins(res.top || [])).catch(() => {});
-  }, [coinsScope]);
+    api.getTopCoins(10, warScope).then((res: any) => setTopCoins(res.top || [])).catch(() => {});
+  }, [warScope]);
 
   useEffect(() => {
     setInsightsLoading(true);
@@ -695,7 +694,7 @@ function StatsPageInner() {
               period={period} setPeriod={setPeriod} periodLabel={periodLabel}
               warActivity={warActivity} insightsLoading={insightsLoading}
               warScope={warScope} setWarScope={setWarScope}
-              topCoins={topCoins} coinsScope={coinsScope} setCoinsScope={setCoinsScope}
+              topCoins={topCoins}
               coinsCopied={coinsCopied} setCoinsCopied={setCoinsCopied}
             />
           ) : loading ? (
@@ -794,25 +793,24 @@ function StatsPageInner() {
   );
 }
 
-function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, warScope, setWarScope, topCoins, coinsScope, setCoinsScope, coinsCopied, setCoinsCopied }: {
+function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLoading, warScope, setWarScope, topCoins, coinsCopied, setCoinsCopied }: {
   period: "week" | "month" | "all"; setPeriod: (p: "week" | "month" | "all") => void; periodLabel: string;
   warActivity: { most_stars: any[]; weakest: any[]; most_skips: any[]; war_highlights: any[]; period_start?: string; period_end?: string }; insightsLoading: boolean;
   warScope: "clan" | "all"; setWarScope: (s: "clan" | "all") => void;
-  topCoins: any[]; coinsScope: "clan" | "all"; setCoinsScope: (s: "clan" | "all") => void;
+  topCoins: any[];
   coinsCopied: boolean; setCoinsCopied: (b: boolean) => void;
 }) {
   const rosterMap = useRosterMap();
-  const [activityScope, setActivityScope] = useState<"clan" | "all">("clan");
   const [activityIndex, setActivityIndex] = useState<any[]>([]);
   const [activityMeta, setActivityMeta] = useState<{ days_to_full?: number; penalty_threshold?: number }>({});
   const [activityLoading, setActivityLoading] = useState(true);
   useEffect(() => {
     setActivityLoading(true);
-    api.getActivityIndex(500, activityScope).then((r: any) => {
+    api.getActivityIndex(500, warScope).then((r: any) => {
       setActivityIndex(r.members || []);
       setActivityMeta({ days_to_full: r.days_to_full, penalty_threshold: r.penalty_threshold });
     }).catch(() => {}).finally(() => setActivityLoading(false));
-  }, [activityScope]);
+  }, [warScope]);
   const fmtD = (s?: string) => {
     if (!s) return null;
     try { return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(s)); }
@@ -936,15 +934,11 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
       {openSection === "coins" && (
         <SectionModal title="Nhiều Coins nhất" icon={<CoinIcon size={18}/>}>
           <div className="flex items-center justify-end gap-2 -mt-1">
-            <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-              <button onClick={() => setCoinsScope("clan")} className={`px-2.5 py-1 ${coinsScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-              <button onClick={() => setCoinsScope("all")} className={`px-2.5 py-1 ${coinsScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
-            </div>
             <button onClick={() => {
-              const lines = topCoins.map((p, i) => coinsScope === "all"
+              const lines = topCoins.map((p, i) => warScope === "all"
                 ? `${i + 1}. ${p.name} (${p.clan_name}) — ${p.coins.toLocaleString()} coins`
                 : `${i + 1}. ${p.name} — ${p.coins.toLocaleString()} coins`);
-              const header = coinsScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
+              const header = warScope === "all" ? "🪙 XẾP HẠNG COINS LIÊN CLAN" : "🪙 XẾP HẠNG COINS TRONG CLAN";
               navigator.clipboard.writeText(`${header}\n${lines.join("\n")}`);
               setCoinsCopied(true);
               setTimeout(() => setCoinsCopied(false), 2000);
@@ -960,14 +954,14 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                 <div key={p.tag} className={`flex items-center gap-2 ${p.left_clan ? "opacity-50" : ""}`}>
                   <button onClick={() => openCoinsHistory(p.tag)} className="flex-1 flex items-center gap-3 text-sm hover:brightness-110 text-left min-w-0">
                     <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                    {coinsScope === "all" && (
+                    {warScope === "all" && (
                       p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
                         : <span className="w-5 h-5 shrink-0" />
                     )}
                     <MarqueeText className="flex-1">
                       <span className="text-gray-300">{p.name}</span>
                       {p.left_clan && <LeftBadge/>}
-                      {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                      {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                     </MarqueeText>
                     <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
                   </button>
@@ -1159,11 +1153,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
 
       {openSection === "activity" && (
         <SectionModal title="Chỉ số hoạt động" icon={<span>📊</span>}>
-          <div className="flex items-center justify-between -mt-1">
-            <div className="flex items-center rounded-lg overflow-hidden border border-gray-700 text-xs">
-              <button onClick={() => setActivityScope("clan")} className={`px-2.5 py-1 ${activityScope === "clan" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Trong clan</button>
-              <button onClick={() => setActivityScope("all")} className={`px-2.5 py-1 ${activityScope === "all" ? "bg-yellow-500 text-black font-semibold" : "text-gray-400"}`}>Liên clan</button>
-            </div>
+          <div className="flex items-center justify-end -mt-1">
             {activityIndex.length > 0 && (
               <CopyButton getText={() =>
                 `📊 CHỈ SỐ HOẠT ĐỘNG:\n` +
@@ -1184,14 +1174,14 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               {activityIndex.map((p, i) => (
                 <div key={p.player_tag} className={`flex items-center gap-2 text-sm ${p.left_clan ? "opacity-50" : ""}`}>
                   <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
-                  {activityScope === "all" && (
+                  {warScope === "all" && (
                     p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
                   )}
                   <MarqueeText className="w-24 shrink-0 text-gray-300">
                     <NameEffect effectKey={rosterMap[p.player_tag]?.equipped_effect}>{p.player_name}</NameEffect>
                   </MarqueeText>
                   {p.left_clan && <LeftBadge/>}
-                  {activityScope === "all" && <span className="text-gray-600 text-[10px] shrink-0 max-w-[60px] truncate">{p.clan_name}</span>}
+                  {warScope === "all" && <span className="text-gray-600 text-[10px] shrink-0 max-w-[60px] truncate">{p.clan_name}</span>}
                   <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
                     <div className={`h-full rounded-full ${p.percent >= 100 ? "bg-green-500" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "bg-red-500" : "bg-yellow-500"}`}
                       style={{ width: `${Math.min(100, p.percent)}%` }}/>
