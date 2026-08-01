@@ -602,6 +602,12 @@ async def _war_members_from_log(sb, event: dict, clan_ids: list[int]) -> list:
                 log["best_defense_stars"] = max(log["best_defense_stars"], r.get("best_defense_stars") or 0)
                 m["name"] = r["player_name"]
             return list(merged.values())
+        # Sự kiện CWL nhưng CHƯA CÓ dữ liệu CWL nào trong log (vd CWL còn
+        # chưa bắt đầu, "ngày mai mới diễn ra") — TUYỆT ĐỐI không được rơi
+        # xuống nhánh dưới (query theo war_end_time không lọc war_type),
+        # vì nhánh đó có thể khớp nhầm vào 1 WAR THƯỜNG đã kết thúc gần đây,
+        # khiến bảng xếp hạng hiện sai sao của war thường thay vì chờ CWL.
+        return []
 
     if not war_end_time:
         return []
@@ -614,11 +620,11 @@ async def _war_members_from_log(sb, event: dict, clan_ids: list[int]) -> list:
 
 
 def _fmt_metric(condition_type: str, score: float) -> str:
-    if condition_type == "total_stars": return f"{int(score)} sao"
+    if condition_type == "total_stars": return f"{int(score)}⭐"
     if condition_type == "best_destruction": return f"{score:.1f}%"
     if condition_type == "perfect_war": return "War hoàn hảo"
     if condition_type == "most_attacks_used": return f"{int(score)} lượt đánh"
-    if condition_type == "fewest_stars_conceded": return f"Mất {int(-score)} sao khi bị đánh"
+    if condition_type == "fewest_stars_conceded": return f"Mất {int(-score)}⭐ khi bị đánh"
     return str(score)
 
 
@@ -643,19 +649,19 @@ async def _cwl_current_war_members(tag: str, clan_id: int) -> list:
 
 async def _war_members_for_clan(clan_id: int, event_type: str = "war") -> list:
     """Lấy danh sách member trong war hiện tại/gần nhất của 1 clan cụ thể.
-    event_type == 'cwl' → ưu tiên tìm trong CWL trước (trước đây chỉ tìm ở
-    war thường nên sự kiện loại CWL luôn báo nhầm 'không ai tham gia' dù
-    thành viên đang đánh CWL thật)."""
+    event_type == 'cwl' → CHỈ tìm trong CWL, KHÔNG fallback về war thường
+    nữa — trước đây có fallback "phòng khi admin gắn nhầm loại sự kiện",
+    nhưng chính fallback đó gây lỗi thật: sự kiện CWL chưa bắt đầu lại hiện
+    nhầm sao của 1 war THƯỜNG đã đánh xong gần đó (rất dễ gây hiểu lầm "đã
+    tính điểm trước khi CWL diễn ra"). Nếu chưa có vòng CWL nào, trả về
+    rỗng — đúng với thực tế "CWL chưa diễn ra", để leaderboard/event hiện
+    đúng thông báo "chưa có ai xuất hiện" thay vì số liệu sai."""
     tag = await get_tag_by_clan_id(clan_id)
     if not tag:
         return []
 
     if event_type == "cwl":
-        members = await _cwl_current_war_members(tag, clan_id)
-        if members:
-            return members
-        # Không tìm được vòng CWL nào — fallback thử war thường (phòng khi
-        # admin gắn nhầm loại sự kiện) trước khi chịu thua.
+        return await _cwl_current_war_members(tag, clan_id)
 
     war = None
     try:
