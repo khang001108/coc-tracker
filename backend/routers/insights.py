@@ -4,13 +4,55 @@ liệu hiện tại): war yếu nhất, hay bỏ war nhất, donate ít nhất �
 war_participation_log / donation_snapshot_log do poller ghi lại mỗi khi có
 war kết thúc / donate bị CoC reset hàng tuần.
 """
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Request, Query, Depends
 from supabase_client import get_supabase
 from clan_context import get_clan_id
+from auth import require_admin
 from datetime import datetime, timedelta
 import json
 
 router = APIRouter()
+
+
+@router.get("/hidden-members")
+async def list_hidden_members(request: Request):
+    """Danh sách người Admin đã ẩn thủ công khỏi các bảng xếp hạng lịch sử."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    try:
+        res = (sb.table("stats_hidden_members").select("*").eq("clan_id", clan_id)
+               .order("hidden_at", desc=True).execute())
+        return res.data or []
+    except Exception:
+        return []
+
+
+@router.post("/hidden-members")
+async def hide_member(request: Request, _: bool = Depends(require_admin)):
+    """Ẩn 1 người khỏi các bảng xếp hạng lịch sử — dùng khi người ra vào
+    clan liên tục làm nhiễu bảng xếp hạng toàn người đã rời. KHÔNG xoá dữ
+    liệu gốc, chỉ ẩn khỏi kết quả trả về."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    body = await request.json()
+    player_tag = body.get("player_tag")
+    player_name = body.get("player_name", player_tag)
+    if not player_tag:
+        from fastapi import HTTPException
+        raise HTTPException(400, "Thiếu player_tag")
+    sb.table("stats_hidden_members").upsert({
+        "clan_id": clan_id, "player_tag": player_tag, "player_name": player_name,
+    }, on_conflict="clan_id,player_tag").execute()
+    return {"ok": True}
+
+
+@router.delete("/hidden-members/{player_tag}")
+async def unhide_member(player_tag: str, request: Request, _: bool = Depends(require_admin)):
+    """Bỏ ẩn — cho hiện lại trong các bảng xếp hạng lịch sử."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    sb.table("stats_hidden_members").delete().eq("clan_id", clan_id).eq("player_tag", player_tag).execute()
+    return {"ok": True}
 
 
 @router.get("/activity-index")
@@ -33,6 +75,16 @@ async def activity_index(request: Request, limit: int = Query(500, le=2000), sco
                 info = lookup.get(r.get("clan_id"), {})
                 r["clan_name"] = info.get("name", "?")
                 r["clan_badge"] = info.get("badge", "")
+        from services.member_status import get_left_tags, get_hidden_tags, annotate_and_filter
+        by_clan: dict = {}
+        for r in rows:
+            by_clan.setdefault(r.get("clan_id"), []).append(r)
+        rows = []
+        for cid, group in by_clan.items():
+            left_tags = get_left_tags(sb, cid)
+            hidden_tags = get_hidden_tags(sb, cid)
+            rows.extend(annotate_and_filter(group, "player_tag", left_tags, hidden_tags))
+        rows.sort(key=lambda r: r["percent"])
     except Exception:
         rows = []
     return {"days_to_full": days_to_full, "penalty_threshold": threshold, "members": rows}
@@ -82,13 +134,24 @@ async def top_coins(request: Request, limit: int = Query(10, le=50), scope: str 
                 pass
 
         res = sb.table("member_accounts").select("player_tag,player_name,coins,clan_id").order("coins", desc=True).execute()
-        rows = [r for r in (res.data or []) if (r.get("coins") or 0) > 0][:limit]
-        return {"top": [{
+        rows = [r for r in (res.data or []) if (r.get("coins") or 0) > 0]
+        out = [{
             "tag": r["player_tag"], "name": r["player_name"], "coins": r.get("coins") or 0,
             "clan_id": r.get("clan_id"),
             "clan_name": clan_info.get(r.get("clan_id"), {}).get("clan_name", "?"),
             "clan_badge": badges.get(r.get("clan_id"), ""),
-        } for r in rows]}
+        } for r in rows]
+        from services.member_status import get_left_tags, get_hidden_tags, annotate_and_filter
+        by_clan: dict = {}
+        for r in out:
+            by_clan.setdefault(r.get("clan_id"), []).append(r)
+        merged = []
+        for cid, group in by_clan.items():
+            left_tags = get_left_tags(sb, cid)
+            hidden_tags = get_hidden_tags(sb, cid)
+            merged.extend(annotate_and_filter(group, "tag", left_tags, hidden_tags))
+        merged.sort(key=lambda r: -r["coins"])
+        return {"top": merged[:limit]}
 
     clan_id = get_clan_id(request)
     tag = None
@@ -97,9 +160,10 @@ async def top_coins(request: Request, limit: int = Query(10, le=50), scope: str 
         tag = await get_tag_by_clan_id(clan_id)
     except Exception:
         pass
-    # Lọc đúng thành viên đang trong clan này (member_accounts không phải lúc
-    # nào cũng có clan_id nếu chưa chạy hết migration — nên đối chiếu qua
-    # roster hiện tại của CoC API cho chắc).
+    # Đối chiếu roster CoC API hiện tại — chỉ dùng để lọc bỏ dữ liệu SAI clan
+    # (member_accounts thiếu clan_id do chưa chạy hết migration cũ), KHÔNG
+    # dùng để loại người đã rời clan — người đã rời vẫn giữ trong danh sách,
+    # chỉ đánh dấu xám (left_clan) qua member_log, trừ khi Admin ẩn thủ công.
     try:
         from services.coc_api import get_clan_members
         members = await get_clan_members(tag, clan_id=clan_id) if tag else []
@@ -107,12 +171,18 @@ async def top_coins(request: Request, limit: int = Query(10, le=50), scope: str 
     except Exception:
         member_tags = None
 
+    from services.member_status import get_left_tags, get_hidden_tags, annotate_and_filter
+    left_tags = get_left_tags(sb, clan_id)
+    hidden_tags = get_hidden_tags(sb, clan_id)
+
     res = sb.table("member_accounts").select("player_tag,player_name,coins").order("coins", desc=True).execute()
     rows = res.data or []
     if member_tags is not None:
-        rows = [r for r in rows if r["player_tag"] in member_tags]
-    rows = [r for r in rows if (r.get("coins") or 0) > 0][:limit]
-    return {"top": [{"tag": r["player_tag"], "name": r["player_name"], "coins": r.get("coins") or 0} for r in rows]}
+        rows = [r for r in rows if r["player_tag"] in member_tags or r["player_tag"] in left_tags]
+    rows = [r for r in rows if (r.get("coins") or 0) > 0]
+    out = [{"tag": r["player_tag"], "name": r["player_name"], "coins": r.get("coins") or 0} for r in rows]
+    out = annotate_and_filter(out, "tag", left_tags, hidden_tags)
+    return {"top": out[:limit]}
 
 
 def _period_cutoff(period: str):
@@ -297,9 +367,15 @@ def _compute_clan_war_stats(sb, clan_id: int, war_end_cutoff, report_cutoff_iso:
     except Exception:
         pass
 
+    from services.member_status import get_left_tags, get_hidden_tags, annotate_and_filter
+    left_tags = get_left_tags(sb, clan_id)
+    hidden_tags = get_hidden_tags(sb, clan_id)
+    per_player_list = annotate_and_filter(list(per_player.values()), "tag", left_tags, hidden_tags)
+    war_highlight_list = annotate_and_filter(list(war_highlight_count.values()), "tag", left_tags, hidden_tags)
+
     return {
-        "rows": rows, "per_player": list(per_player.values()),
-        "war_highlight_count": war_highlight_count,
+        "rows": rows, "per_player": per_player_list,
+        "war_highlight_count": {h["tag"]: h for h in war_highlight_list},
         "best_attack": best_attack, "best_defense": best_defense,
     }
 

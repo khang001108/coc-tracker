@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, getAdminToken } from "@/lib/api";
 import { formatNumber, thColor, roleLabel, roleClass } from "@/lib/utils";
-import { BarChart3, TrendingUp, TrendingDown, Star, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, HeartCrack, ShieldOff, Sparkles } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Star, Copy, Check, RefreshCw, Clock, ChevronDown, ChevronUp, Info, ChevronLeft, ChevronRight, HeartCrack, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import { ArtBanner } from "@/components/ui/ArtBanner";
 import { usePageBanner } from "@/lib/usePageBanner";
 import { CoinIcon } from "@/components/ui/CoinIcon";
@@ -235,6 +235,19 @@ function ReputationLeaderboardTab() {
   const [showFormula, setShowFormula] = useState(false);
   const [formula, setFormula] = useState<any>(null);
   const [formulaLoading, setFormulaLoading] = useState(false);
+  const isAdmin = !!getAdminToken();
+  const [hidingTag, setHidingTag] = useState<string | null>(null);
+
+  async function handleHide(tag: string, name: string) {
+    if (!confirm(`Ẩn "${name}" khỏi các bảng xếp hạng lịch sử? (không xoá dữ liệu gốc, có thể bỏ ẩn lại sau)`)) return;
+    setHidingTag(tag);
+    try {
+      await api.hideStatsMember(tag, name);
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message || "Lỗi ẩn thành viên");
+    } finally { setHidingTag(null); }
+  }
 
   async function openFormula() {
     setShowFormula(true);
@@ -326,20 +339,29 @@ function ReputationLeaderboardTab() {
           </div>
         )}
         {sortedRows.map((r, i) => (
-          <button key={r.player_tag} onClick={() => openMember(r)}
-            className={`w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left hover:brightness-110 transition-all ${!asc && i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
-            {!asc && i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
-            {scope === "all" && (
-              r.clan_badge ? <img src={r.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={r.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
+          <div key={r.player_tag} className={`flex items-center gap-2 ${r.left_clan ? "opacity-50" : ""}`}>
+            <button onClick={() => openMember(r)}
+              className={`flex-1 flex items-center gap-2 rounded-xl px-3 py-2 text-left hover:brightness-110 transition-all min-w-0 ${!asc && i < 10 ? "bg-yellow-500/5 border border-yellow-500/15" : "bg-gray-800/50"}`}>
+              {!asc && i < 10 ? <ReputationBadge rank={i + 1} size="md"/> : <span className="text-sm w-6 text-center shrink-0">{i + 1}</span>}
+              {scope === "all" && (
+                r.clan_badge ? <img src={r.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={r.clan_name}/> : <span className="w-5 h-5 shrink-0"/>
+              )}
+              <MarqueeText className="text-sm text-white flex-1">
+                <NameEffect effectKey={rosterMap[r.player_tag]?.equipped_effect}>{r.player_name}</NameEffect>
+                {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
+                {r.left_clan && <span className="text-[9px] text-gray-500 border border-gray-700 rounded px-1 py-0.5 shrink-0">đã rời clan</span>}
+                {scope === "all" && <span className="text-gray-600 text-xs">· {r.clan_name}</span>}
+              </MarqueeText>
+              <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
+              <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
+            </button>
+            {isAdmin && (
+              <button onClick={() => handleHide(r.player_tag, r.player_name)} disabled={hidingTag === r.player_tag}
+                title="Ẩn khỏi bảng xếp hạng (admin)" className="text-gray-700 hover:text-red-400 shrink-0 disabled:opacity-40">
+                <Trash2 size={12}/>
+              </button>
             )}
-            <MarqueeText className="text-sm text-white flex-1">
-              <NameEffect effectKey={rosterMap[r.player_tag]?.equipped_effect}>{r.player_name}</NameEffect>
-              {roleMap[r.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[r.player_tag])}`}>{roleLabel(roleMap[r.player_tag])}</span>}
-              {scope === "all" && <span className="text-gray-600 text-xs">· {r.clan_name}</span>}
-            </MarqueeText>
-            <span className={`text-[10px] shrink-0 w-14 text-right ${tierColor[r.tier.name] || "text-gray-400"}`}>{r.tier.name}</span>
-            <span className="text-xs text-yellow-400 shrink-0 w-14 text-right">{r.total}</span>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -804,6 +826,34 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
   const [coinHistLoading, setCoinHistLoading] = useState(false);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
+  const isAdmin = !!getAdminToken();
+  const [hidingTag, setHidingTag] = useState<string | null>(null);
+
+  async function handleHide(tag: string, name: string) {
+    if (!confirm(`Ẩn "${name}" khỏi các bảng xếp hạng lịch sử? (không xoá dữ liệu gốc, có thể bỏ ẩn lại sau)`)) return;
+    setHidingTag(tag);
+    try {
+      await api.hideStatsMember(tag, name);
+      // Tải lại toàn bộ dữ liệu Tích luỹ cho đồng bộ
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message || "Lỗi ẩn thành viên");
+    } finally { setHidingTag(null); }
+  }
+
+  function LeftBadge() {
+    return <span className="text-[9px] text-gray-500 border border-gray-700 rounded px-1 py-0.5 shrink-0">đã rời clan</span>;
+  }
+
+  function HideBtn({ tag, name }: { tag: string; name: string }) {
+    if (!isAdmin) return null;
+    return (
+      <button onClick={(e) => { e.stopPropagation(); handleHide(tag, name); }} disabled={hidingTag === tag}
+        title="Ẩn khỏi bảng xếp hạng (admin)" className="text-gray-700 hover:text-red-400 shrink-0 disabled:opacity-40">
+        <Trash2 size={12}/>
+      </button>
+    );
+  }
 
   async function openCoinsHistory(tag: string) {
     setCoinHistTag(tag);
@@ -907,18 +957,22 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {topCoins.map((p, i) => (
-                <button key={p.tag} onClick={() => openCoinsHistory(p.tag)} className="w-full flex items-center gap-3 text-sm hover:brightness-110 text-left">
-                  <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-                  {coinsScope === "all" && (
-                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
-                      : <span className="w-5 h-5 shrink-0" />
-                  )}
-                  <MarqueeText className="flex-1">
-                    <span className="text-gray-300">{p.name}</span>
-                    {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
-                  </MarqueeText>
-                  <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
-                </button>
+                <div key={p.tag} className={`flex items-center gap-2 ${p.left_clan ? "opacity-50" : ""}`}>
+                  <button onClick={() => openCoinsHistory(p.tag)} className="flex-1 flex items-center gap-3 text-sm hover:brightness-110 text-left min-w-0">
+                    <span className="w-5 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+                    {coinsScope === "all" && (
+                      p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} />
+                        : <span className="w-5 h-5 shrink-0" />
+                    )}
+                    <MarqueeText className="flex-1">
+                      <span className="text-gray-300">{p.name}</span>
+                      {p.left_clan && <LeftBadge/>}
+                      {coinsScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                    </MarqueeText>
+                    <span className="text-yellow-400 font-semibold shrink-0 flex items-center gap-1"><CoinIcon size={14}/> {p.coins.toLocaleString()}</span>
+                  </button>
+                  <HideBtn tag={p.tag} name={p.name}/>
+                </div>
               ))}
             </div>
           )}
@@ -943,16 +997,18 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {warActivity.most_stars.map((p, i) => (
-                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                <div key={p.tag} className={`flex items-center gap-2 text-sm ${p.left_clan ? "opacity-50" : ""}`}>
                   <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
                   {warScope === "all" && (
                     p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
                   )}
                   <MarqueeText className="flex-1 text-gray-300">
                     <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {p.left_clan && <LeftBadge/>}
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-yellow-400 font-semibold shrink-0">{p.stars}⭐ · {p.wars} war</span>
+                  <HideBtn tag={p.tag} name={p.name}/>
                 </div>
               ))}
             </div>
@@ -977,16 +1033,18 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {warActivity.weakest.map((p, i) => (
-                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                <div key={p.tag} className={`flex items-center gap-2 text-sm ${p.left_clan ? "opacity-50" : ""}`}>
                   <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
                   {warScope === "all" && (
                     p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
                   )}
                   <MarqueeText className="flex-1 text-gray-300">
                     <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {p.left_clan && <LeftBadge/>}
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-red-400 font-semibold shrink-0">{p.avg_stars}⭐ TB · {p.wars} war</span>
+                  <HideBtn tag={p.tag} name={p.name}/>
                 </div>
               ))}
             </div>
@@ -1012,16 +1070,18 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {warActivity.most_skips.map((p, i) => (
-                <div key={p.tag} className="flex items-center gap-2 text-sm">
+                <div key={p.tag} className={`flex items-center gap-2 text-sm ${p.left_clan ? "opacity-50" : ""}`}>
                   <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
                   {warScope === "all" && (
                     p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
                   )}
                   <MarqueeText className="flex-1 text-gray-300">
                     <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                    {p.left_clan && <LeftBadge/>}
                     {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
                   </MarqueeText>
                   <span className="text-orange-400 font-semibold shrink-0">~{p.skipped} war ({p.wars} war · TB {p.skip_rate}%)</span>
+                  <HideBtn tag={p.tag} name={p.name}/>
                 </div>
               ))}
             </div>
@@ -1047,17 +1107,21 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {warActivity.war_highlights.map((p, i) => (
-                <button key={p.tag} onClick={() => setSelectedHighlight(p)} className="w-full flex items-center gap-2 text-sm hover:brightness-110 text-left">
-                  <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
-                  {warScope === "all" && (
-                    p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
-                  )}
-                  <MarqueeText className="flex-1 text-gray-300">
-                    <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
-                    {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
-                  </MarqueeText>
-                  <span className="text-yellow-400 font-semibold shrink-0">{p.count} lần</span>
-                </button>
+                <div key={p.tag} className={`flex items-center gap-2 ${p.left_clan ? "opacity-50" : ""}`}>
+                  <button onClick={() => setSelectedHighlight(p)} className="flex-1 flex items-center gap-2 text-sm hover:brightness-110 text-left min-w-0">
+                    <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
+                    {warScope === "all" && (
+                      p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
+                    )}
+                    <MarqueeText className="flex-1 text-gray-300">
+                      <NameEffect effectKey={rosterMap[p.tag]?.equipped_effect}>{p.name}</NameEffect>
+                      {p.left_clan && <LeftBadge/>}
+                      {warScope === "all" && <span className="text-gray-600 text-xs">· {p.clan_name}</span>}
+                    </MarqueeText>
+                    <span className="text-yellow-400 font-semibold shrink-0">{p.count} lần</span>
+                  </button>
+                  <HideBtn tag={p.tag} name={p.name}/>
+                </div>
               ))}
             </div>
           )}
@@ -1079,10 +1143,12 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
               <p className="text-xs text-gray-500">Những tuần cụ thể người này lọt Top 5 "War/CWL giỏi nhất" ở Báo cáo tuần:</p>
               <div className="space-y-1.5">
                 {(selectedHighlight.weeks || []).map((w: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between gap-2 text-xs bg-gray-800/40 rounded-lg px-2.5 py-1.5">
-                    <span className="text-gray-400 shrink-0">{w.date ? new Date(w.date).toLocaleDateString("vi-VN") : "?"}</span>
-                    <span className="text-yellow-500 font-semibold shrink-0">Hạng {w.rank}</span>
-                    <span className="text-gray-300 text-right flex-1 truncate">{w.value}</span>
+                  <div key={idx} className="bg-gray-800/40 rounded-lg px-2.5 py-1.5">
+                    <div className="flex items-center justify-between gap-2 text-xs mb-0.5">
+                      <span className="text-gray-400">{w.date ? new Date(w.date).toLocaleDateString("vi-VN") : "?"}</span>
+                      <span className="text-yellow-500 font-semibold">Hạng {w.rank}</span>
+                    </div>
+                    <p className="text-xs text-gray-300">{w.value}</p>
                   </div>
                 ))}
               </div>
@@ -1116,7 +1182,7 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
           ) : (
             <div className="space-y-2">
               {activityIndex.map((p, i) => (
-                <div key={p.player_tag} className="flex items-center gap-2 text-sm">
+                <div key={p.player_tag} className={`flex items-center gap-2 text-sm ${p.left_clan ? "opacity-50" : ""}`}>
                   <span className="w-6 text-center shrink-0 text-gray-500">{i + 1}</span>
                   {activityScope === "all" && (
                     p.clan_badge ? <img src={p.clan_badge} alt="" className="w-5 h-5 object-contain shrink-0" title={p.clan_name} /> : <span className="w-5 h-5 shrink-0" />
@@ -1124,12 +1190,14 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
                   <MarqueeText className="w-24 shrink-0 text-gray-300">
                     <NameEffect effectKey={rosterMap[p.player_tag]?.equipped_effect}>{p.player_name}</NameEffect>
                   </MarqueeText>
+                  {p.left_clan && <LeftBadge/>}
                   {activityScope === "all" && <span className="text-gray-600 text-[10px] shrink-0 max-w-[60px] truncate">{p.clan_name}</span>}
                   <div className="flex-1 h-2.5 rounded-full bg-gray-800 overflow-hidden">
                     <div className={`h-full rounded-full ${p.percent >= 100 ? "bg-green-500" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "bg-red-500" : "bg-yellow-500"}`}
                       style={{ width: `${Math.min(100, p.percent)}%` }}/>
                   </div>
                   <span className={`font-semibold shrink-0 w-12 text-right ${p.percent >= 100 ? "text-green-400" : p.percent < (activityMeta.penalty_threshold ?? 20) ? "text-red-400" : "text-yellow-400"}`}>{p.percent}%</span>
+                  <HideBtn tag={p.player_tag} name={p.player_name}/>
                 </div>
               ))}
             </div>

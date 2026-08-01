@@ -1240,3 +1240,66 @@ ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_chec
 ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;
 ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
   CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index', 'war_stars_total', 'coins_earned_total'));
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 43 (Người đã rời clan hiện xám + nhãn "đã rời clan" ở
+-- mọi bảng xếp hạng lịch sử (Tích luỹ, Xếp hạng Danh vọng, Top Cúp...) —
+-- KHÔNG xoá dữ liệu thật. Admin có thể ẨN THỦ CÔNG 1 người khỏi các bảng
+-- xếp hạng này (khi có người ra/vào liên tục làm nhiễu bảng) — vẫn giữ
+-- nguyên dữ liệu gốc, chỉ ẩn khỏi hiển thị, có thể bỏ ẩn lại bất cứ lúc nào.)
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS leaderboard_hidden (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  hidden_by   TEXT,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, player_tag)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_hidden_clan ON leaderboard_hidden(clan_id);
+
+ALTER TABLE leaderboard_hidden ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON leaderboard_hidden;
+CREATE POLICY "service_all" ON leaderboard_hidden FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.leaderboard_hidden TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 43 (Đánh dấu "đã rời clan" (xám + nhãn) trong các bảng
+-- xếp hạng lịch sử (War nổi bật, Nhiều sao War, War yếu, Hay bỏ war, Chỉ
+-- số hoạt động, Coins, Danh vọng...) + cho phép Admin ẩn thủ công 1 người
+-- khỏi các bảng này (không xoá dữ liệu gốc, chỉ ẩn khỏi hiển thị — phòng
+-- trường hợp người ra vào liên tục làm nhiễu bảng xếp hạng).
+-- ════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS stats_hidden_members (
+  id          SERIAL PRIMARY KEY,
+  clan_id     INTEGER DEFAULT 1 REFERENCES clans(id) ON DELETE CASCADE,
+  player_tag  TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  hidden_by   TEXT,
+  hidden_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(clan_id, player_tag)
+);
+CREATE INDEX IF NOT EXISTS idx_stats_hidden_clan ON stats_hidden_members(clan_id);
+
+ALTER TABLE stats_hidden_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_all" ON stats_hidden_members;
+CREATE POLICY "service_all" ON stats_hidden_members FOR ALL TO service_role USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.stats_hidden_members TO service_role;
+
+-- ════════════════════════════════════════════════════════════════
+-- MIGRATION — PART 44 (SỬA LỖI TẬN GỐC: bỏ hẳn ràng buộc CHECK cho cột
+-- "metric" ở bảng clan_rule_conditions. Ràng buộc kiểu whitelist cứng này
+-- đã gây lỗi 2 LẦN liên tiếp (PART 41, 42) mỗi khi thêm metric mới — và có
+-- ít nhất 1 dòng dữ liệu hiện tại đang mang giá trị metric không khớp
+-- whitelist, khiến PostgreSQL từ chối áp constraint mới. Từ giờ chỉ dựa
+-- vào kiểm tra ở code app (routers/rules.py::METRICS) — đã đủ chặt, không
+-- cần đồng bộ tay 2 nơi mỗi khi thêm metric mới nữa.)
+-- ════════════════════════════════════════════════════════════════
+
+-- (Tuỳ chọn) Chạy dòng này TRƯỚC để xem chính xác dòng nào đang có metric lạ:
+-- SELECT id, metric, target FROM clan_rule_conditions
+-- WHERE metric NOT IN ('donate','war_attendance','reputation','capital','cup',
+--                       'war_highlight','activity_index','war_stars_total','coins_earned_total');
+
+ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;

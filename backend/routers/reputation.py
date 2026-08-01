@@ -106,6 +106,7 @@ async def get_leaderboard(request: Request, limit: int = Query(50, le=200), scop
         clan_info = {c["id"]: c for c in (clans_res.data or [])}
         badges: dict[int, str] = {}
         rows = []
+        from services.member_status import get_left_tags, get_hidden_tags, annotate_and_filter
         for cid in clan_info:
             try:
                 snap = sb.table("snapshot_clan").select("data").eq("clan_id", cid).order("id", desc=True).limit(1).execute()
@@ -114,14 +115,28 @@ async def get_leaderboard(request: Request, limit: int = Query(50, le=200), scop
                 clan_data = json.loads(snap.data[0]["data"])
                 badges[cid] = clan_data.get("badgeUrls", {}).get("medium", "")
                 totals = get_all_totals(sb, cid)
+                clan_rows = []
+                seen_tags = set()
                 for m in clan_data.get("memberList", []):
                     entry = totals.get(m["tag"])
                     total = entry["total"] if entry else 0
-                    rows.append({
+                    clan_rows.append({
                         "player_tag": m["tag"], "player_name": m["name"],
                         "total": total, "tier": get_tier(total, sb),
                         "clan_id": cid, "clan_name": clan_info[cid]["clan_name"], "clan_badge": badges.get(cid, ""),
                     })
+                    seen_tags.add(m["tag"])
+                for t, info in totals.items():
+                    if t in seen_tags:
+                        continue
+                    clan_rows.append({
+                        "player_tag": t, "player_name": info["player_name"],
+                        "total": info["total"], "tier": get_tier(info["total"], sb),
+                        "clan_id": cid, "clan_name": clan_info[cid]["clan_name"], "clan_badge": badges.get(cid, ""),
+                    })
+                left_tags = get_left_tags(sb, cid)
+                hidden_tags = get_hidden_tags(sb, cid)
+                rows.extend(annotate_and_filter(clan_rows, "player_tag", left_tags, hidden_tags))
             except Exception:
                 continue
         rows.sort(key=lambda r: -r["total"])
@@ -132,7 +147,12 @@ async def get_leaderboard(request: Request, limit: int = Query(50, le=200), scop
     members = await get_clan_members_resilient(tag, clan_id=clan_id) if tag else []
     totals = get_all_totals(sb, clan_id)
 
+    from services.member_status import get_left_tags, get_hidden_tags, annotate_and_filter
+    left_tags = get_left_tags(sb, clan_id)
+    hidden_tags = get_hidden_tags(sb, clan_id)
+
     rows = []
+    seen_tags = set()
     for m in members:
         entry = totals.get(m["tag"])
         total = entry["total"] if entry else 0
@@ -140,6 +160,17 @@ async def get_leaderboard(request: Request, limit: int = Query(50, le=200), scop
             "player_tag": m["tag"], "player_name": m["name"],
             "total": total, "tier": get_tier(total, sb),
         })
+        seen_tags.add(m["tag"])
+    # Người đã rời clan nhưng có Danh vọng tích luỹ trước đó — vẫn hiện (xám
+    # + nhãn "đã rời clan"), trừ khi Admin đã ẩn thủ công.
+    for t, info in totals.items():
+        if t in seen_tags:
+            continue
+        rows.append({
+            "player_tag": t, "player_name": info["player_name"],
+            "total": info["total"], "tier": get_tier(info["total"], sb),
+        })
+    rows = annotate_and_filter(rows, "player_tag", left_tags, hidden_tags)
     rows.sort(key=lambda r: -r["total"])
     return rows[:limit]
 

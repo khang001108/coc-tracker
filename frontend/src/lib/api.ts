@@ -341,6 +341,11 @@ export const api = {
   getReputationLeaderboard: (limit = 50, scope: "clan" | "all" = "clan") => apiFetch(`/api/reputation/leaderboard?limit=${limit}&scope=${scope}`),
   getCoinsHistory: (playerTag: string) => apiFetch(`/api/insights/coins-history/${encodeURIComponent(playerTag)}`),
   getActivityIndex: (limit = 500, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/activity-index?limit=${limit}&scope=${scope}`),
+  getHiddenStatsMembers: () => apiFetch("/api/insights/hidden-members"),
+  hideStatsMember: (player_tag: string, player_name: string) =>
+    apiFetch("/api/insights/hidden-members", { method: "POST", body: JSON.stringify({ player_tag, player_name }) }),
+  unhideStatsMember: (player_tag: string) =>
+    apiFetch(`/api/insights/hidden-members/${encodeURIComponent(player_tag)}`, { method: "DELETE" }),
   getTopTrophies: (limit = 10, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/top-trophies?limit=${limit}&scope=${scope}`),
   getTrophySeasons: (count = 3) => apiFetch(`/api/insights/trophy-seasons?seasons_count=${count}`),
   getMemberReputation: (playerTag: string) => apiFetch(`/api/reputation/member/${encodeURIComponent(playerTag)}`),
