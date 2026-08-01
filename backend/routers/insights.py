@@ -27,6 +27,35 @@ async def list_hidden_members(request: Request):
         return []
 
 
+@router.post("/hidden-members/hide-all-left")
+async def hide_all_left_members(request: Request, _: bool = Depends(require_admin)):
+    """Ẩn CÙNG LÚC toàn bộ người hiện đang ghi nhận 'đã rời clan' khỏi các
+    bảng xếp hạng lịch sử — thay vì bấm xoá từng người 1. KHÔNG xoá dữ liệu
+    gốc, chỉ ẩn khỏi kết quả trả về (giống ẩn từng người, chỉ làm hàng loạt)."""
+    clan_id = get_clan_id(request)
+    sb = get_supabase()
+    from services.member_status import get_left_tags
+    left_tags = get_left_tags(sb, clan_id)
+    if not left_tags:
+        return {"ok": True, "hidden_count": 0}
+
+    # Lấy tên mới nhất của từng tag từ member_log để lưu kèm (stats_hidden_members
+    # cần player_name để hiển thị lại trong danh sách đã ẩn).
+    names: dict = {}
+    try:
+        res = (sb.table("member_log").select("player_tag,name,created_at").eq("clan_id", clan_id)
+               .in_("player_tag", list(left_tags)).order("created_at", desc=True).execute())
+        for r in (res.data or []):
+            if r["player_tag"] not in names:
+                names[r["player_tag"]] = r["name"]
+    except Exception:
+        pass
+
+    rows = [{"clan_id": clan_id, "player_tag": t, "player_name": names.get(t, t)} for t in left_tags]
+    sb.table("stats_hidden_members").upsert(rows, on_conflict="clan_id,player_tag").execute()
+    return {"ok": True, "hidden_count": len(rows)}
+
+
 @router.post("/hidden-members")
 async def hide_member(request: Request, _: bool = Depends(require_admin)):
     """Ẩn 1 người khỏi các bảng xếp hạng lịch sử — dùng khi người ra vào

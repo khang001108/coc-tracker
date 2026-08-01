@@ -344,6 +344,7 @@ export const api = {
   getHiddenStatsMembers: () => apiFetch("/api/insights/hidden-members"),
   hideStatsMember: (player_tag: string, player_name: string) =>
     apiFetch("/api/insights/hidden-members", { method: "POST", body: JSON.stringify({ player_tag, player_name }) }),
+  hideAllLeftMembers: () => apiFetch("/api/insights/hidden-members/hide-all-left", { method: "POST" }),
   unhideStatsMember: (player_tag: string) =>
     apiFetch(`/api/insights/hidden-members/${encodeURIComponent(player_tag)}`, { method: "DELETE" }),
   getTopTrophies: (limit = 10, scope: "clan" | "all" = "clan") => apiFetch(`/api/insights/top-trophies?limit=${limit}&scope=${scope}`),

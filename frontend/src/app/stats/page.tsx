@@ -839,6 +839,24 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
     } finally { setHidingTag(null); }
   }
 
+  const [hidingAll, setHidingAll] = useState(false);
+  async function handleHideAllLeft() {
+    if (!confirm(`Ẩn CÙNG LÚC toàn bộ người đã rời clan khỏi các bảng xếp hạng lịch sử? (không xoá dữ liệu gốc, có thể bỏ ẩn lại từng người sau)`)) return;
+    setHidingAll(true);
+    try {
+      const r = await api.hideAllLeftMembers();
+      if ((r.hidden_count || 0) === 0) {
+        alert("Không có ai đang ở trạng thái 'đã rời clan' để ẩn.");
+        setHidingAll(false);
+        return;
+      }
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message || "Lỗi ẩn hàng loạt");
+      setHidingAll(false);
+    }
+  }
+
   function LeftBadge() {
     return <span className="text-[9px] text-gray-500 border border-gray-700 rounded px-1 py-0.5 shrink-0">đã rời clan</span>;
   }
@@ -894,6 +912,12 @@ function CumulativeTab({ period, setPeriod, periodLabel, warActivity, insightsLo
         <p className="text-xs text-gray-500">
           Dữ liệu tích luỹ liên tục <strong className="text-gray-300">từ khi lập web</strong> — càng dùng lâu càng chính xác. Khác với "Báo cáo tuần" (chỉ tính riêng tuần gần nhất).
         </p>
+        {isAdmin && (
+          <button onClick={handleHideAllLeft} disabled={hidingAll}
+            className="mt-2 text-xs flex items-center gap-1.5 text-gray-500 hover:text-red-400 disabled:opacity-50">
+            <Trash2 size={12}/> {hidingAll ? "Đang ẩn..." : "Ẩn tất cả người đã rời clan khỏi bảng xếp hạng"}
+          </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-2">
