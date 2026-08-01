@@ -39,7 +39,7 @@ function MiniToast({ msg, type = "error" }: { msg: string; type?: "error" | "suc
  * PHÂN QUYỀN:
  *  - Xác nhận "Đã trao" → CHỈ member đăng nhập với vai trò Đồng thủ lĩnh trở
  *    lên (backend tự kiểm tra qua /api/medals/my-permission, không tin FE).
- *  - Sửa/xoá lịch sử + đổi số mùa khôi phục → CHỈ Admin (mật khẩu web).
+ *  - Sửa/xoá lịch sử + đổi số vòng khôi phục → CHỈ Admin (mật khẩu web).
  */
 export function MedalRewardBox() {
   const confirm = useConfirm();
@@ -59,6 +59,7 @@ export function MedalRewardBox() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showAwarded, setShowAwarded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedMua, setSelectedMua] = useState<number | null>(null);
   const [awardedCopied, setAwardedCopied] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [savingSelected, setSavingSelected] = useState(false);
@@ -122,7 +123,7 @@ export function MedalRewardBox() {
   async function handleSaveSelected() {
     if (selectedTags.size === 0) return;
     const chosen = notAwardedYet.filter(m => m.eligible && selectedTags.has(m.player_tag));
-    if (!(await confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} mùa CWL kế tiếp.\n\n🔒 Sau khi xác nhận, CHỈ ADMIN mới sửa/xoá lại được — bạn (Đồng thủ lĩnh) sẽ không tự sửa lại được nữa.`))) return;
+    if (!(await confirm(`Xác nhận ĐÃ trao huy chương trong game cho ${chosen.length} người đã tích? Họ sẽ bị tạm giới hạn nhận lại trong ${resetCount} vòng CWL kế tiếp.\n\n🔒 Sau khi xác nhận, CHỈ ADMIN mới sửa/xoá lại được — bạn (Đồng thủ lĩnh) sẽ không tự sửa lại được nữa.`))) return;
     setSavingSelected(true);
     let okCount = 0;
     for (const m of chosen) {
@@ -145,7 +146,7 @@ export function MedalRewardBox() {
 
   async function copyAwardedList() {
     const lines = [
-      `🎖️ Trao thưởng CWL${currentSeasonNumber != null ? ` — Mùa ${currentSeasonNumber}` : ""} (${awardedThisSeason.length}/${members.length})`,
+      `🎖️ Trao thưởng CWL${currentSeasonNumber != null ? ` — Vòng ${currentSeasonNumber}` : ""} (${awardedThisSeason.length}/${members.length})`,
     ];
     if (awardedThisSeason.length > 0) {
       lines.push(`Đã trao: ${awardedThisSeason.map(m => m.player_name).join(", ")}`);
@@ -165,7 +166,7 @@ export function MedalRewardBox() {
   const [suggestionsCopied, setSuggestionsCopied] = useState(false);
   function copySuggestions() {
     const lines = [
-      `✨ GỢI Ý TIỀM NĂNG${currentSeasonNumber != null ? ` — Mùa ${currentSeasonNumber + 1}` : ""} (${WEEKS_PRESETS[weeksIdx]} tuần gần nhất):`,
+      `✨ GỢI Ý TIỀM NĂNG${currentSeasonNumber != null ? ` — Vòng ${currentSeasonNumber + 1}` : ""} (${WEEKS_PRESETS[weeksIdx]} tuần gần nhất):`,
       ...suggestions.map((s, i) => `${i + 1}. ${s.player_name}: 🏵️${s.reputation || 0}${s.highlights ? ` · ${s.highlights} nổi bật` : ""}`),
     ];
     navigator.clipboard.writeText(lines.join("\n"));
@@ -196,18 +197,18 @@ export function MedalRewardBox() {
     <div className="space-y-4">
       <p className="text-xs text-gray-500">
         CoC không cho biết ai đã được trao huy chương trong game — Đồng thủ lĩnh trở lên tự đánh
-        dấu sau khi trao thật trong game, hệ thống tự xoay vòng công bằng cho mùa kế tiếp.
+        dấu sau khi trao thật trong game, hệ thống tự xoay vòng công bằng cho vòng kế tiếp.
       </p>
 
       {/* Lưới các mục — bấm vào 1 ô để xem chi tiết dạng popup */}
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => setShowSuggestions(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all">
           <Sparkles size={22} className="text-yellow-400"/>
-          <span className="text-xs font-semibold text-white text-center leading-tight">Gợi ý tiềm năng mùa tiếp theo</span>
+          <span className="text-xs font-semibold text-white text-center leading-tight">Gợi ý tiềm năng vòng tiếp theo</span>
         </button>
         <button onClick={() => setShowAwarded(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all relative">
           <Award size={22} className="text-yellow-400"/>
-          <span className="text-xs font-semibold text-white text-center leading-tight">Đã trao thưởng mùa này</span>
+          <span className="text-xs font-semibold text-white text-center leading-tight">Đã trao thưởng vòng này</span>
           <span className="text-[10px] text-gray-500">{awardedThisSeason.length}/{members.length}</span>
         </button>
         <button onClick={() => setShowAwardPanel(true)} className="card flex flex-col items-center justify-center gap-2 py-5 hover:brightness-110 transition-all">
@@ -230,8 +231,8 @@ export function MedalRewardBox() {
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                 <p className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng mùa tiếp theo
-                  {currentSeasonNumber != null && <span className="badge-gold text-[9px]">Mùa {currentSeasonNumber + 1}</span>}
+                  <Sparkles size={12} className="text-yellow-400"/> Gợi ý tiềm năng vòng tiếp theo
+                  {currentSeasonNumber != null && <span className="badge-gold text-[9px]">Vòng {currentSeasonNumber + 1}</span>}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => setWeeksIdx(i => Math.max(0, i - 1))} disabled={weeksIdx <= 0}
@@ -301,13 +302,13 @@ export function MedalRewardBox() {
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 className="font-bold text-white flex items-center gap-2">
-                  <Award size={18} className="text-yellow-400"/> Đã trao thưởng mùa này
-                  {currentSeasonNumber != null && <span className="badge-gold text-[10px]">Mùa {currentSeasonNumber}</span>}
+                  <Award size={18} className="text-yellow-400"/> Đã trao thưởng vòng này
+                  {currentSeasonNumber != null && <span className="badge-gold text-[10px]">Vòng {currentSeasonNumber}</span>}
                 </h3>
                 <span className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-gray-500">{awardedThisSeason.length}/{members.length} thành viên</span>
                   {awardedThisSeason.length > 0 && (
-                    <button onClick={copyAwardedList} title="Copy danh sách đã trao thưởng mùa này"
+                    <button onClick={copyAwardedList} title="Copy danh sách đã trao thưởng vòng này"
                       className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-yellow-400 transition-colors">
                       {awardedCopied ? <Check size={14} className="text-green-400"/> : <Copy size={14}/>}
                     </button>
@@ -316,7 +317,7 @@ export function MedalRewardBox() {
                 </span>
               </div>
               {awardedThisSeason.length === 0 ? (
-                <p className="text-sm text-gray-600 text-center py-4">Chưa có ai được trao huy chương ở mùa này.</p>
+                <p className="text-sm text-gray-600 text-center py-4">Chưa có ai được trao huy chương ở vòng này.</p>
               ) : (
                 <div className="space-y-1.5">
                   {awardedThisSeason.map(m => (
@@ -332,7 +333,7 @@ export function MedalRewardBox() {
                 </div>
               )}
               {limitedCount > 0 && (
-                <p className="text-[11px] text-purple-300 mt-2 flex items-center gap-1"><Lock size={10}/> {limitedCount} người đang trong thời gian giới hạn (kể cả từ các mùa trước).</p>
+                <p className="text-[11px] text-purple-300 mt-2 flex items-center gap-1"><Lock size={10}/> {limitedCount} người đang trong thời gian giới hạn (kể cả từ các vòng trước).</p>
               )}
             </div>
           </div>
@@ -346,13 +347,13 @@ export function MedalRewardBox() {
               style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white text-sm">Xác nhận trao cho người chưa nhận mùa này ({notAwardedYet.length})</h3>
+                <h3 className="font-bold text-white text-sm">Xác nhận trao cho người chưa nhận vòng này ({notAwardedYet.length})</h3>
                 <button onClick={() => setShowAwardPanel(false)} className="text-gray-400 text-sm">✕</button>
               </div>
               <div className="space-y-3">
                 {perm.is_admin && (
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-400 shrink-0">Khôi phục sau (mùa CWL thật):</label>
+                    <label className="text-xs text-gray-400 shrink-0">Khôi phục sau (vòng CWL thật):</label>
                     <input type="number" min={1} value={resetCountInput} onChange={e => setResetCountInput(e.target.value)}
                       className="input !py-1 !px-2 w-16 text-sm"/>
                     <button onClick={saveResetCount} className="btn-secondary text-xs px-2 py-1">Lưu</button>
@@ -360,7 +361,7 @@ export function MedalRewardBox() {
                 )}
                 {!perm.is_admin && perm.can_award && awardedThisSeason.length > 0 && (
                   <p className="text-[11px] text-purple-300 bg-purple-500/5 border border-purple-500/15 rounded-lg px-2.5 py-1.5">
-                    🔒 Mùa này đã có người được xác nhận trao — để tránh trùng/nhầm, danh sách bên dưới giờ chỉ xem được. Cần Admin để trao thêm.
+                    🔒 Vòng này đã có người được xác nhận trao — để tránh trùng/nhầm, danh sách bên dưới giờ chỉ xem được. Cần Admin để trao thêm.
                   </p>
                 )}
                 <div className="space-y-1.5">
@@ -383,7 +384,7 @@ export function MedalRewardBox() {
                         <NameEffect effectKey={rosterMap[m.player_tag]?.equipped_effect}>{m.player_name}</NameEffect>
                         {roleMap[m.player_tag] && <span className={`text-[9px] shrink-0 ${roleClass(roleMap[m.player_tag])}`}>{roleLabel(roleMap[m.player_tag])}</span>}
                       </MarqueeText>
-                      {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} mùa</span>}
+                      {!m.eligible && <span className="text-[10px] text-purple-300 shrink-0">Còn {m.remaining_seasons} vòng</span>}
                       {m.eligible && canCheckThis && (
                         <input placeholder="Ghi chú" value={noteDraft[m.player_tag] || ""}
                           onChange={e => setNoteDraft(d => ({ ...d, [m.player_tag]: e.target.value }))}
@@ -402,7 +403,7 @@ export function MedalRewardBox() {
                   </>
                 )}
                 {!perm.is_admin && perm.can_award && awardedThisSeason.length > 0 && (
-                  <p className="text-[11px] text-gray-600">Cần Admin đăng nhập để trao thêm cho mùa này.</p>
+                  <p className="text-[11px] text-gray-600">Cần Admin đăng nhập để trao thêm cho vòng này.</p>
                 )}
                 {!perm.can_award && isLoggedIn && (
                   <p className="text-[11px] text-gray-600">Chỉ Đồng thủ lĩnh trở lên mới xác nhận trao thưởng được.</p>
@@ -466,33 +467,93 @@ export function MedalRewardBox() {
         </Portal>
       )}
 
-      {showHistory && (
+      {showHistory && (() => {
+        // Nhóm lịch sử theo MÙA (mỗi resetCount vòng liên tiếp = 1 mùa) rồi
+        // theo VÒNG bên trong mùa đó — vd resetCount=3: Mùa 1 = Vòng 1,2,3.
+        const byMua: Record<number, Record<number, any[]>> = {};
+        for (const h of history) {
+          const vong = h.season_number ?? 1;
+          const mua = Math.ceil(vong / Math.max(1, resetCount));
+          (byMua[mua] ||= {});
+          (byMua[mua][vong] ||= []).push(h);
+        }
+        const muaList = Object.keys(byMua).map(Number).sort((a, b) => b - a);
+        const vongInMua = selectedMua != null ? Object.keys(byMua[selectedMua] || {}).map(Number).sort((a, b) => b - a) : [];
+
+        function copyVong(vong: number, entries: any[]) {
+          const lines = [
+            `🎖️ Lịch sử trao thưởng — Vòng ${vong}:`,
+            ...entries.map(h => `- ${h.player_name} (${new Date(h.created_at).toLocaleDateString("vi-VN")}${h.awarded_by ? `, bởi ${h.awarded_by}` : ""})`),
+          ];
+          navigator.clipboard.writeText(lines.join("\n"));
+        }
+
+        return (
         <Portal>
-          <div className="modal-overlay" onClick={() => setShowHistory(false)}>
+          <div className="modal-overlay" onClick={() => { setShowHistory(false); setSelectedMua(null); }}>
             <div className="relative w-full max-w-lg mx-4 my-4 overflow-y-auto rounded-2xl p-4 space-y-3"
               style={{ background: "var(--py-card-bg, linear-gradient(180deg,#241640,#1A0F2E))", maxHeight: "calc(100dvh - 120px)" }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white text-sm flex items-center gap-2"><Clock size={15} className="text-gray-400"/> Lịch sử trao thưởng tất cả các mùa</h3>
-                <button onClick={() => setShowHistory(false)} className="text-gray-400 text-sm">✕</button>
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  {selectedMua != null && (
+                    <button onClick={() => setSelectedMua(null)} className="text-gray-400 hover:text-white">
+                      <ChevronLeft size={16}/>
+                    </button>
+                  )}
+                  <Clock size={15} className="text-gray-400"/>
+                  {selectedMua != null ? `Mùa ${selectedMua} — các vòng` : "Lịch sử trao thưởng — theo mùa"}
+                </h3>
+                <button onClick={() => { setShowHistory(false); setSelectedMua(null); }} className="text-gray-400 text-sm">✕</button>
               </div>
-              <div className="space-y-1.5">
-                {history.length === 0 && <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>}
-                {history.map(h => (
-                  <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
-                    <MarqueeText className="text-white flex-1"><NameEffect effectKey={rosterMap[h.player_tag]?.equipped_effect}>{h.player_name}</NameEffect></MarqueeText>
-                    <span className="text-gray-500 shrink-0">Mùa {h.season_number ?? "?"}</span>
-                    <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
-                    {perm.is_admin && (
-                      <button onClick={() => handleDeleteHistory(h.id, h.player_name)} className="text-red-400 hover:underline shrink-0">Xoá</button>
-                    )}
-                  </div>
-                ))}
-              </div>
+
+              {history.length === 0 ? (
+                <p className="text-xs text-gray-600">Chưa có lượt trao thưởng nào.</p>
+              ) : selectedMua == null ? (
+                <div className="space-y-1.5">
+                  {muaList.map(mua => {
+                    const vongCount = Object.keys(byMua[mua]).length;
+                    const totalAwards = Object.values(byMua[mua]).reduce((s, arr) => s + arr.length, 0);
+                    return (
+                      <button key={mua} onClick={() => setSelectedMua(mua)}
+                        className="w-full flex items-center justify-between bg-gray-800/40 rounded-xl px-3 py-2 text-sm hover:brightness-110 text-left">
+                        <span className="text-white font-semibold">Mùa {mua}</span>
+                        <span className="text-xs text-gray-500">{vongCount} vòng · {totalAwards} lượt trao</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {vongInMua.map(vong => {
+                    const entries = byMua[selectedMua][vong];
+                    return (
+                      <div key={vong} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-yellow-500">Vòng {vong}</p>
+                          <button onClick={() => copyVong(vong, entries)} title="Copy danh sách vòng này" className="text-gray-500 hover:text-yellow-400">
+                            <Copy size={13}/>
+                          </button>
+                        </div>
+                        {entries.map((h: any) => (
+                          <div key={h.id} className="flex items-center gap-2 bg-gray-800/40 rounded-xl px-3 py-1.5 text-xs">
+                            <MarqueeText className="text-white flex-1"><NameEffect effectKey={rosterMap[h.player_tag]?.equipped_effect}>{h.player_name}</NameEffect></MarqueeText>
+                            <span className="text-gray-600 shrink-0">{new Date(h.created_at).toLocaleDateString("vi-VN")}</span>
+                            {perm.is_admin && (
+                              <button onClick={() => handleDeleteHistory(h.id, h.player_name)} className="text-red-400 hover:underline shrink-0">Xoá</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </Portal>
-      )}
+        );
+      })()}
 
       {msg && <MiniToast msg={msg.text} type={msg.type} />}
     </div>
