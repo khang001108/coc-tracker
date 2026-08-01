@@ -1226,20 +1226,24 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_index TO service_role;
 -- MIGRATION — PART 41 (SỬA LỖI: bảng clan_rule_conditions có ràng buộc
 -- CHECK ở tầng database CHỈ cho phép đúng 5 metric gốc — dù code app đã cho
 -- phép "war_highlight"/"activity_index" từ PART 40, INSERT vẫn bị database
--- TỪ CHỐI vì ràng buộc cũ chưa được cập nhật theo. Mở rộng lại constraint.)
+-- TỪ CHỐI vì ràng buộc cũ chưa được cập nhật theo. Mở rộng lại constraint.
+-- ĐÃ LỖI THỜI — xem PART 44, bỏ hẳn constraint này rồi, KHÔNG chạy lại
+-- ADD CONSTRAINT ở đây nữa (chạy lại cả file sẽ luôn lỗi nếu bỏ comment).)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;
-ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
-  CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index'));
+-- ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
+--   CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index'));
 
 -- ════════════════════════════════════════════════════════════════
 -- MIGRATION — PART 42 (Thêm 2 metric mới cho Nội quy: "Tổng số sao War
 -- kiếm được" + "Coin kiếm được" — nhớ rút kinh nghiệm PART 41, cập nhật
--- LUÔN CHECK constraint metric, không đợi báo lỗi mới sửa.)
+-- LUÔN CHECK constraint metric, không đợi báo lỗi mới sửa.
+-- ĐÃ LỖI THỜI — xem PART 44, bỏ hẳn constraint này rồi, KHÔNG chạy lại
+-- ADD CONSTRAINT ở đây nữa.)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE clan_rule_conditions DROP CONSTRAINT IF EXISTS clan_rule_conditions_metric_check;
-ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
-  CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index', 'war_stars_total', 'coins_earned_total'));
+-- ALTER TABLE clan_rule_conditions ADD CONSTRAINT clan_rule_conditions_metric_check
+--   CHECK (metric IN ('donate', 'war_attendance', 'reputation', 'capital', 'cup', 'war_highlight', 'activity_index', 'war_stars_total', 'coins_earned_total'));
 
 -- ════════════════════════════════════════════════════════════════
 -- MIGRATION — PART 43 (Người đã rời clan hiện xám + nhãn "đã rời clan" ở
