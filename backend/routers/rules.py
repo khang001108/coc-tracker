@@ -55,7 +55,7 @@ _METRIC_LABELS_VI = {
     "cup": "Cúp (hiện tại)",
     "war_highlight": "Số lần nổi bật War/CWL (Báo cáo tuần)",
     "activity_index": "Chỉ số hoạt động (%)",
-    "war_stars_total": "Tổng số sao War kiếm được (career)",
+    "war_stars_total": "Tổng số sao War kiếm được (từ khi lập web)",
     "coins_earned_total": "Coin kiếm được (tổng, không tính lúc mua đồ)",
 }
 _TARGET_LABELS_VI = {
@@ -222,6 +222,12 @@ async def add_history(request: Request, _: bool = Depends(require_admin)):
     }
     sb = get_supabase()
     res = sb.table("clan_rule_history").insert(row).execute()
+    if action == "expel":
+        # Bị KHAI TRỪ vì vi phạm Nội quy — reset dữ liệu đóng góp, để nếu
+        # quay lại clan sau này không giữ lợi thế cũ (lên chức nhanh hơn
+        # người khác dù từng bị phạt). Rời clan TỰ NGUYỆN không bị ảnh hưởng.
+        from services.expel_reset import reset_contribution_data
+        reset_contribution_data(sb, clan_id, player_tag)
     return res.data[0]
 
 

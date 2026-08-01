@@ -177,6 +177,9 @@ function MemberActionRow({ m, isAdmin, historyAction, onLogged, conditions }: { 
   const rosterMap = useRosterMap();
 
   async function markProcessed() {
+    if (historyAction === "expel") {
+      if (!confirm(`Xác nhận ĐÃ KHAI TRỪ "${m.name}"?\n\n⚠️ Toàn bộ dữ liệu đóng góp (Danh vọng, sao War, Chỉ số hoạt động, Coins) của người này sẽ bị XOÁ SẠCH — nếu sau này họ quay lại clan sẽ phải bắt đầu lại từ đầu, không giữ lợi thế cũ. Không thể khôi phục lại.`)) return;
+    }
     setBusy(true);
     try {
       await api.addRuleHistory({ action: historyAction, player_tag: m.tag, player_name: m.name });

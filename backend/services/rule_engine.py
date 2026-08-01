@@ -88,6 +88,26 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
     except Exception:
         pass
 
+    # Tổng sao War kiếm được — CoC API endpoint /clans/{tag}/members KHÔNG
+    # có trường "warStars" (chỉ endpoint /players/{tag} riêng từng người mới
+    # có), nên trước đây luôn hiện 0 dù người đó thật sự có nhiều sao. Dùng
+    # ĐÚNG dữ liệu tự tích luỹ từ war_participation_log (khớp với "Nhiều sao
+    # War nhất" ở Thống kê → Tích luỹ) thay vì trông chờ vào field không tồn tại.
+    war_stars_total: dict[str, int] = {}
+    try:
+        start = 0
+        page_size = 1000
+        while True:
+            batch = (sb.table("war_participation_log").select("player_tag,stars_earned")
+                     .eq("clan_id", clan_id).range(start, start + page_size - 1).execute()).data or []
+            for r in batch:
+                war_stars_total[r["player_tag"]] = war_stars_total.get(r["player_tag"], 0) + (r["stars_earned"] or 0)
+            if len(batch) < page_size:
+                break
+            start += page_size
+    except Exception:
+        pass
+
     # Coin kiếm được — TỔNG cộng dồn TỪ TRƯỚC TỚI NAY (không tính lúc mua đồ
     # Cửa hàng), từ coins_log
     coins_earned_total: dict[str, int] = {}
@@ -121,7 +141,7 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
         if metric == "activity_index":
             return activity_pct.get(m["tag"], 0.0)
         if metric == "war_stars_total":
-            return m.get("warStars") or 0
+            return war_stars_total.get(m["tag"], 0)
         if metric == "coins_earned_total":
             return coins_earned_total.get(m["tag"], 0)
         return None
@@ -146,7 +166,7 @@ async def evaluate_rules(sb, clan_id: int) -> dict:
             "war_attendance": war_attendance.get(m["tag"]),
             "war_highlight": war_highlight.get(m["tag"], 0),
             "activity_index": activity_pct.get(m["tag"], 0.0),
-            "war_stars_total": m.get("warStars") or 0,
+            "war_stars_total": war_stars_total.get(m["tag"], 0),
             "coins_earned_total": coins_earned_total.get(m["tag"], 0),
         }
 
@@ -227,6 +247,11 @@ async def sync_rule_auto_history(sb, clan_id: int):
                         "player_tag": tag, "player_name": name,
                         "note": "Tự động ghi nhận theo dữ liệu CoC API",
                     }).execute()
+                    if action == "expel":
+                        # Bị KHAI TRỪ vì vi phạm — reset dữ liệu đóng góp,
+                        # tránh giữ lợi thế cũ nếu quay lại clan sau này.
+                        from services.expel_reset import reset_contribution_data
+                        reset_contribution_data(sb, clan_id, tag)
                 except Exception:
                     pass
             # Dù xác nhận được hay không (vd rời clan rồi vào lại, chỉ số tự
