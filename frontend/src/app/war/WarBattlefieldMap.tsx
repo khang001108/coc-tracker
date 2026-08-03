@@ -8,7 +8,7 @@ import { NameEffect } from "@/components/ui/NameEffect";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { useReputationRankMap } from "@/lib/useReputationRankMap";
 import { MarqueeText } from "@/components/ui/MarqueeText";
-import { Swords, Shield, Eye, EyeOff } from "lucide-react";
+import { Swords, Shield, Eye, EyeOff, ExternalLink } from "lucide-react";
 
 /* Màu sao — sẫm đậm để dễ nhìn, đặc biệt trên nền sáng */
 const STAR_FILL = (s: number) =>
@@ -68,9 +68,22 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
   );
 
   return (
-    <button onClick={onSelect}
-      className={`w-full rounded-xl px-1.5 py-1.5 transition-all ${selected ? "ring-1 ring-yellow-500" : "hover:bg-black/5"}`}
+    <div role="button" tabIndex={0} onClick={onSelect} onKeyDown={e => { if (e.key === "Enter") onSelect(); }}
+      className={`relative w-full rounded-xl px-1.5 py-1.5 transition-all cursor-pointer ${selected ? "ring-1 ring-yellow-500" : "hover:bg-black/5"}`}
       style={{ background: selected ? "rgba(244,161,48,0.08)" : undefined }}>
+      {/* Chỉ phe ĐỊCH mới cần "xem trong game" — phe mình đã biết base mình
+          rồi. CoC API không cho lấy layout base qua API (Supercell cố tình
+          chặn để giữ yếu tố bất ngờ khi tấn công) — đây là deep link CHÍNH
+          THỨC của Supercell, mở thẳng vào app game xem profile/base người
+          đó (chỉ hoạt động trên điện thoại có cài app Clash of Clans). */}
+      {isRight && (
+        <a href={`https://link.clashofclans.com/en?action=OpenPlayerProfile&tag=${encodeURIComponent(member.tag)}`}
+          target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+          title="Xem trong game (mở app Clash of Clans)"
+          className="absolute -top-1 -left-1 z-10 p-1 rounded-full bg-black/40 text-gray-300 hover:text-yellow-400">
+          <ExternalLink size={10}/>
+        </a>
+      )}
       {/* Lưới 2 cột TƯỜNG MINH (không dùng flex-row-reverse để tránh sai
           hướng) — lâu đài luôn ở cột SÁT NGOÀI (trái với bên mình, phải với
           bên địch), cột kia chứa lượt đánh, giãn hết phần còn lại. */}
@@ -85,7 +98,7 @@ function MemberCard({ member, attacks, defenses, side, iconMap, selected, onSele
         <NameEffect effectKey={iconMap[member.tag]?.equipped_effect}>{member.name}</NameEffect>
         {!isRight && repRankMap[member.tag] && <ReputationBadge rank={repRankMap[member.tag]} size="sm"/>}
       </p>
-    </button>
+    </div>
   );
 }
 
